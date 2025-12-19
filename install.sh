@@ -7,12 +7,12 @@ set -e
 
 # 配置
 VERSION="v0.0.1"
-GITHUB_REPO="Jimleerx/miaomiaowu"
+GITHUB_REPO="Jimleerx/miaomiaowuX"
 BINARY_NAME=""  # 将根据架构自动设置
 INSTALL_DIR="/usr/local/bin"
-SERVICE_NAME="mmw"
-DATA_DIR="/etc/mmw"
-CONFIG_DIR="/etc/mmw"
+SERVICE_NAME="mmwx"
+DATA_DIR="/etc/mmwx"
+CONFIG_DIR="/etc/mmwx"
 
 # 颜色输出
 RED='\033[0;31m'
@@ -48,11 +48,11 @@ check_architecture() {
 
     case "$ARCH" in
         x86_64|amd64)
-            BINARY_NAME="mmw-linux-amd64"
+            BINARY_NAME="mmwx-linux-amd64"
             echo_info "使用 AMD64 版本"
             ;;
         aarch64|arm64)
-            BINARY_NAME="mmw-linux-arm64"
+            BINARY_NAME="mmwx-linux-arm64"
             echo_info "使用 ARM64 版本"
             ;;
         *)
@@ -121,7 +121,7 @@ create_systemd_service() {
 
     cat > /etc/systemd/system/${SERVICE_NAME}.service <<EOF
 [Unit]
-Description=Traffic Info - 妙妙屋个人订阅管理系统
+Description=Traffic Info - 妙妙屋 [ X ] BUG超多的拼车系统
 After=network.target
 Wants=network-online.target
 
@@ -177,7 +177,7 @@ show_status() {
 
     echo ""
     echo "======================================"
-    echo_info "妙妙屋安装完成！"
+    echo_info "妙妙屋 [ X ] BUG版安装完成！"
     echo "======================================"
     echo ""
     echo "📦 安装位置: $INSTALL_DIR/$SERVICE_NAME"
