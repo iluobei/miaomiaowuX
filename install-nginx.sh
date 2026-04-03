@@ -21,7 +21,7 @@ set -e  # 遇到错误立即退出
 # 配置变量
 FANCYINDEX_VERSION="0.5.2"
 NGINX_ROOT_PATH="${NGINX_ROOT_PATH:-/usr/local/nginx}"  # 默认路径，可通过环境变量覆盖
-#ENABLE_ACME="1"  # 是否启用 nginx-acme 模块，默认不启用
+ENABLE_ACME="0"  # 是否启用 nginx-acme 模块，默认不启用
 CURRENT_USER=$(whoami)
 CURRENT_GROUP=$(id -gn)
 
