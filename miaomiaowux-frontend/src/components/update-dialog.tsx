@@ -73,13 +73,14 @@ export function UpdateDialog({ open, onOpenChange }: UpdateDialogProps) {
   })
 
   // Start update with SSE using fetch (more reliable than EventSource for auth)
-  const startUpdate = useCallback(async () => {
+  const startUpdate = useCallback(async (force = false) => {
     setIsUpdating(true)
     setUpdateProgress(null)
     updateCompleteRef.current = false
 
     try {
-      const response = await fetch('/api/admin/update/apply-sse', {
+      const url = force ? '/api/admin/update/apply-sse?force=true' : '/api/admin/update/apply-sse'
+      const response = await fetch(url, {
         method: 'GET',
         headers: {
           'MM-Authorization': auth.accessToken || '',
@@ -291,6 +292,16 @@ export function UpdateDialog({ open, onOpenChange }: UpdateDialogProps) {
               <p className='text-sm text-muted-foreground mt-1'>
                 当前版本：v{updateInfo?.current_version}
               </p>
+              <Button
+                variant='outline'
+                size='sm'
+                onClick={() => startUpdate(true)}
+                disabled={isUpdating}
+                className='mt-4'
+              >
+                <Download className='size-4 mr-2' />
+                强制重新安装
+              </Button>
             </div>
           )}
 

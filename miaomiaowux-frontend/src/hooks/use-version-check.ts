@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 
 const CURRENT_VERSION = '0.0.1'
-const GITHUB_API_URL = 'https://api.github.com/repos/Jimleerx/miaomiaowuX/releases/latest'
+const GITHUB_API_URL = 'https://api.github.com/repos/iluobei/miaomiaowuX/releases/latest'
 
 interface GitHubRelease {
   tag_name: string
@@ -49,7 +49,7 @@ async function fetchLatestVersion(): Promise<{ version: string; hasUpdate: boole
     return {
       version: CURRENT_VERSION,
       hasUpdate: false,
-      url: 'https://github.com/Jimleerx/miaomiaowuX/releases'
+      url: 'https://github.com/iluobei/miaomiaowuX/releases'
     }
   }
 }

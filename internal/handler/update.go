@@ -19,7 +19,7 @@ import (
 )
 
 const (
-	githubRepo   = "Jimleerx/miaomiaowu"
+	githubRepo   = "iluobei/miaomiaowuX"
 	githubAPIURL = "https://api.github.com/repos/%s/releases/latest"
 )
 
@@ -177,13 +177,15 @@ func NewUpdateApplySSEHandler() http.Handler {
 		// 1.检查版本
 		sendProgress("checking", 0, "正在检查版本信息...")
 
+		force := r.URL.Query().Get("force") == "true"
+
 		info, err := checkLatestVersion()
 		if err != nil {
 			sendProgress("error", 0, fmt.Sprintf("检查更新失败: %v", err))
 			return
 		}
 
-		if !info.HasUpdate {
+		if !info.HasUpdate && !force {
 			sendProgress("error", 0, "已是最新版本")
 			return
 		}
@@ -291,7 +293,7 @@ func checkLatestVersion() (*UpdateInfo, error) {
 	// 根据当前操作系统/架构选择下载 URL
 	arch := runtime.GOARCH
 	osName := runtime.GOOS
-	binaryName := fmt.Sprintf("mmw-%s-%s", osName, arch)
+	binaryName := fmt.Sprintf("mmwx-%s-%s", osName, arch)
 
 	var downloadURL string
 	for _, asset := range release.Assets {
