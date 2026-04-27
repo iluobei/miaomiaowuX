@@ -2,21 +2,20 @@ version: '3.8'
 
 services:
   miaomiaowu:
-    image: ghcr.io/jimleerx/miaomiaowu:latest
-    container_name: miaomiaowu
+    image: ghcr.io/iluobei/miaomiaowuX:latest
+    container_name: miaomiaowuX
     restart: unless-stopped
     user: root
     environment:
-      - PORT=8080
+      - PORT=12889
       - DATABASE_PATH=/app/data/traffic.db
       - LOG_LEVEL=info
 
     ports:
-      - "8080:8080"
+      - "12889:12889"
 
     volumes:
       - ./data:/app/data
-      - ./subscribes:/app/subscribes
       - ./rule_templates:/app/rule_templates
 
     healthcheck:
