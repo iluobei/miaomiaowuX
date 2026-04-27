@@ -258,7 +258,7 @@ export function UpdateDialog({ open, onOpenChange }: UpdateDialogProps) {
               {!isUpdating && (
                 <div className='flex flex-col gap-2'>
                   <Button
-                    onClick={startUpdate}
+                    onClick={() => startUpdate()}
                     disabled={isUpdating || !updateInfo.download_url}
                     className='w-full'
                   >
