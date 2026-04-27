@@ -4,14 +4,14 @@ FROM node:20-slim AS frontend-builder
 WORKDIR /app
 
 # Copy frontend package files
-COPY miaomiaowu/package*.json ./miaomiaowu/
+COPY miaomiaowux-frontend/package*.json ./miaomiaowux-frontend/
 
 # Install dependencies
-WORKDIR /app/miaomiaowu
+WORKDIR /app/miaomiaowux-frontend
 RUN npm ci
 
 # Copy frontend source
-COPY miaomiaowu/ ./
+COPY miaomiaowux-frontend/ ./
 
 # Build frontend (will output to ../internal/web/dist)
 RUN npm run build
@@ -86,11 +86,11 @@ RUN chown -R appuser:appuser /app/server /app/rule_templates
 VOLUME ["/app/data", "/app/subscribes"]
 
 # Expose port
-EXPOSE 8080
+EXPOSE 12889
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-    CMD wget --no-verbose --tries=1 --spider http://localhost:8080/ || exit 1
+    CMD wget --no-verbose --tries=1 --spider http://localhost:12889/ || exit 1
 
 # Set entrypoint
 ENTRYPOINT ["/entrypoint.sh"]

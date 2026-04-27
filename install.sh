@@ -1,13 +1,13 @@
 #!/bin/bash
 
-# 妙妙屋 - 流量监控管理系统 安装脚本
+# 妙妙屋X - Xray 服务器管理与订阅拼车系统 安装脚本
 # 适用于 Debian/Ubuntu Linux 系统
 
 set -e
 
 # 配置
-VERSION="v0.0.1"
-GITHUB_REPO="Jimleerx/miaomiaowuX"
+GITHUB_REPO="iluobei/miaomiaowuX"
+VERSION=""  # 将自动获取最新版本
 BINARY_NAME=""  # 将根据架构自动设置
 INSTALL_DIR="/usr/local/bin"
 SERVICE_NAME="mmwx"
@@ -67,7 +67,20 @@ check_architecture() {
 install_dependencies() {
     echo_info "检查并安装依赖..."
     apt-get update -qq
-    apt-get install -y wget curl systemd >/dev/null 2>&1
+    apt-get install -y wget curl jq systemd >/dev/null 2>&1
+}
+
+# 获取最新版本号
+get_latest_version() {
+    if [ -z "$VERSION" ]; then
+        echo_info "获取最新版本..."
+        VERSION=$(curl -sL "https://api.github.com/repos/${GITHUB_REPO}/releases/latest" | jq -r '.tag_name')
+        if [ -z "$VERSION" ] || [ "$VERSION" = "null" ]; then
+            echo_error "无法获取最新版本号，请检查网络连接"
+            exit 1
+        fi
+        echo_info "最新版本: $VERSION"
+    fi
 }
 
 # 下载二进制文件
@@ -109,19 +122,19 @@ create_systemd_service() {
     echo ""
     if [ -t 0 ]; then
         # 交互式环境，可以读取用户输入
-        read -p "请输入端口号（默认 8080，直接回车使用默认值）: " PORT_INPUT
+        read -p "请输入端口号（默认 12889，直接回车使用默认值）: " PORT_INPUT
         if [ -z "$PORT_INPUT" ]; then
-            PORT_INPUT=8080
+            PORT_INPUT=12889
         fi
     else
         # 非交互式环境（如管道），使用默认值
-        PORT_INPUT=${PORT:-8080}
+        PORT_INPUT=${PORT:-12889}
         echo_info "使用端口: $PORT_INPUT"
     fi
 
     cat > /etc/systemd/system/${SERVICE_NAME}.service <<EOF
 [Unit]
-Description=Traffic Info - 妙妙屋 [ X ] BUG超多的拼车系统
+Description=妙妙屋X - Xray 服务器管理与订阅拼车系统
 After=network.target
 Wants=network-online.target
 
@@ -173,11 +186,11 @@ start_service() {
 show_status() {
     # 从 systemd 服务文件中读取端口号
     CONFIGURED_PORT=$(grep "Environment=\"PORT=" /etc/systemd/system/${SERVICE_NAME}.service | sed 's/.*PORT=\([0-9]*\).*/\1/')
-    CONFIGURED_PORT=${CONFIGURED_PORT:-8080}
+    CONFIGURED_PORT=${CONFIGURED_PORT:-12889}
 
     echo ""
     echo "======================================"
-    echo_info "妙妙屋 [ X ] BUG版安装完成！"
+    echo_info "妙妙屋X 安装完成！"
     echo "======================================"
     echo ""
     echo "📦 安装位置: $INSTALL_DIR/$SERVICE_NAME"
@@ -235,7 +248,7 @@ update_service() {
 
     # 询问是否修改端口（支持非交互式环境）
     CURRENT_PORT=$(grep "Environment=\"PORT=" /etc/systemd/system/${SERVICE_NAME}.service 2>/dev/null | sed 's/.*PORT=\([0-9]*\).*/\1/')
-    CURRENT_PORT=${CURRENT_PORT:-8080}
+    CURRENT_PORT=${CURRENT_PORT:-12889}
     echo ""
     if [ -t 0 ]; then
         # 交互式环境
@@ -375,18 +388,20 @@ main() {
         check_root
         check_architecture
         install_dependencies
+        get_latest_version
         update_service
     elif [ "$1" = "uninstall" ]; then
         echo_info "进入卸载模式..."
         check_root
         uninstall_service
     else
-        echo_info "开始安装妙妙屋个人Clash订阅管理系统..."
+        echo_info "开始安装妙妙屋X..."
         echo ""
 
         check_root
         check_architecture
         install_dependencies
+        get_latest_version
         download_binary
         install_binary
         create_directories

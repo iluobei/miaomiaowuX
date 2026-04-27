@@ -27,7 +27,25 @@ Clash(Meta) / Surge / Loon / Quantumult X / Shadowrocket / SingBox / Stash / Sur
 
 ## 安装部署
 
-### 方式 1：Docker 部署（推荐）
+### 方式 1：一键安装（推荐）
+
+```bash
+curl -sL https://raw.githubusercontent.com/iluobei/miaomiaowuX/main/install.sh | sudo bash
+```
+
+自动检测架构、下载最新版本、创建 systemd 服务。安装完成后访问 `http://服务器IP:12889` 进入初始化向导。
+
+更新：
+```bash
+curl -sL https://raw.githubusercontent.com/iluobei/miaomiaowuX/main/install.sh | sudo bash -s update
+```
+
+卸载：
+```bash
+curl -sL https://raw.githubusercontent.com/iluobei/miaomiaowuX/main/install.sh | sudo bash -s uninstall
+```
+
+### 方式 2：Docker 部署
 
 ```bash
 docker run -d \
@@ -62,7 +80,7 @@ services:
       - ./rule_templates:/app/rule_templates
 ```
 
-### 方式 2：二进制部署
+### 方式 3：二进制部署
 
 从 [Releases](https://github.com/iluobei/miaomiaowuX/releases) 下载对应平台的二进制文件：
 
