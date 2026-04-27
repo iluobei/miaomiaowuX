@@ -224,6 +224,7 @@ function InitialSetupView() {
         nickname: string
         email: string
         nginx_setup?: boolean
+        redirect_url?: string
       }
     },
     onSuccess: (data) => {
@@ -232,6 +233,11 @@ function InitialSetupView() {
       if (data.nginx_setup) msg += ' Nginx 反代已自动配置。'
       toast.success(msg)
       form.reset()
+      if (data.redirect_url) {
+        setTimeout(() => {
+          window.location.href = data.redirect_url + '/login'
+        }, 1500)
+      }
     },
     onError: (error) => {
       handleServerError(error)

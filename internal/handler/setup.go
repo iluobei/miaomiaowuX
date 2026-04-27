@@ -34,10 +34,11 @@ type setupRequest struct {
 }
 
 type setupResponse struct {
-	Username   string `json:"username"`
-	Nickname   string `json:"nickname"`
-	Email      string `json:"email"`
-	NginxSetup bool   `json:"nginx_setup,omitempty"`
+	Username    string `json:"username"`
+	Nickname    string `json:"nickname"`
+	Email       string `json:"email"`
+	NginxSetup  bool   `json:"nginx_setup,omitempty"`
+	RedirectURL string `json:"redirect_url,omitempty"`
 }
 
 // 返回一个处理程序，用于检查是否需要初始设置
@@ -204,15 +205,15 @@ func NewInitialSetupHandler(repo *storage.TrafficRepository) http.Handler {
 		if domain != "" {
 			domain = strings.ToLower(domain)
 			_ = repo.SetSystemSetting(r.Context(), "mmwx_domain", domain)
-			_ = repo.SetSystemSetting(r.Context(), "master_url", "https://"+domain)
-			logger.Info("[初始化] 已保存 MMWX 域名和 master_url", "domain", domain)
 
-			if err := deployLocalNginx(domain, repo); err != nil {
-				logger.Error("[初始化] 本机 Nginx 部署失败", "error", err)
-			} else {
-				resp.NginxSetup = true
-				logger.Info("[初始化] 本机 Nginx 部署成功", "domain", domain)
+			port := "12889"
+			if _, p, err := net.SplitHostPort(r.Host); err == nil && p != "" {
+				port = p
 			}
+			masterURL := fmt.Sprintf("http://%s:%s", domain, port)
+			_ = repo.SetSystemSetting(r.Context(), "master_url", masterURL)
+			resp.RedirectURL = masterURL
+			logger.Info("[初始化] 已保存 master_url", "master_url", masterURL)
 		}
 
 		w.Header().Set("Content-Type", "application/json")

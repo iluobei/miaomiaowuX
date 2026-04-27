@@ -309,12 +309,12 @@ func (h *XrayServerHandler) CreateRemoteServer(w stdhttp.ResponseWriter, r *stdh
 	var installCommand string
 	switch connectionMode {
 	case storage.ConnectionModeWebSocket:
-		installCommand = fmt.Sprintf("curl -fsSL %s | bash -s -- --mode=websocket", installScriptURL)
+		installCommand = fmt.Sprintf("curl -fsSL '%s' | bash -s -- --mode=websocket", installScriptURL)
 	case storage.ConnectionModePull:
 		// 对于pull模式，子服务器只需要暴露一个API，不需要安装命令
 		installCommand = fmt.Sprintf("# pull模式：主服务器将从 %s:%d 拉取流量数据\n# 请确保子服务器已配置 MMWX_MODE=child MMWX_CHILD_API_TOKEN=%s", req.PullAddress, req.PullPort, agentToken)
 	default:
-		installCommand = fmt.Sprintf("curl -fsSL %s | bash", installScriptURL)
+		installCommand = fmt.Sprintf("curl -fsSL '%s' | bash", installScriptURL)
 	}
 
 	// 本机检测：域名解析 IP 与 mmwx_domain 解析 IP 一致则为本机

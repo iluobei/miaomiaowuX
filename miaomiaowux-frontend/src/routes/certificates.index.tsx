@@ -194,6 +194,31 @@ function CertificatesPage() {
     enabled: Boolean(auth.accessToken),
   })
 
+  const { data: masterCertStatus } = useQuery({
+    queryKey: ['master-cert-status'],
+    queryFn: async () => {
+      const res = await api.get('/api/admin/master-cert-status')
+      return res.data as { success: boolean; pending: boolean; domain: string }
+    },
+    enabled: Boolean(auth.accessToken),
+    refetchInterval: 10000,
+  })
+
+  const deployMasterCert = useMutation({
+    mutationFn: () => api.post('/api/admin/deploy-master-cert'),
+    onSuccess: (res) => {
+      const data = res.data
+      if (data.success) {
+        toast.success('主控证书部署成功，即将跳转到 HTTPS')
+        queryClient.invalidateQueries({ queryKey: ['master-cert-status'] })
+        setTimeout(() => { window.location.href = data.new_master_url }, 2000)
+      } else {
+        toast.error(data.message || '部署失败')
+      }
+    },
+    onError: handleServerError,
+  })
+
   // Fetch DNS providers
   const { data: dnsProviders } = useQuery({
     queryKey: ['dns-providers'],
@@ -419,6 +444,23 @@ function CertificatesPage() {
 
   return (
     <div className="space-y-6">
+      {masterCertStatus?.pending && (
+        <div className="p-4 border rounded-lg bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="font-medium text-amber-800 dark:text-amber-200">
+                检测到主控域名 {masterCertStatus.domain} 的证书已签发
+              </p>
+              <p className="text-sm text-amber-600 dark:text-amber-400">
+                部署后将自动安装 Nginx、配置 SSL 并开启 HTTPS 访问
+              </p>
+            </div>
+            <Button onClick={() => deployMasterCert.mutate()} disabled={deployMasterCert.isPending}>
+              {deployMasterCert.isPending ? '部署中...' : '部署到主控'}
+            </Button>
+          </div>
+        </div>
+      )}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-2">

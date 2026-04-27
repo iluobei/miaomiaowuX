@@ -357,6 +357,7 @@ func (h *CertificateHandler) requestLocalCertificate(cert *storage.Certificate) 
 
 	// 如果配置则本地部署
 	h.deployAfterIssue(cert, result)
+	h.checkMasterCertReady(cert)
 }
 
 // 通过 WebSocket 向远程代理发送证书请求。
@@ -492,6 +493,7 @@ func (h *CertificateHandler) renewLocalCertificate(cert *storage.Certificate) {
 
 	// 如果配置则本地部署
 	h.deployAfterIssue(cert, result)
+	h.checkMasterCertReady(cert)
 }
 
 // 处理 PATCH /api/admin/certificates/auto-renew
@@ -771,6 +773,26 @@ func (h *CertificateHandler) deployAfterIssue(cert *storage.Certificate, result 
 
 	// 部署到所有远程服务器
 	h.deployToAllRemotes(cert.Domain, result.CertPEM, result.KeyPEM, cert.DeployCertPath, cert.DeployKeyPath, deployTarget)
+}
+
+func (h *CertificateHandler) checkMasterCertReady(cert *storage.Certificate) {
+	if cert.RemoteServerID != 0 {
+		return
+	}
+	ctx := context.Background()
+	mmwxDomain, err := h.repo.GetSystemSetting(ctx, "mmwx_domain")
+	if err != nil || mmwxDomain == "" {
+		return
+	}
+	if !strings.EqualFold(cert.Domain, mmwxDomain) {
+		return
+	}
+	masterURL, _ := h.repo.GetSystemSetting(ctx, "master_url")
+	if strings.HasPrefix(masterURL, "https://") {
+		return
+	}
+	_ = h.repo.SetSystemSetting(ctx, "master_cert_pending", "true")
+	log.Printf("[Certificate] 主控域名证书已签发，等待用户确认部署: %s", cert.Domain)
 }
 
 // 将 cert_deploy 消息发送到特定的远程代理。

@@ -532,6 +532,8 @@ func main() {
 	mux.Handle("/api/admin/certificates/deploy", auth.RequireAdmin(tokenStore, userRepo, http.HandlerFunc(certHandler.DeployCertificate)))
 	mux.Handle("/api/admin/certificates/delete", auth.RequireAdmin(tokenStore, userRepo, http.HandlerFunc(certHandler.DeleteCertificate)))
 	mux.Handle("/api/admin/certificates/", auth.RequireAdmin(tokenStore, userRepo, http.HandlerFunc(certHandler.GetCertificate)))
+	mux.Handle("/api/admin/master-cert-status", auth.RequireAdmin(tokenStore, userRepo, http.HandlerFunc(certHandler.GetMasterCertStatus)))
+	mux.Handle("/api/admin/deploy-master-cert", auth.RequireAdmin(tokenStore, userRepo, http.HandlerFunc(certHandler.DeployMasterCert)))
 
 	// DNS 提供商管理 API（仅限管理员）
 	mux.Handle("/api/admin/dns-providers", auth.RequireAdmin(tokenStore, userRepo, http.HandlerFunc(certHandler.ListDNSProviders)))

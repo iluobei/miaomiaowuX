@@ -987,7 +987,7 @@ function XrayServersPage() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="detail-install-command">{selectedRemoteServer.status === 'offline' ? '重新安装命令' : '一键安装命令'}</Label>
-                <div className="flex gap-2"><Input id="detail-install-command" value={`curl -fsSL ${masterOrigin}/api/remote/install.sh?token=${selectedRemoteServer.token} | bash`} readOnly className="font-mono text-xs" /><Button variant="outline" size="icon" onClick={() => copyToClipboard(`curl -fsSL ${masterOrigin}/api/remote/install.sh?token=${selectedRemoteServer.token} | bash`, '安装命令')}><Copy className="h-4 w-4" /></Button></div>
+                <div className="flex gap-2"><Input id="detail-install-command" value={`curl -fsSL '${masterOrigin}/api/remote/install.sh?token=${selectedRemoteServer.token}' | bash`} readOnly className="font-mono text-xs" /><Button variant="outline" size="icon" onClick={() => copyToClipboard(`curl -fsSL '${masterOrigin}/api/remote/install.sh?token=${selectedRemoteServer.token}' | bash`, '安装命令')}><Copy className="h-4 w-4" /></Button></div>
                 <p className="text-xs text-muted-foreground">{selectedRemoteServer.status === 'offline' ? '如果服务无法启动，可以尝试重新安装。' : '在远程服务器上执行此命令，将自动下载并配置 MMWX 客户端。'}</p>
               </div>
               <div className="space-y-2">
