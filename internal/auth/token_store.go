@@ -2,7 +2,9 @@ package auth
 
 import (
 	"context"
+	"crypto/hmac"
 	"crypto/rand"
+	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
@@ -30,6 +32,7 @@ type TokenStore struct {
 	mu     sync.RWMutex
 	tokens map[string]session
 	ttl    time.Duration
+	secret []byte // HMAC signing secret; nil = use plain random tokens
 }
 
 func NewTokenStore(ttl time.Duration) *TokenStore {
@@ -39,6 +42,12 @@ func NewTokenStore(ttl time.Duration) *TokenStore {
 	return &TokenStore{
 		tokens: make(map[string]session),
 		ttl:    ttl,
+	}
+}
+
+func (s *TokenStore) SetSecret(secret string) {
+	if secret != "" {
+		s.secret = []byte(secret)
 	}
 }
 
@@ -57,7 +66,7 @@ func (s *TokenStore) IssueWithTTL(username string, ttl time.Duration) (string, t
 		ttl = s.ttl
 	}
 
-	token, err := randomToken(32)
+	token, err := s.generateToken()
 	if err != nil {
 		return "", time.Time{}, err
 	}
@@ -135,6 +144,20 @@ func (s *TokenStore) Lookup(token string) (string, bool) {
 		return "", false
 	}
 
+	// 如果设置了 secret，验证 HMAC 签名
+	if s.secret != nil {
+		parts := strings.SplitN(token, ".", 2)
+		if len(parts) != 2 {
+			return "", false
+		}
+		mac := hmac.New(sha256.New, s.secret)
+		mac.Write([]byte(parts[0]))
+		expectedSig := base64.RawURLEncoding.EncodeToString(mac.Sum(nil))
+		if !hmac.Equal([]byte(parts[1]), []byte(expectedSig)) {
+			return "", false
+		}
+	}
+
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -178,6 +201,20 @@ func randomToken(length int) (string, error) {
 		return "", err
 	}
 	return base64.RawURLEncoding.EncodeToString(buf), nil
+}
+
+func (s *TokenStore) generateToken() (string, error) {
+	raw, err := randomToken(32)
+	if err != nil {
+		return "", err
+	}
+	if s.secret == nil {
+		return raw, nil
+	}
+	mac := hmac.New(sha256.New, s.secret)
+	mac.Write([]byte(raw))
+	sig := base64.RawURLEncoding.EncodeToString(mac.Sum(nil))
+	return raw + "." + sig, nil
 }
 
 func RequireToken(store *TokenStore, repo UserRepository, next http.Handler) http.Handler {

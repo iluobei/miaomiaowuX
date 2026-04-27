@@ -93,6 +93,10 @@ func main() {
 	}
 
 	tokenStore := auth.NewTokenStore(24 * time.Hour)
+	if jwtSecret := os.Getenv("JWT_SECRET"); jwtSecret != "" {
+		tokenStore.SetSecret(jwtSecret)
+		logger.Info("JWT_SECRET 已配置，会话令牌将使用 HMAC 签名")
+	}
 
 	// 从数据库加载持久会话
 	ctx := context.Background()
