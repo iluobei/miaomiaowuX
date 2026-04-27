@@ -1,0 +1,141 @@
+{
+    "log": {
+        "loglevel": "error"
+    },
+    "dns": {},
+    "api": {
+        "tag": "api",
+        "services": [
+            "HandlerService",
+            "LoggerService",
+            "StatsService",
+            "RoutingService"
+        ]
+    },
+    "stats": {},
+    "policy": {
+        "levels": {
+            "0": {
+                "handshake": 5,
+                "connIdle": 300,
+                "uplinkOnly": 2,
+                "downlinkOnly": 2,
+                "statsUserUplink": true,
+                "statsUserDownlink": true
+            }
+        },
+        "system": {
+            "statsInboundUplink": true,
+            "statsInboundDownlink": true,
+            "statsOutboundUplink": true,
+            "statsOutboundDownlink": true
+        }
+    },
+    "routing": {
+        "domainStrategy": "IPIfNonMatch",
+        "rules": [
+            {
+                "inboundTag": [
+                    "tunnel-in"
+                ],
+                "domain": [
+                    "{proxy_domain}"
+                ],
+                "outboundTag": "direct"
+            },
+            {
+                "inboundTag": [
+                    "tunnel-in"
+                ],
+                "domain": [
+                    "{nginx_domain}"
+                ],
+                "outboundTag": "nginx"
+            },
+            {
+                "type": "field",
+                "inboundTag": [
+                    "api"
+                ],
+                "outboundTag": "api"
+            },
+            {
+                "type": "field",
+                "protocol": [
+                    "bittorrent"
+                ],
+                "marktag": "ban_bt",
+                "outboundTag": "block"
+            },
+            {
+                "type": "field",
+                "ip": [
+                    "geoip:cn"
+                ],
+                "marktag": "ban_geoip_cn",
+                "outboundTag": "block"
+            },
+            {
+                "type": "field",
+                "domain": [
+                    "geosite:openai"
+                ],
+                "marktag": "fix_openai",
+                "outboundTag": "direct"
+            },
+            {
+                "type": "field",
+                "ip": [
+                    "geoip:private"
+                ],
+                "outboundTag": "block"
+            }
+        ]
+    },
+    "inbounds": [
+        {
+            "tag": "tunnel-in",
+            "port": 443,
+            "protocol": "tunnel",
+            "settings": {
+                "address": "127.0.0.1",
+                "port": 46174,
+                "network": "tcp"
+            },
+            "sniffing": {
+                "enabled": true,
+                "destOverride": [
+                    "tls"
+                ],
+                "routeOnly": true
+            }
+        },
+        {
+            "tag": "api",
+            "port": 46736,
+            "listen": "127.0.0.1",
+            "protocol": "tunnel",
+            "settings": {
+                "address": "127.0.0.1"
+            }
+        }
+    ],
+    "outbounds": [
+        {
+            "tag": "direct",
+            "protocol": "freedom"
+        },
+        {
+            "tag": "block",
+            "protocol": "blackhole"
+        },
+        {
+            "protocol": "freedom",
+            "settings": {
+                "redirect": "127.0.0.1:8001",
+                "domainStrategy": "UseIP"
+            },
+            "tag": "nginx"
+        }
+    ]
+} 

@@ -1,0 +1,98 @@
+{
+    "log": {
+        "loglevel": "error"
+    },
+    "dns": {},
+    "api": {
+        "tag": "api",
+        "services": [
+            "HandlerService",
+            "LoggerService",
+            "StatsService",
+            "RoutingService"
+        ]
+    },
+    "stats": {},
+    "policy": {
+        "levels": {
+            "0": {
+                "handshake": 5,
+                "connIdle": 300,
+                "uplinkOnly": 2,
+                "downlinkOnly": 2,
+                "statsUserUplink": true,
+                "statsUserDownlink": true
+            }
+        },
+        "system": {
+            "statsInboundUplink": true,
+            "statsInboundDownlink": true,
+            "statsOutboundUplink": true,
+            "statsOutboundDownlink": true
+        }
+    },
+    "routing": {
+        "domainStrategy": "IPIfNonMatch",
+        "rules": [
+            {
+                "type": "field",
+                "inboundTag": [
+                    "api"
+                ],
+                "outboundTag": "api"
+            },
+            {
+                "type": "field",
+                "protocol": [
+                    "bittorrent"
+                ],
+                "marktag": "ban_bt",
+                "outboundTag": "block"
+            },
+            {
+                "type": "field",
+                "ip": [
+                    "geoip:cn"
+                ],
+                "marktag": "ban_geoip_cn",
+                "outboundTag": "block"
+            },
+            {
+                "type": "field",
+                "domain": [
+                    "geosite:openai"
+                ],
+                "marktag": "fix_openai",
+                "outboundTag": "direct"
+            },
+            {
+                "type": "field",
+                "ip": [
+                    "geoip:private"
+                ],
+                "outboundTag": "block"
+            }
+        ]
+    },
+    "inbounds": [
+        {
+            "tag": "api",
+            "port": 46736,
+            "listen": "127.0.0.1",
+            "protocol": "tunnel",
+            "settings": {
+                "address": "127.0.0.1"
+            }
+        }
+    ],
+    "outbounds": [
+        {
+            "tag": "direct",
+            "protocol": "freedom"
+        },
+        {
+            "tag": "block",
+            "protocol": "blackhole"
+        }
+    ]
+} 

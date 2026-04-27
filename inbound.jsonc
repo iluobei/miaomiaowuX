@@ -1,0 +1,546 @@
+{
+    "shadowsocks": {
+        "2022": {
+            "inbounds": [
+                {
+                    "port": 1234,
+                    "protocol": "shadowsocks",
+                    "settings": {
+                        // methods: 2022-blake3-aes-128-gcm | 2022-blake3-aes-256-gcm | 2022-blake3-chacha20-poly1305
+                        "method": "2022-blake3-aes-128-gcm",
+                        "password": "{{ server psk }}",
+                        "clients": [
+                            {
+                                "password": "{{ user psk }}",
+                                "email": "my user"
+                            }
+                        ],
+                        "network": "tcp,udp"
+                    }
+                }
+            ]
+        }
+    },
+    "Socks5": {
+        "inbounds": [
+            {
+                "listen": "0.0.0.0",
+                "port": 1234,
+                "protocol": "socks",
+                "settings": {
+                    "auth": "password",
+                    "accounts": [
+                        {
+                            "user": "",
+                            "pass": ""
+                        }
+                    ],
+                    "udp": true,
+                    "ip": "127.0.0.1"
+                },
+                "streamSettings": {
+                    "network": "tcp",
+                    "security": "tls",
+                    "tlsSettings": {
+                        "certificates": [
+                            {
+                                "certificateFile": "/path/to/certificate.crt",
+                                "keyFile": "/path/to/key.key"
+                            }
+                        ]
+                    }
+                }
+            }
+        ]
+    },
+    "trojan": {
+        "tcp": {
+            "inbounds": [
+                {
+                    "port": 443,
+                    "protocol": "trojan",
+                    "settings": {
+                        "clients": [
+                            {
+                                "password": "your password",
+                                "email": "love@example.com"
+                            }
+                        ]
+                    },
+                    "streamSettings": {
+                        "network": "tcp",
+                        "security": "tls",
+                        "tlsSettings": {
+                            "alpn": [
+                                "http/1.1"
+                            ],
+                            "certificates": [
+                                {
+                                    "certificateFile": "/path/to/fullchain.crt",
+                                    "keyFile": "/path/to/private.key"
+                                }
+                            ]
+                        }
+                    }
+                }
+            ],
+        },
+        "xtls": {
+            "inbounds": [
+                {
+                    "port": 443,
+                    "protocol": "trojan",
+                    "settings": {
+                        "clients": [
+                            {
+                                "password": "your_password", // password
+                                "flow": "xtls-rprx-vison",
+                                "email": "love@example.com"
+                            }
+                        ],
+                        "fallbacks": [
+                            {
+                                "dest": "/dev/shm/default.sock",
+                                "xver": 1
+                            },
+                            {
+                                "alpn": "h2",
+                                "dest": "/dev/shm/h2c.sock",
+                                "xver": 1
+                            }
+                        ]
+                    },
+                    "streamSettings": {
+                        "network": "tcp",
+                        "security": "tls",
+                        "tlsSettings": {
+                            "alpn": [
+                                "http/1.1",
+                                "h2"
+                            ],
+                            "certificates": [
+                                {
+                                    "certificateFile": "/path/to/cert", // Certificate file absolute directory
+                                    "keyFile": "/path/to/key", // Key file absolute directory
+                                    "ocspStapling": 3600 // Verification cycle 3600 Second
+                                }
+                            ],
+                            "minVersion": "1.2" // If it is an ecc certificate, use TLSv1.2 at least. If you don't know the certificate type or it is not an ecc certificate, delete this line
+                        }
+                    }
+                }
+            ],
+        },
+        "grpc": {
+            "inbounds": [
+                {
+                    "listen": "/dev/shm/Xray-Trojan-gRPC.socket,0666",
+                    "protocol": "trojan",
+                    "settings": {
+                        "clients": [
+                            {
+                                "password": "", // 填写你的 password
+                                "email": "love@example.com"
+                            }
+                        ]
+                    },
+                    "streamSettings": {
+                        "network": "grpc",
+                        "grpcSettings": {
+                            "serviceName": "" // 填写你的 ServiceName
+                        }
+                    }
+                }
+            ],
+        }
+    },
+    "vless": {
+        "grpc": {
+            "inbounds": [
+                {
+                    "listen": "/dev/shm/Xray-VLESS-gRPC.socket,0666",
+                    "protocol": "vless",
+                    "settings": {
+                        "clients": [
+                            {
+                                "id": "", // 填写你的 UUID
+                                "level": 0,
+                                "email": "love@xray.com"
+                            }
+                        ],
+                        "decryption": "none"
+                    },
+                    "streamSettings": {
+                        "network": "grpc",
+                        "grpcSettings": {
+                            "serviceName": "" // 填写你的 ServiceName
+                        }
+                    }
+                }
+            ],
+        },
+        "http": {
+            "inbounds": [
+                {
+                "port": 2001,
+                "listen": "127.0.0.1",
+                "protocol": "vless",
+                "settings": {
+                    "clients": [
+                    {
+                        "id": "",
+                        "email": "love@example.com",
+                        "level": 0
+
+                    }
+                    ],
+                    "decryption": "none"
+                },
+                "streamSettings": {
+                    "security": "tls",
+                    "network": "http", // h2 | http
+                    "httpSettings": {
+                    "path": "/path",
+                    "host": [
+                        "xx.com"
+                    ]
+                    },
+                    // security 为 tls 时生效
+                    "tlsSettings": {
+                    // "rejectUnknownSni": true,
+                    "minVersion": "1.3",
+                    "alpn": ["h3"],
+                    "certificates": [
+                        {
+                            "certificateFile": "CA.crt", // 换成你的证书，绝对路径
+                            "keyFile": "priv.key" // 换成你的私钥，绝对路径
+                        }
+                    ]
+                    }
+                }
+                }
+            ],
+        },
+        "tls": {
+            "inbounds": [
+                {
+                    "listen": "0.0.0.0",
+                    "port": 443,
+                    "protocol": "vless",
+                    "settings": {
+                        "clients": [
+                            {
+                                "id": "",
+                                "level": 0,
+                                "email": "love@example.com"
+                            }
+                        ],
+                        "decryption": "none",
+                        "fallbacks": [
+                            {
+                                "dest": 8001
+                            },
+                            {
+                                "alpn": "h2",
+                                "dest": 8002
+                            }
+                        ]
+                    },
+                    "streamSettings": {
+                        "network": "tcp",
+                        "security": "tls",
+                        "tlsSettings": {
+                            "serverName": "example.domain",
+                            "alpn": [
+                                "h2",
+                                "http/1.1"
+                            ],
+                            "certificates": [
+                                {
+                                    "certificateFile": "/path/to/fullchain.crt",
+                                    "keyFile": "/path/to/private.key"
+                                }
+                            ]
+                        }
+                    }
+                }
+            ]
+        },
+        "xtls-vision": {
+            "inbounds": [
+                {
+                    "listen": "0.0.0.0", // "0.0.0.0" Indicates listening to both IPv4 and IPv6
+                    "port": 443, // The port on which the server listens
+                    "protocol": "vless",
+                    "settings": {
+                        "clients": [
+                            {
+                                "id": "", // User ID, perform xray uuid generation, or a string of 1-30 bytes
+                                "flow": "xtls-rprx-vision",
+                                "email": "love@example.com",
+                                "level": 0
+                            }
+                        ],
+                        "decryption": "none",
+                        "fallbacks": [
+                            {
+                                "dest": "8001",
+                                "xver": 1
+                            },
+                            {
+                                "alpn": "h2",
+                                "dest": "8002",
+                                "xver": 1
+                            }
+                        ]
+                    },
+                    "streamSettings": {
+                        "network": "tcp",
+                        "security": "tls",
+                        "tlsSettings": {
+                            "rejectUnknownSni": true,
+                            "minVersion": "1.2",
+                            "certificates": [
+                                {
+                                    "ocspStapling": 3600,
+                                    "certificateFile": "/etc/ssl/private/fullchain.cer", // For the certificate file, it is recommended to use fullchain (full SSL certificate chain). If there is only a website certificate, v2rayN can be used but v2rayNG cannot be used. Usually, the extension is not distinguished
+                                    "keyFile": "/etc/ssl/private/private.key" // private key file
+                                }
+                            ]
+                        }
+                    },
+                    "sniffing": {
+                        "enabled": true,
+                        "destOverride": [
+                            "http",
+                            "tls"
+                        ]
+                    }
+                }
+            ]
+        },
+
+        "xtls-vision-reality": {
+            "inbounds": [
+                {
+                    "port": 443, 
+                    "protocol": "vless",
+                    "settings": {
+                        "clients": [
+                            {
+                                "id": "", // run `xray uuid` to generate
+                                "flow": "xtls-rprx-vision",
+                                "email": "love@example.com",
+                                "level": 0
+                            }
+                        ],
+                        "decryption": "none"
+                    },
+                    "streamSettings": {
+                        "network": "tcp",
+                        "security": "reality",
+                        "realitySettings": {
+                            "dest": "", // A website that support TLS1.3 and h2. You can also use `1.1.1.1:443` as dest
+                            "serverNames": [
+                                ""    // A server name in the cert of dest site. If you use `1.1.1.1:443` as dest, then you can leave `serverNames` empty, it is a possible ways to bypass Iran's internet speed restrictions.
+                            ],
+                            "privateKey": "", // run `xray x25519` to generate. Public and private keys need to be corresponding.
+                            "shortIds": [// Required, list of shortIds available to clients, can be used to distinguish different clients
+                                "", // If this item exists, client shortId can be empty
+                                "0123456789abcdef" // 0 to f, length is a multiple of 2, maximum length is 16
+                            ]
+                        }
+                    },
+                    "sniffing": {
+                        "enabled": true,
+                        "destOverride": [
+                            "http",
+                            "tls",
+                            "quic"
+                        ],
+                        "routeOnly": true
+                    }
+                }
+            ]
+        },
+        "xhttp-reality": {
+            "inbounds": [
+                {
+                    "listen": "0.0.0.0",
+                    "port": 443, // 可根据实际情况更换端口
+                    "protocol": "vless",
+                    "settings": {
+                        "clients": [
+                            {
+                                "id": "", // 长度为 1-30 字节的任意字符串，或执行 xray uuid 生成
+                                "flow": "",
+                                "email": "love@example.com",
+                                "level": 0
+                            }
+                        ],
+                        "decryption": "none"
+                    },
+                    "streamSettings": {
+                        "network": "xhttp",
+                        "xhttpSettings": {
+                            "path": "/yourpath" // 自行设定路径
+                        },
+                        "security": "reality",
+                        "realitySettings": {
+                            // 此target字段原名为dest，从24.10.31版本开始开始使用新名称。
+                            // 目标网站最低标准：国外网站，支持 TLSv1.3 与 H2，域名非跳转用（主域名可能被用于跳转到 www）。详见 https://github.com/XTLS/REALITY
+                            "target": "example.com:443",
+                            "serverNames": [
+                            // 客户端可用的 serverName 列表，暂不支持 * 通配符
+                            // 执行 xray tls ping 目标网站网址，填 "Allowed domains" 的值
+                            ],
+                            "privateKey": "", // 执行 xray x25519 生成，填 "Private key" 的值
+                            "shortIds": [ // 客户端可用的 shortId 列表，可用于区分不同的客户端
+                                // "", // 若有此项，客户端 shortId 可为空
+                                "00", // 0 到 f，长度为 2 的倍数，长度上限为 16
+                                "01",
+                                "02"
+                            ]
+                        }
+                    },
+                    "sniffing": {
+                        "enabled": true,
+                        "destOverride": [
+                            "http",
+                            "tls",
+                            "quic"
+                        ]
+                    }
+                }
+            ]
+        },
+        "grpc-reality": {
+            "inbounds": [
+                {
+                    "listen": "0.0.0.0",
+                    "port": 80,
+                    "protocol": "vless",
+                    "settings": {
+                        "clients": [
+                            {
+                                "id": "drEwvgYhS15C",
+                                "flow": "",
+                                "email": "love@example.com",
+                                "level": 0
+                            }
+                        ],
+                        "decryption": "none"
+                    },
+                    "streamSettings": {
+                        "network": "grpc",
+                        "security": "reality",
+                        "realitySettings": {
+                            "show": false,
+                            "dest": "www.yahoo.com:443",
+                            "xver": 0,
+                            "serverNames": ["www.yahoo.com", "news.yahoo.com"],
+                            "privateKey": "kOsBHSgxhAfCeQIQyJvupiXTmQrMmsqi6y6Wc5OQZXc",
+                            "shortIds": ["d49d578f280fd83a"]
+                        },
+                        "grpcSettings": {
+                            "serviceName": ""
+                        }
+                    },
+                    "sniffing": {
+                        "enabled": true,
+                        "destOverride": ["http", "tls", "quic"]
+                    }
+                }
+            ]
+        }
+    },
+    "vmess": {
+        "http": {
+            "inbounds": [
+                {
+                    "listen": "0.0.0.0",
+                    "port": 1234,
+                    "protocol": "vmess",
+                    "settings": {
+                        "clients": [
+                            {
+                                "id": ""
+                            }
+                        ]
+                    },
+                    "streamSettings": {
+                        "network": "http",
+                        // http2 settings
+                        "security": "tls",
+                        "tlsSettings": {
+                            "certificates": [
+                                {
+                                    "certificateFile": "/path/to/certificate.crt",
+                                    "keyFile": "/path/to/key.key"
+                                }
+                            ]
+                        }
+                    }
+                }
+            ],
+        },
+        "tcp": {
+            "inbounds": [
+                {
+                    "listen": "0.0.0.0",
+                    "port": 1234,
+                    "protocol": "vmess",
+                    "settings": {
+                        "clients": [
+                            {
+                                "id": ""
+                            }
+                        ]
+                    },
+                    "streamSettings": {
+                        "network": "tcp",
+                        // tcp-tls type settings
+                        "security": "tls",
+                        "tlsSettings": {
+                            "certificates": [
+                                {
+                                    "certificateFile": "/path/to/certificate.crt",
+                                    "keyFile": "/path/to/key.key"
+                                }
+                            ]
+                        }
+                    }
+                }
+            ],
+        },
+        "websocket": {
+            "inbounds": [
+                {
+                    "listen": "0.0.0.0",
+                    "port": 1234,
+                    "protocol": "vmess",
+                    "settings": {
+                        "clients": [
+                            {
+                                "id": ""
+                            }
+                        ]
+                    },
+                    "streamSettings": {
+                        "network": "ws",
+                        // websocker-tls type settings
+                        "security": "tls",
+                        "tlsSettings": {
+                            "certificates": [
+                                {
+                                    "certificateFile": "/path/to/certificate.crt",
+                                    "keyFile": "/path/to/key.key"
+                                }
+                            ]
+                        }
+                    }
+                }
+            ],
+        }
+    }
+}

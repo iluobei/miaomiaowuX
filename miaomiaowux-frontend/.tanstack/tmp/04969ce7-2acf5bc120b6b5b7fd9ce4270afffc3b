@@ -1,0 +1,34 @@
+import { createFileRoute } from '@tanstack/react-router'
+// @ts-nocheck
+import { createFileRoute, redirect } from '@tanstack/router'
+import { useAuthStore } from '@/stores/auth-store'
+import { Topbar } from '@/components/layout/topbar'
+
+export const Route = createFileRoute('/xray-servers/test')({
+  beforeLoad: () => {
+    const token = useAuthStore.getState().auth.accessToken
+    if (!token) {
+      throw redirect({ to: '/' })
+    }
+  },
+  component: XrayServersPage,
+})
+
+function XrayServersPage() {
+  return (
+    <div className="flex flex-col h-screen">
+      <Topbar />
+      <div className="flex-1 overflow-auto">
+        <div className="container mx-auto py-8 px-4">
+          <h1 className="text-3xl font-bold mb-2">Xray 服务器管理</h1>
+          <p className="text-muted-foreground">
+            测试页面 - 如果你能看到这个文本，说明页面基本渲染正常
+          </p>
+          <div className="mt-4 p-4 border rounded">
+            <p>页面正在开发中...</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}

@@ -1,0 +1,866 @@
+[
+  {
+    "name": "ads",
+    "label": "广告拦截",
+    "emoji": "🛑",
+    "icon": "🔴",
+    "rule_name": "Ad Block",
+    "group_label": "🛑 广告拦截",
+    "presets": ["comprehensive"],
+    "site_rules": [
+      {
+        "key": "category-ads-all",
+        "behavior": "domain",
+        "type": "http",
+        "format": "mrs",
+        "url": "https://gh-proxy.com/https://github.com/MetaCubeX/meta-rules-dat/raw/refs/heads/meta/geo/geosite/category-ads-all.mrs",
+        "path": "./ruleset/category-ads-all.mrs",
+        "interval": 86400
+      }
+    ],
+    "ip_rules": []
+  },
+  {
+    "name": "ai",
+    "label": "AI 服务",
+    "emoji": "🤖",
+    "icon": "🤖",
+    "rule_name": "AI Services",
+    "group_label": "🤖 AI 服务",
+    "presets": ["balanced", "comprehensive"],
+    "site_rules": [
+      {
+        "key": "category-ai-!cn",
+        "behavior": "domain",
+        "type": "http",
+        "format": "mrs",
+        "url": "https://gh-proxy.com/https://github.com/MetaCubeX/meta-rules-dat/raw/refs/heads/meta/geo/geosite/category-ai-!cn.mrs",
+        "path": "./ruleset/category-ai-!cn.mrs",
+        "interval": 86400
+      },
+      {
+        "key": "openai",
+        "behavior": "domain",
+        "type": "http",
+        "format": "mrs",
+        "url": "https://gh-proxy.com/https://github.com/MetaCubeX/meta-rules-dat/raw/refs/heads/meta/geo/geosite/openai.mrs",
+        "path": "./ruleset/openai.mrs",
+        "interval": 86400
+      }
+    ],
+    "ip_rules": []
+  },
+  {
+    "name": "bilibili",
+    "label": "哔哩哔哩",
+    "emoji": "📺",
+    "icon": "📺",
+    "rule_name": "Bilibili",
+    "group_label": "📺 哔哩哔哩",
+    "presets": ["comprehensive"],
+    "site_rules": [
+      {
+        "key": "bilibili",
+        "behavior": "domain",
+        "type": "http",
+        "format": "mrs",
+        "url": "https://gh-proxy.com/https://github.com/MetaCubeX/meta-rules-dat/raw/refs/heads/meta/geo/geosite/bilibili.mrs",
+        "path": "./ruleset/bilibili.mrs",
+        "interval": 86400
+      },
+      {
+        "key": "biliintl",
+        "behavior": "domain",
+        "type": "http",
+        "format": "mrs",
+        "url": "https://gh-proxy.com/https://github.com/MetaCubeX/meta-rules-dat/raw/refs/heads/meta/geo/geosite/biliintl.mrs",
+        "path": "./ruleset/biliintl.mrs",
+        "interval": 86400
+      }
+    ],
+    "ip_rules": []
+  },
+  {
+    "name": "youtube",
+    "label": "油管视频",
+    "emoji": "📹",
+    "icon": "📺",
+    "rule_name": "Youtube",
+    "group_label": "📹 油管视频",
+    "presets": ["balanced", "comprehensive"],
+    "site_rules": [
+      {
+        "key": "youtube",
+        "behavior": "domain",
+        "type": "http",
+        "format": "mrs",
+        "url": "https://gh-proxy.com/https://github.com/MetaCubeX/meta-rules-dat/raw/refs/heads/meta/geo/geosite/youtube.mrs",
+        "path": "./ruleset/youtube.mrs",
+        "interval": 86400
+      }
+    ],
+    "ip_rules": []
+  },
+  {
+    "name": "google",
+    "label": "谷歌服务",
+    "emoji": "🔍",
+    "icon": "🔍",
+    "rule_name": "Google",
+    "group_label": "🔍 谷歌服务",
+    "presets": ["balanced", "comprehensive"],
+    "site_rules": [
+      {
+        "key": "google",
+        "behavior": "domain",
+        "type": "http",
+        "format": "mrs",
+        "url": "https://gh-proxy.com/https://github.com/MetaCubeX/meta-rules-dat/raw/refs/heads/meta/geo/geosite/google.mrs",
+        "path": "./ruleset/google.mrs",
+        "interval": 86400
+      }
+    ],
+    "ip_rules": [
+      {
+        "key": "google-ip",
+        "behavior": "ipcidr",
+        "type": "http",
+        "format": "mrs",
+        "url": "https://gh-proxy.com/https://github.com/MetaCubeX/meta-rules-dat/raw/refs/heads/meta/geo/geoip/google.mrs",
+        "path": "./ruleset/google-ip.mrs",
+        "interval": 86400
+      }
+    ]
+  },
+  {
+    "name": "private",
+    "label": "私有网络",
+    "emoji": "🏠",
+    "icon": "🏠",
+    "rule_name": "Private",
+    "group_label": "🏠 私有网络",
+    "presets": ["minimal", "balanced", "comprehensive"],
+    "site_rules": [],
+    "ip_rules": [
+      {
+        "key": "private",
+        "behavior": "ipcidr",
+        "type": "http",
+        "format": "mrs",
+        "url": "https://gh-proxy.com/https://github.com/MetaCubeX/meta-rules-dat/raw/refs/heads/meta/geo/geoip/private.mrs",
+        "path": "./ruleset/private.mrs",
+        "interval": 86400
+      }
+    ]
+  },
+  {
+    "name": "domestic",
+    "label": "国内服务",
+    "emoji": "🔒",
+    "icon": "🔒",
+    "rule_name": "Location:CN",
+    "group_label": "🔒 国内服务",
+    "presets": ["minimal", "balanced", "comprehensive"],
+    "site_rules": [
+      {
+        "key": "geolocation-cn",
+        "behavior": "domain",
+        "type": "http",
+        "format": "mrs",
+        "url": "https://gh-proxy.com/https://github.com/MetaCubeX/meta-rules-dat/raw/refs/heads/meta/geo/geosite/geolocation-cn.mrs",
+        "path": "./ruleset/geolocation-cn.mrs",
+        "interval": 86400
+      },
+      {
+        "key": "cn-domains",
+        "behavior": "domain",
+        "type": "http",
+        "format": "mrs",
+        "url": "https://gh-proxy.com/https://github.com/MetaCubeX/meta-rules-dat/raw/refs/heads/meta/geo/geosite/cn.mrs",
+        "path": "./ruleset/cn-domains.mrs",
+        "interval": 86400
+      }
+    ],
+    "ip_rules": [
+      {
+        "key": "cn",
+        "behavior": "ipcidr",
+        "type": "http",
+        "format": "mrs",
+        "url": "https://gh-proxy.com/https://github.com/MetaCubeX/meta-rules-dat/raw/refs/heads/meta/geo/geoip/cn.mrs",
+        "path": "./ruleset/cn.mrs",
+        "interval": 86400
+      }
+    ]
+  },
+  {
+    "name": "telegram",
+    "label": "电报消息",
+    "emoji": "📲",
+    "icon": "📱",
+    "rule_name": "Telegram",
+    "group_label": "📲 电报消息",
+    "presets": ["balanced", "comprehensive"],
+    "site_rules": [
+      {
+        "key": "telegram",
+        "behavior": "domain",
+        "type": "http",
+        "format": "mrs",
+        "url": "https://gh-proxy.com/https://github.com/MetaCubeX/meta-rules-dat/raw/refs/heads/meta/geo/geosite/telegram.mrs",
+        "path": "./ruleset/telegram.mrs",
+        "interval": 86400
+      }
+    ],
+    "ip_rules": [
+      {
+        "key": "telegram-ip",
+        "behavior": "ipcidr",
+        "type": "http",
+        "format": "mrs",
+        "url": "https://gh-proxy.com/https://github.com/MetaCubeX/meta-rules-dat/raw/refs/heads/meta/geo/geoip/telegram.mrs",
+        "path": "./ruleset/telegram.mrs",
+        "interval": 86400
+      }
+    ]
+  },
+  {
+    "name": "github",
+    "label": "Github",
+    "emoji": "🐱",
+    "icon": "🐱",
+    "rule_name": "Github",
+    "group_label": "🐱 Github",
+    "presets": ["balanced", "comprehensive"],
+    "site_rules": [
+      {
+        "key": "github",
+        "behavior": "domain",
+        "type": "http",
+        "format": "mrs",
+        "url": "https://gh-proxy.com/https://github.com/MetaCubeX/meta-rules-dat/raw/refs/heads/meta/geo/geosite/github.mrs",
+        "path": "./ruleset/github.mrs",
+        "interval": 86400
+      },
+      {
+        "key": "gitlab",
+        "behavior": "domain",
+        "type": "http",
+        "format": "mrs",
+        "url": "https://gh-proxy.com/https://github.com/MetaCubeX/meta-rules-dat/raw/refs/heads/meta/geo/geosite/gitlab.mrs",
+        "path": "./ruleset/gitlab.mrs",
+        "interval": 86400
+      }
+    ],
+    "ip_rules": []
+  },
+  {
+    "name": "microsoft",
+    "label": "微软服务",
+    "emoji": "Ⓜ️",
+    "icon": "🪟",
+    "rule_name": "Microsoft",
+    "group_label": "Ⓜ️ 微软服务",
+    "presets": ["comprehensive"],
+    "site_rules": [
+      {
+        "key": "microsoft",
+        "behavior": "domain",
+        "type": "http",
+        "format": "mrs",
+        "url": "https://gh-proxy.com/https://github.com/MetaCubeX/meta-rules-dat/raw/refs/heads/meta/geo/geosite/microsoft.mrs",
+        "path": "./ruleset/microsoft.mrs",
+        "interval": 86400
+      }
+    ],
+    "ip_rules": []
+  },
+  {
+    "name": "apple",
+    "label": "苹果服务",
+    "emoji": "🍏",
+    "icon": "🍎",
+    "rule_name": "Apple",
+    "group_label": "🍏 苹果服务",
+    "presets": ["comprehensive"],
+    "site_rules": [
+      {
+        "key": "apple",
+        "behavior": "domain",
+        "type": "http",
+        "format": "mrs",
+        "url": "https://gh-proxy.com/https://github.com/MetaCubeX/meta-rules-dat/raw/refs/heads/meta/geo/geosite/apple.mrs",
+        "path": "./ruleset/apple.mrs",
+        "interval": 86400
+      },
+      {
+        "key": "applemusic",
+        "behavior": "domain",
+        "type": "http",
+        "format": "mrs",
+        "url": "https://gh-proxy.com/https://github.com/MetaCubeX/meta-rules-dat/raw/refs/heads/meta/geo/geosite/applemusic.mrs",
+        "path": "./ruleset/applemusic.mrs",
+        "interval": 86400
+      }
+    ],
+    "ip_rules": []
+  },
+  {
+    "name": "social",
+    "label": "社交媒体",
+    "emoji": "🌐",
+    "icon": "🌐",
+    "rule_name": "Social Media",
+    "group_label": "🌐 社交媒体",
+    "presets": ["comprehensive"],
+    "site_rules": [
+      {
+        "key": "facebook",
+        "behavior": "domain",
+        "type": "http",
+        "format": "mrs",
+        "url": "https://gh-proxy.com/https://github.com/MetaCubeX/meta-rules-dat/raw/refs/heads/meta/geo/geosite/facebook.mrs",
+        "path": "./ruleset/facebook.mrs",
+        "interval": 86400
+      },
+      {
+        "key": "instagram",
+        "behavior": "domain",
+        "type": "http",
+        "format": "mrs",
+        "url": "https://gh-proxy.com/https://github.com/MetaCubeX/meta-rules-dat/raw/refs/heads/meta/geo/geosite/instagram.mrs",
+        "path": "./ruleset/instagram.mrs",
+        "interval": 86400
+      },
+      {
+        "key": "twitter",
+        "behavior": "domain",
+        "type": "http",
+        "format": "mrs",
+        "url": "https://gh-proxy.com/https://github.com/MetaCubeX/meta-rules-dat/raw/refs/heads/meta/geo/geosite/twitter.mrs",
+        "path": "./ruleset/twitter.mrs",
+        "interval": 86400
+      },
+      {
+        "key": "tiktok",
+        "behavior": "domain",
+        "type": "http",
+        "format": "mrs",
+        "url": "https://gh-proxy.com/https://github.com/MetaCubeX/meta-rules-dat/raw/refs/heads/meta/geo/geosite/tiktok.mrs",
+        "path": "./ruleset/tiktok.mrs",
+        "interval": 86400
+      },
+      {
+        "key": "linkedin",
+        "behavior": "domain",
+        "type": "http",
+        "format": "mrs",
+        "url": "https://gh-proxy.com/https://github.com/MetaCubeX/meta-rules-dat/raw/refs/heads/meta/geo/geosite/linkedin.mrs",
+        "path": "./ruleset/linkedin.mrs",
+        "interval": 86400
+      }
+    ],
+    "ip_rules": []
+  },
+  {
+    "name": "streaming",
+    "label": "流媒体",
+    "emoji": "🎬",
+    "icon": "📺",
+    "rule_name": "Streaming",
+    "group_label": "🎬 流媒体",
+    "presets": ["comprehensive"],
+    "site_rules": [
+      {
+        "key": "netflix",
+        "behavior": "domain",
+        "type": "http",
+        "format": "mrs",
+        "url": "https://gh-proxy.com/https://github.com/MetaCubeX/meta-rules-dat/raw/refs/heads/meta/geo/geosite/netflix.mrs",
+        "path": "./ruleset/netflix.mrs",
+        "interval": 86400
+      },
+      {
+        "key": "hulu",
+        "behavior": "domain",
+        "type": "http",
+        "format": "mrs",
+        "url": "https://gh-proxy.com/https://github.com/MetaCubeX/meta-rules-dat/raw/refs/heads/meta/geo/geosite/hulu.mrs",
+        "path": "./ruleset/hulu.mrs",
+        "interval": 86400
+      },
+      {
+        "key": "disney",
+        "behavior": "domain",
+        "type": "http",
+        "format": "mrs",
+        "url": "https://gh-proxy.com/https://github.com/MetaCubeX/meta-rules-dat/raw/refs/heads/meta/geo/geosite/disney.mrs",
+        "path": "./ruleset/disney.mrs",
+        "interval": 86400
+      },
+      {
+        "key": "hbo",
+        "behavior": "domain",
+        "type": "http",
+        "format": "mrs",
+        "url": "https://gh-proxy.com/https://github.com/MetaCubeX/meta-rules-dat/raw/refs/heads/meta/geo/geosite/hbo.mrs",
+        "path": "./ruleset/hbo.mrs",
+        "interval": 86400
+      },
+      {
+        "key": "amazon",
+        "behavior": "domain",
+        "type": "http",
+        "format": "mrs",
+        "url": "https://gh-proxy.com/https://github.com/MetaCubeX/meta-rules-dat/raw/refs/heads/meta/geo/geosite/amazon.mrs",
+        "path": "./ruleset/amazon.mrs",
+        "interval": 86400
+      },
+      {
+        "key": "bahamut",
+        "behavior": "domain",
+        "type": "http",
+        "format": "mrs",
+        "url": "https://gh-proxy.com/https://github.com/MetaCubeX/meta-rules-dat/raw/refs/heads/meta/geo/geosite/bahamut.mrs",
+        "path": "./ruleset/bahamut.mrs",
+        "interval": 86400
+      }
+    ],
+    "ip_rules": []
+  },
+  {
+    "name": "gaming",
+    "label": "游戏平台",
+    "emoji": "🎮",
+    "icon": "🎮",
+    "rule_name": "Gaming",
+    "group_label": "🎮 游戏平台",
+    "presets": ["comprehensive"],
+    "site_rules": [
+      {
+        "key": "steam",
+        "behavior": "domain",
+        "type": "http",
+        "format": "mrs",
+        "url": "https://gh-proxy.com/https://github.com/MetaCubeX/meta-rules-dat/raw/refs/heads/meta/geo/geosite/steam.mrs",
+        "path": "./ruleset/steam.mrs",
+        "interval": 86400
+      },
+      {
+        "key": "epicgames",
+        "behavior": "domain",
+        "type": "http",
+        "format": "mrs",
+        "url": "https://gh-proxy.com/https://github.com/MetaCubeX/meta-rules-dat/raw/refs/heads/meta/geo/geosite/epicgames.mrs",
+        "path": "./ruleset/epicgames.mrs",
+        "interval": 86400
+      },
+      {
+        "key": "ea",
+        "behavior": "domain",
+        "type": "http",
+        "format": "mrs",
+        "url": "https://gh-proxy.com/https://github.com/MetaCubeX/meta-rules-dat/raw/refs/heads/meta/geo/geosite/ea.mrs",
+        "path": "./ruleset/ea.mrs",
+        "interval": 86400
+      },
+      {
+        "key": "ubisoft",
+        "behavior": "domain",
+        "type": "http",
+        "format": "mrs",
+        "url": "https://gh-proxy.com/https://github.com/MetaCubeX/meta-rules-dat/raw/refs/heads/meta/geo/geosite/ubisoft.mrs",
+        "path": "./ruleset/ubisoft.mrs",
+        "interval": 86400
+      },
+      {
+        "key": "blizzard",
+        "behavior": "domain",
+        "type": "http",
+        "format": "mrs",
+        "url": "https://gh-proxy.com/https://github.com/MetaCubeX/meta-rules-dat/raw/refs/heads/meta/geo/geosite/blizzard.mrs",
+        "path": "./ruleset/blizzard.mrs",
+        "interval": 86400
+      }
+    ],
+    "ip_rules": []
+  },
+  {
+    "name": "education",
+    "label": "教育资源",
+    "emoji": "📚",
+    "icon": "📚",
+    "rule_name": "Education",
+    "group_label": "📚 教育资源",
+    "presets": ["comprehensive"],
+    "site_rules": [
+      {
+        "key": "coursera",
+        "behavior": "domain",
+        "type": "http",
+        "format": "mrs",
+        "url": "https://gh-proxy.com/https://github.com/MetaCubeX/meta-rules-dat/raw/refs/heads/meta/geo/geosite/coursera.mrs",
+        "path": "./ruleset/coursera.mrs",
+        "interval": 86400
+      },
+      {
+        "key": "edx",
+        "behavior": "domain",
+        "type": "http",
+        "format": "mrs",
+        "url": "https://gh-proxy.com/https://github.com/MetaCubeX/meta-rules-dat/raw/refs/heads/meta/geo/geosite/edx.mrs",
+        "path": "./ruleset/edx.mrs",
+        "interval": 86400
+      },
+      {
+        "key": "udemy",
+        "behavior": "domain",
+        "type": "http",
+        "format": "mrs",
+        "url": "https://gh-proxy.com/https://github.com/MetaCubeX/meta-rules-dat/raw/refs/heads/meta/geo/geosite/udemy.mrs",
+        "path": "./ruleset/udemy.mrs",
+        "interval": 86400
+      },
+      {
+        "key": "khanacademy",
+        "behavior": "domain",
+        "type": "http",
+        "format": "mrs",
+        "url": "https://gh-proxy.com/https://github.com/MetaCubeX/meta-rules-dat/raw/refs/heads/meta/geo/geosite/khanacademy.mrs",
+        "path": "./ruleset/khanacademy.mrs",
+        "interval": 86400
+      },
+      {
+        "key": "category-scholar-!cn",
+        "behavior": "domain",
+        "type": "http",
+        "format": "mrs",
+        "url": "https://gh-proxy.com/https://github.com/MetaCubeX/meta-rules-dat/raw/refs/heads/meta/geo/geosite/category-scholar-!cn.mrs",
+        "path": "./ruleset/category-scholar-!cn.mrs",
+        "interval": 86400
+      }
+    ],
+    "ip_rules": []
+  },
+  {
+    "name": "finance",
+    "label": "金融服务",
+    "emoji": "💰",
+    "icon": "💰",
+    "rule_name": "Financial",
+    "group_label": "💰 金融服务",
+    "presets": ["comprehensive"],
+    "site_rules": [
+      {
+        "key": "paypal",
+        "behavior": "domain",
+        "type": "http",
+        "format": "mrs",
+        "url": "https://gh-proxy.com/https://github.com/MetaCubeX/meta-rules-dat/raw/refs/heads/meta/geo/geosite/paypal.mrs",
+        "path": "./ruleset/paypal.mrs",
+        "interval": 86400
+      },
+      {
+        "key": "visa",
+        "behavior": "domain",
+        "type": "http",
+        "format": "mrs",
+        "url": "https://gh-proxy.com/https://github.com/MetaCubeX/meta-rules-dat/raw/refs/heads/meta/geo/geosite/visa.mrs",
+        "path": "./ruleset/visa.mrs",
+        "interval": 86400
+      },
+      {
+        "key": "mastercard",
+        "behavior": "domain",
+        "type": "http",
+        "format": "mrs",
+        "url": "https://gh-proxy.com/https://github.com/MetaCubeX/meta-rules-dat/raw/refs/heads/meta/geo/geosite/mastercard.mrs",
+        "path": "./ruleset/mastercard.mrs",
+        "interval": 86400
+      },
+      {
+        "key": "stripe",
+        "behavior": "domain",
+        "type": "http",
+        "format": "mrs",
+        "url": "https://gh-proxy.com/https://github.com/MetaCubeX/meta-rules-dat/raw/refs/heads/meta/geo/geosite/stripe.mrs",
+        "path": "./ruleset/stripe.mrs",
+        "interval": 86400
+      },
+      {
+        "key": "wise",
+        "behavior": "domain",
+        "type": "http",
+        "format": "mrs",
+        "url": "https://gh-proxy.com/https://github.com/MetaCubeX/meta-rules-dat/raw/refs/heads/meta/geo/geosite/wise.mrs",
+        "path": "./ruleset/wise.mrs",
+        "interval": 86400
+      }
+    ],
+    "ip_rules": []
+  },
+  {
+    "name": "cloud",
+    "label": "云服务",
+    "emoji": "☁️",
+    "icon": "☁️",
+    "rule_name": "Cloud Services",
+    "group_label": "☁️ 云服务",
+    "presets": ["comprehensive"],
+    "site_rules": [
+      {
+        "key": "aws",
+        "behavior": "domain",
+        "type": "http",
+        "format": "mrs",
+        "url": "https://gh-proxy.com/https://github.com/MetaCubeX/meta-rules-dat/raw/refs/heads/meta/geo/geosite/aws.mrs",
+        "path": "./ruleset/aws.mrs",
+        "interval": 86400
+      },
+      {
+        "key": "azure",
+        "behavior": "domain",
+        "type": "http",
+        "format": "mrs",
+        "url": "https://gh-proxy.com/https://github.com/MetaCubeX/meta-rules-dat/raw/refs/heads/meta/geo/geosite/azure.mrs",
+        "path": "./ruleset/azure.mrs",
+        "interval": 86400
+      },
+      {
+        "key": "digitalocean",
+        "behavior": "domain",
+        "type": "http",
+        "format": "mrs",
+        "url": "https://gh-proxy.com/https://github.com/MetaCubeX/meta-rules-dat/raw/refs/heads/meta/geo/geosite/digitalocean.mrs",
+        "path": "./ruleset/digitalocean.mrs",
+        "interval": 86400
+      },
+      {
+        "key": "heroku",
+        "behavior": "domain",
+        "type": "http",
+        "format": "mrs",
+        "url": "https://gh-proxy.com/https://github.com/MetaCubeX/meta-rules-dat/raw/refs/heads/meta/geo/geosite/heroku.mrs",
+        "path": "./ruleset/heroku.mrs",
+        "interval": 86400
+      },
+      {
+        "key": "dropbox",
+        "behavior": "domain",
+        "type": "http",
+        "format": "mrs",
+        "url": "https://gh-proxy.com/https://github.com/MetaCubeX/meta-rules-dat/raw/refs/heads/meta/geo/geosite/dropbox.mrs",
+        "path": "./ruleset/dropbox.mrs",
+        "interval": 86400
+      },
+      {
+        "key": "cloudflare",
+        "behavior": "domain",
+        "type": "http",
+        "format": "mrs",
+        "url": "https://gh-proxy.com/https://github.com/MetaCubeX/meta-rules-dat/raw/refs/heads/meta/geo/geosite/cloudflare.mrs",
+        "path": "./ruleset/cloudflare.mrs",
+        "interval": 86400
+      },
+      {
+        "key": "onedrive",
+        "behavior": "domain",
+        "type": "http",
+        "format": "mrs",
+        "url": "https://gh-proxy.com/https://github.com/MetaCubeX/meta-rules-dat/raw/refs/heads/meta/geo/geosite/onedrive.mrs",
+        "path": "./ruleset/onedrive.mrs",
+        "interval": 86400
+      }
+    ],
+    "ip_rules": []
+  },
+  {
+    "name": "spotify",
+    "label": "Spotify",
+    "emoji": "🎵",
+    "icon": "🎵",
+    "rule_name": "Spotify",
+    "group_label": "🎵 Spotify",
+    "presets": ["comprehensive"],
+    "site_rules": [
+      {
+        "key": "spotify",
+        "behavior": "domain",
+        "type": "http",
+        "format": "mrs",
+        "url": "https://gh-proxy.com/https://github.com/MetaCubeX/meta-rules-dat/raw/refs/heads/meta/geo/geosite/spotify.mrs",
+        "path": "./ruleset/spotify.mrs",
+        "interval": 86400
+      }
+    ],
+    "ip_rules": []
+  },
+  {
+    "name": "pixiv",
+    "label": "Pixiv",
+    "emoji": "🎨",
+    "icon": "🎨",
+    "rule_name": "Pixiv",
+    "group_label": "🎨 Pixiv",
+    "presets": ["comprehensive"],
+    "site_rules": [
+      {
+        "key": "pixiv",
+        "behavior": "domain",
+        "type": "http",
+        "format": "mrs",
+        "url": "https://gh-proxy.com/https://github.com/MetaCubeX/meta-rules-dat/raw/refs/heads/meta/geo/geosite/pixiv.mrs",
+        "path": "./ruleset/pixiv.mrs",
+        "interval": 86400
+      }
+    ],
+    "ip_rules": []
+  },
+  {
+    "name": "abema",
+    "label": "Abema",
+    "emoji": "📡",
+    "icon": "📡",
+    "rule_name": "Abema",
+    "group_label": "📡 Abema",
+    "presets": ["comprehensive"],
+    "site_rules": [
+      {
+        "key": "abema",
+        "behavior": "domain",
+        "type": "http",
+        "format": "mrs",
+        "url": "https://gh-proxy.com/https://github.com/MetaCubeX/meta-rules-dat/raw/refs/heads/meta/geo/geosite/abema.mrs",
+        "path": "./ruleset/abema.mrs",
+        "interval": 86400
+      }
+    ],
+    "ip_rules": []
+  },
+  {
+    "name": "proxy",
+    "label": "代理服务",
+    "emoji": "🔀",
+    "icon": "🔀",
+    "rule_name": "Proxy",
+    "group_label": "🔀 代理服务",
+    "presets": [],
+    "site_rules": [
+      {
+        "key": "proxy",
+        "behavior": "domain",
+        "type": "http",
+        "format": "mrs",
+        "url": "https://gh-proxy.com/https://github.com/MetaCubeX/meta-rules-dat/raw/refs/heads/meta/geo/geosite/proxy.mrs",
+        "path": "./ruleset/proxy.mrs",
+        "interval": 86400
+      }
+    ],
+    "ip_rules": []
+  },
+  {
+    "name": "proxymedia",
+    "label": "代理媒体",
+    "emoji": "🎭",
+    "icon": "🎭",
+    "rule_name": "Proxy Media",
+    "group_label": "🎭 代理媒体",
+    "presets": [],
+    "site_rules": [
+      {
+        "key": "proxymedia",
+        "behavior": "domain",
+        "type": "http",
+        "format": "mrs",
+        "url": "https://gh-proxy.com/https://github.com/MetaCubeX/meta-rules-dat/raw/refs/heads/meta/geo/geosite/proxymedia.mrs",
+        "path": "./ruleset/proxymedia.mrs",
+        "interval": 86400
+      }
+    ],
+    "ip_rules": []
+  },
+  {
+    "name": "ehentai",
+    "label": "E-Hentai",
+    "emoji": "🔞",
+    "icon": "🔞",
+    "rule_name": "E-Hentai",
+    "group_label": "🔞 E-Hentai",
+    "presets": [],
+    "site_rules": [
+      {
+        "key": "ehentai",
+        "behavior": "domain",
+        "type": "http",
+        "format": "mrs",
+        "url": "https://gh-proxy.com/https://github.com/MetaCubeX/meta-rules-dat/raw/refs/heads/meta/geo/geosite/ehentai.mrs",
+        "path": "./ruleset/ehentai.mrs",
+        "interval": 86400
+      }
+    ],
+    "ip_rules": []
+  },
+  {
+    "name": "overseas",
+    "label": "非中国",
+    "emoji": "🌍",
+    "icon": "🌍",
+    "rule_name": "Non-China",
+    "group_label": "🌍 非中国",
+    "presets": [],
+    "site_rules": [
+      {
+        "key": "pttracker",
+        "behavior": "domain",
+        "type": "http",
+        "format": "yaml",
+        "url": "https://gh-proxy.com/https://github.com/MetaCubeX/meta-rules-dat/raw/refs/heads/meta/geo/geosite/geolocation-!cn.mrs",
+        "path": "./ruleset/pttracker.mrs",
+        "interval": 86400
+      }
+    ],
+    "ip_rules": []
+  },
+  {
+    "name": "pttracker",
+    "label": "PT Tracker",
+    "emoji": "🔗",
+    "icon": "🔗",
+    "rule_name": "PT Tracker",
+    "group_label": "🔗 PT Tracker",
+    "presets": [],
+    "site_rules": [
+      {
+        "key": "pttracker",
+        "behavior": "domain",
+        "type": "http",
+        "format": "yaml",
+        "url": "https://gh-proxy.com/https://raw.githubusercontent.com/Jimleerx/clash-pt-rules/refs/heads/main/pttracker.yaml",
+        "path": "./ruleset/pttracker.yaml",
+        "interval": 86400
+      }
+    ],
+    "ip_rules": []
+  },
+  {
+    "name": "ptdomain",
+    "label": "PT 站点",
+    "emoji": "🎞️",
+    "icon": "🎞️",
+    "rule_name": "🎞️ 站点",
+    "group_label": "🎞️ PT 站点",
+    "presets": [],
+    "site_rules": [
+      {
+        "key": "ptdomain",
+        "behavior": "domain",
+        "type": "http",
+        "format": "yaml",
+        "url": "https://gh-proxy.com/https://raw.githubusercontent.com/Jimleerx/clash-pt-rules/refs/heads/main/ptdomain.yaml",
+        "path": "./ruleset/ptdomain.yaml",
+        "interval": 86400
+      }
+    ],
+    "ip_rules": []
+  }
+]
