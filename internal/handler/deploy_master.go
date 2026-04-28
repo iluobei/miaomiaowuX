@@ -198,7 +198,7 @@ func (h *CertificateHandler) EnableHTTPS(w http.ResponseWriter, r *http.Request)
 		respondJSON(w, http.StatusInternalServerError, map[string]any{"success": false, "message": fmt.Sprintf("读取 nginx.conf 模板失败: %v", err)})
 		return
 	}
-	if err := os.WriteFile("/usr/local/nginx/conf/nginx.conf", nginxConf, 0644); err != nil {
+	if err := os.WriteFile("/usr/local/nginx/nginx.conf", nginxConf, 0644); err != nil {
 		respondJSON(w, http.StatusInternalServerError, map[string]any{"success": false, "message": fmt.Sprintf("写入 nginx.conf 失败: %v", err)})
 		return
 	}

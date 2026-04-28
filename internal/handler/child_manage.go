@@ -829,7 +829,7 @@ func (h *ChildManageHandler) getNginxConfig(w http.ResponseWriter, r *http.Reque
 	// 常见的 nginx 配置路径
 	configPaths := []string{
 		"/etc/nginx/nginx.conf",
-		"/usr/local/nginx/conf/nginx.conf",
+		"/usr/local/nginx/nginx.conf",
 	}
 
 	var configPath string
