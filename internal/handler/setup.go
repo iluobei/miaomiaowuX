@@ -338,7 +338,11 @@ func deployLocalNginx(domain string, repo *storage.TrafficRepository) error {
 		deployCertToLocal(domain, repo)
 	}
 
-	if err := exec.Command("nginx", "-s", "reload").Run(); err != nil {
+	nginxBin := findNginxBinary()
+	if nginxBin == "" {
+		return fmt.Errorf("未找到 nginx 可执行文件")
+	}
+	if err := exec.Command(nginxBin, "-s", "reload").Run(); err != nil {
 		logger.Warn("[本机Nginx] reload 失败，尝试启动", "error", err)
 		if startErr := exec.Command("systemctl", "start", "nginx").Run(); startErr != nil {
 			return fmt.Errorf("nginx 启动失败: %w", startErr)
@@ -379,7 +383,11 @@ func deployLocalNginxWithCert(domain string, cert *storage.Certificate) error {
 			return fmt.Errorf("写入密钥失败: %w", err)
 		}
 	}
-	if err := exec.Command("nginx", "-s", "reload").Run(); err != nil {
+	nginxBin := findNginxBinary()
+	if nginxBin == "" {
+		return fmt.Errorf("未找到 nginx 可执行文件")
+	}
+	if err := exec.Command(nginxBin, "-s", "reload").Run(); err != nil {
 		logger.Warn("[本机Nginx] reload 失败，尝试启动", "error", err)
 		if startErr := exec.Command("systemctl", "start", "nginx").Run(); startErr != nil {
 			return fmt.Errorf("nginx 启动失败: %w", startErr)

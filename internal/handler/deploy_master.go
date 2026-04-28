@@ -116,15 +116,20 @@ func (h *CertificateHandler) DeployMasterCert(w http.ResponseWriter, r *http.Req
 	})
 }
 
-func isNginxInstalled() bool {
-	paths := []string{"/usr/local/nginx/sbin/nginx", "/usr/sbin/nginx", "/usr/bin/nginx"}
-	for _, p := range paths {
+func findNginxBinary() string {
+	for _, p := range []string{"/usr/local/nginx/sbin/nginx", "/usr/sbin/nginx", "/usr/bin/nginx"} {
 		if _, err := os.Stat(p); err == nil {
-			return true
+			return p
 		}
 	}
-	_, err := exec.LookPath("nginx")
-	return err == nil
+	if p, err := exec.LookPath("nginx"); err == nil {
+		return p
+	}
+	return ""
+}
+
+func isNginxInstalled() bool {
+	return findNginxBinary() != ""
 }
 
 func installNginxLocal() error {
@@ -238,12 +243,18 @@ func (h *CertificateHandler) EnableHTTPS(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	if output, err := exec.Command("nginx", "-t").CombinedOutput(); err != nil {
+	nginxBin := findNginxBinary()
+	if nginxBin == "" {
+		respondJSON(w, http.StatusInternalServerError, map[string]any{"success": false, "message": "未找到 nginx 可执行文件"})
+		return
+	}
+
+	if output, err := exec.Command(nginxBin, "-t").CombinedOutput(); err != nil {
 		respondJSON(w, http.StatusInternalServerError, map[string]any{"success": false, "message": fmt.Sprintf("Nginx 配置检测失败: %s", string(output))})
 		return
 	}
 
-	if err := exec.Command("nginx", "-s", "reload").Run(); err != nil {
+	if err := exec.Command(nginxBin, "-s", "reload").Run(); err != nil {
 		if startErr := exec.Command("systemctl", "start", "nginx").Run(); startErr != nil {
 			respondJSON(w, http.StatusInternalServerError, map[string]any{"success": false, "message": fmt.Sprintf("Nginx 启动失败: %v", startErr)})
 			return
