@@ -780,11 +780,13 @@ func (h *CertificateHandler) checkMasterCertReady(cert *storage.Certificate) {
 		return
 	}
 	ctx := context.Background()
-	mmwxDomain, err := h.repo.GetSystemSetting(ctx, "mmwx_domain")
-	if err != nil || mmwxDomain == "" {
+	domain := getDomainFromMasterURL(h.repo, ctx)
+	if domain == "" {
 		return
 	}
-	if !strings.EqualFold(cert.Domain, mmwxDomain) {
+	rootDomain := extractRootDomain(domain)
+	certDomain := strings.ToLower(cert.Domain)
+	if !strings.EqualFold(certDomain, domain) && certDomain != "*."+rootDomain && certDomain != rootDomain {
 		return
 	}
 	masterURL, _ := h.repo.GetSystemSetting(ctx, "master_url")

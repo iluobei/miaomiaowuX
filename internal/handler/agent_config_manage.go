@@ -204,7 +204,7 @@ func (h *XrayServerHandler) CreateRemoteServer(w stdhttp.ResponseWriter, r *stdh
 
 	ctx := r.Context()
 	reqDomain := strings.ToLower(strings.TrimSpace(req.Domain))
-	mmwxDomain, _ := h.repo.GetSystemSetting(ctx, "mmwx_domain")
+	mmwxDomain := getDomainFromMasterURL(h.repo, ctx)
 	if reqDomain != "" && mmwxDomain != "" && reqDomain == mmwxDomain {
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(RemoteServerResponse{
@@ -274,18 +274,21 @@ func (h *XrayServerHandler) CreateRemoteServer(w stdhttp.ResponseWriter, r *stdh
 
 	// 构建安装命令 - 更喜欢系统设置中的 master_url
 	serverURL := ""
-	if masterURL, err := h.repo.GetSystemSetting(ctx, "master_url"); err == nil && masterURL != "" {
-		serverURL = strings.TrimRight(masterURL, "/")
-	} else {
-		host := r.Host
-		scheme := "http"
-		if r.TLS != nil {
-			scheme = "https"
-		}
-		if forwardedProto := r.Header.Get("X-Forwarded-Proto"); forwardedProto != "" {
-			scheme = forwardedProto
-		}
+	host := r.Host
+	scheme := "http"
+	if r.TLS != nil {
+		scheme = "https"
+	}
+	if forwardedProto := r.Header.Get("X-Forwarded-Proto"); forwardedProto != "" {
+		scheme = forwardedProto
+	}
+	if host != "" {
 		serverURL = fmt.Sprintf("%s://%s", scheme, host)
+	}
+	if serverURL == "" {
+		if masterURL, err := h.repo.GetSystemSetting(ctx, "master_url"); err == nil && masterURL != "" {
+			serverURL = strings.TrimRight(masterURL, "/")
+		}
 	}
 
 	// 根据连接模式构建安装命令

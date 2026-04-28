@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -10,8 +11,40 @@ import (
 	"path/filepath"
 	"strings"
 
+	"miaomiaowu/internal/storage"
 	"miaomiaowu/templates"
 )
+
+func getDomainFromMasterURL(repo *storage.TrafficRepository, ctx context.Context) string {
+	masterURL, _ := repo.GetSystemSetting(ctx, "master_url")
+	if masterURL == "" {
+		return ""
+	}
+	masterURL = strings.TrimPrefix(masterURL, "https://")
+	masterURL = strings.TrimPrefix(masterURL, "http://")
+	host := strings.Split(masterURL, ":")[0]
+	return strings.TrimRight(host, "/")
+}
+
+func (h *CertificateHandler) findCertForDomain(ctx context.Context, domain string, serverID int64) (*storage.Certificate, error) {
+	cert, err := h.repo.GetCertificateByDomain(ctx, domain, serverID)
+	if err == nil && cert != nil && cert.CertPEM != "" && cert.KeyPEM != "" {
+		return cert, nil
+	}
+	rootDomain := extractRootDomain(domain)
+	wildcardDomain := "*." + rootDomain
+	cert, err = h.repo.GetCertificateByDomain(ctx, wildcardDomain, serverID)
+	if err == nil && cert != nil && cert.CertPEM != "" && cert.KeyPEM != "" {
+		return cert, nil
+	}
+	if rootDomain != domain {
+		cert, err = h.repo.GetCertificateByDomain(ctx, rootDomain, serverID)
+		if err == nil && cert != nil && cert.CertPEM != "" && cert.KeyPEM != "" {
+			return cert, nil
+		}
+	}
+	return nil, fmt.Errorf("未找到域名 %s 的有效证书", domain)
+}
 
 // GetMasterCertStatus 返回主控证书是否待部署
 func (h *CertificateHandler) GetMasterCertStatus(w http.ResponseWriter, r *http.Request) {
@@ -22,8 +55,8 @@ func (h *CertificateHandler) GetMasterCertStatus(w http.ResponseWriter, r *http.
 
 	ctx := r.Context()
 	pending, _ := h.repo.GetSystemSetting(ctx, "master_cert_pending")
-	domain, _ := h.repo.GetSystemSetting(ctx, "mmwx_domain")
 	masterURL, _ := h.repo.GetSystemSetting(ctx, "master_url")
+	domain := getDomainFromMasterURL(h.repo, ctx)
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]any{
@@ -42,17 +75,18 @@ func (h *CertificateHandler) DeployMasterCert(w http.ResponseWriter, r *http.Req
 	}
 
 	ctx := r.Context()
-	domain, err := h.repo.GetSystemSetting(ctx, "mmwx_domain")
-	if err != nil || domain == "" {
+	domain := getDomainFromMasterURL(h.repo, ctx)
+	if domain == "" {
 		respondJSON(w, http.StatusBadRequest, map[string]any{"success": false, "message": "未配置主控域名"})
 		return
 	}
 
-	cert, err := h.repo.GetCertificateByDomain(ctx, domain, 0)
-	if err != nil || cert == nil || cert.CertPEM == "" {
+	cert, err := h.findCertForDomain(ctx, domain, 0)
+	if err != nil {
 		respondJSON(w, http.StatusBadRequest, map[string]any{"success": false, "message": "未找到主控域名的有效证书"})
 		return
 	}
+	_ = cert
 
 	if !isNginxInstalled() {
 		log.Printf("[DeployMasterCert] Nginx 未安装，开始安装...")
@@ -130,19 +164,20 @@ func (h *CertificateHandler) EnableHTTPS(w http.ResponseWriter, r *http.Request)
 	}
 
 	ctx := r.Context()
-	domain, err := h.repo.GetSystemSetting(ctx, "mmwx_domain")
-	if err != nil || domain == "" {
+	domain := getDomainFromMasterURL(h.repo, ctx)
+	if domain == "" {
 		respondJSON(w, http.StatusBadRequest, map[string]any{"success": false, "message": "未配置主控域名"})
 		return
 	}
 	domain = strings.ToLower(strings.TrimSpace(domain))
 	rootDomain := extractRootDomain(domain)
 
-	cert, err := h.repo.GetCertificateByDomain(ctx, domain, 0)
-	if err != nil || cert == nil || cert.CertPEM == "" || cert.KeyPEM == "" {
+	cert, err := h.findCertForDomain(ctx, domain, 0)
+	if err != nil {
 		respondJSON(w, http.StatusBadRequest, map[string]any{"success": false, "message": "未找到主控域名的有效证书"})
 		return
 	}
+	_ = cert
 
 	if !isNginxInstalled() {
 		log.Printf("[EnableHTTPS] Nginx 未安装，开始安装...")

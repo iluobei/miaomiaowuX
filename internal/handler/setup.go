@@ -205,7 +205,6 @@ func NewInitialSetupHandler(repo *storage.TrafficRepository) http.Handler {
 		domain := strings.TrimSpace(payload.Domain)
 		if domain != "" {
 			domain = strings.ToLower(domain)
-			_ = repo.SetSystemSetting(r.Context(), "mmwx_domain", domain)
 
 			port := "12889"
 			if _, p, err := net.SplitHostPort(r.Host); err == nil && p != "" {
