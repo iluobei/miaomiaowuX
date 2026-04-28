@@ -86,7 +86,6 @@ func (h *CertificateHandler) DeployMasterCert(w http.ResponseWriter, r *http.Req
 		respondJSON(w, http.StatusBadRequest, map[string]any{"success": false, "message": "未找到主控域名的有效证书"})
 		return
 	}
-	_ = cert
 
 	if !isNginxInstalled() {
 		log.Printf("[DeployMasterCert] Nginx 未安装，开始安装...")
@@ -98,7 +97,7 @@ func (h *CertificateHandler) DeployMasterCert(w http.ResponseWriter, r *http.Req
 		log.Printf("[DeployMasterCert] Nginx 安装成功")
 	}
 
-	if err := deployLocalNginx(domain, h.repo); err != nil {
+	if err := deployLocalNginxWithCert(domain, cert); err != nil {
 		log.Printf("[DeployMasterCert] Nginx 配置部署失败: %v", err)
 		respondJSON(w, http.StatusInternalServerError, map[string]any{"success": false, "message": fmt.Sprintf("Nginx 配置失败: %s", err.Error())})
 		return
@@ -177,7 +176,6 @@ func (h *CertificateHandler) EnableHTTPS(w http.ResponseWriter, r *http.Request)
 		respondJSON(w, http.StatusBadRequest, map[string]any{"success": false, "message": "未找到主控域名的有效证书"})
 		return
 	}
-	_ = cert
 
 	if !isNginxInstalled() {
 		log.Printf("[EnableHTTPS] Nginx 未安装，开始安装...")
@@ -229,7 +227,16 @@ func (h *CertificateHandler) EnableHTTPS(w http.ResponseWriter, r *http.Request)
 		}
 	}
 
-	deployCertToLocal(rootDomain, h.repo)
+	certPath := filepath.Join("/usr/local/nginx/cert", rootDomain+".pem")
+	keyPath := filepath.Join("/usr/local/nginx/cert", rootDomain+".key")
+	if err := os.WriteFile(certPath, []byte(cert.CertPEM), 0644); err != nil {
+		respondJSON(w, http.StatusInternalServerError, map[string]any{"success": false, "message": fmt.Sprintf("写入证书失败: %v", err)})
+		return
+	}
+	if err := os.WriteFile(keyPath, []byte(cert.KeyPEM), 0600); err != nil {
+		respondJSON(w, http.StatusInternalServerError, map[string]any{"success": false, "message": fmt.Sprintf("写入密钥失败: %v", err)})
+		return
+	}
 
 	if err := exec.Command("nginx", "-s", "reload").Run(); err != nil {
 		if startErr := exec.Command("systemctl", "start", "nginx").Run(); startErr != nil {

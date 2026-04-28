@@ -348,6 +348,61 @@ func deployLocalNginx(domain string, repo *storage.TrafficRepository) error {
 	return nil
 }
 
+func deployLocalNginxWithCert(domain string, cert *storage.Certificate) error {
+	nginxConf, err := templates.ReadFile("single_nginx.conf")
+	if err != nil {
+		return fmt.Errorf("读取 single_nginx.conf 模板失败: %w", err)
+	}
+
+	domainTpl, err := templates.ReadFile("mmwx_domain.conf")
+	if err != nil {
+		return fmt.Errorf("读取 mmwx_domain.conf 模板失败: %w", err)
+	}
+	domainConf := strings.ReplaceAll(string(domainTpl), "{domain}", domain)
+
+	dirs := []string{
+		"/usr/local/nginx/conf",
+		"/usr/local/nginx/servers",
+		"/usr/local/nginx/cert",
+		"/usr/local/nginx/html",
+	}
+	for _, dir := range dirs {
+		if err := os.MkdirAll(dir, 0755); err != nil {
+			return fmt.Errorf("创建目录 %s 失败: %w", dir, err)
+		}
+	}
+
+	if err := os.WriteFile("/usr/local/nginx/conf/nginx.conf", nginxConf, 0644); err != nil {
+		return fmt.Errorf("写入 nginx.conf 失败: %w", err)
+	}
+
+	serverConfPath := filepath.Join("/usr/local/nginx/servers", domain+".conf")
+	if err := os.WriteFile(serverConfPath, []byte(domainConf), 0644); err != nil {
+		return fmt.Errorf("写入 domain.conf 失败: %w", err)
+	}
+
+	if cert != nil && cert.CertPEM != "" && cert.KeyPEM != "" {
+		certPath := filepath.Join("/usr/local/nginx/cert", domain+".pem")
+		keyPath := filepath.Join("/usr/local/nginx/cert", domain+".key")
+		if err := os.WriteFile(certPath, []byte(cert.CertPEM), 0644); err != nil {
+			return fmt.Errorf("写入证书失败: %w", err)
+		}
+		if err := os.WriteFile(keyPath, []byte(cert.KeyPEM), 0600); err != nil {
+			return fmt.Errorf("写入密钥失败: %w", err)
+		}
+		logger.Info("[本机Nginx] 证书部署成功", "domain", domain)
+	}
+
+	if err := exec.Command("nginx", "-s", "reload").Run(); err != nil {
+		logger.Warn("[本机Nginx] reload 失败，尝试启动", "error", err)
+		if startErr := exec.Command("systemctl", "start", "nginx").Run(); startErr != nil {
+			return fmt.Errorf("nginx 启动失败: %w", startErr)
+		}
+	}
+
+	return nil
+}
+
 func deployCertToLocal(domain string, repo *storage.TrafficRepository) {
 	ctx := context.Background()
 	cert, err := repo.GetCertificateByDomain(ctx, domain, 0)
