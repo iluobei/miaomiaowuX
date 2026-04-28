@@ -236,6 +236,8 @@ export function InboundWizard({
     Record<number, SSLSetupState>
   >({})
   const [manualRealityDomain, setManualRealityDomain] = useState('')
+  const [customDomainInput, setCustomDomainInput] = useState('')
+  const [customDomainProbing, setCustomDomainProbing] = useState(false)
   const simpleRealityAutoLoaded = useRef(false)
 
   // 切换服务器选择（单选）
@@ -508,6 +510,45 @@ export function InboundWizard({
     setSelectedRealityDomain('')
     if (domain) {
       applyRealityDomain(domain)
+    }
+  }
+
+  const handleAddCustomDomain = async () => {
+    const domain = customDomainInput.trim()
+    if (!domain || !effectiveServerId) return
+    setCustomDomainProbing(true)
+    try {
+      const res = await api.post('/api/admin/remote/reality-domains/custom', {
+        domain,
+        server_id: effectiveServerId,
+      })
+      const data = res.data
+      const newOpt: RealityDomainOption = {
+        domain: data.domain || domain,
+        target: data.target || `${domain}:443`,
+        success: data.success !== false && !data.error,
+        latency_ms: data.latency_ms,
+        error: data.error,
+        nginx_ssl_port: data.nginx_ssl_port,
+      }
+      setRealityDomainOptions((prev) => {
+        const filtered = prev.filter((d) => d.domain !== newOpt.domain)
+        const updated = [...filtered, newOpt].sort(
+          (a, b) => (a.latency_ms ?? 9999) - (b.latency_ms ?? 9999)
+        )
+        return updated
+      })
+      setCustomDomainInput('')
+      if (newOpt.success) {
+        toast.success(`${newOpt.domain} 延迟 ${newOpt.latency_ms ?? '-'}ms`)
+        handleSelectRealityDomain(newOpt.domain)
+      } else {
+        toast.error(`${newOpt.domain} 探测失败: ${newOpt.error || '未知错误'}`)
+      }
+    } catch {
+      toast.error('探测请求失败')
+    } finally {
+      setCustomDomainProbing(false)
     }
   }
 
@@ -1014,6 +1055,40 @@ export function InboundWizard({
                                     )}
                                   </div>
                                 )}
+
+                              <div className='space-y-2'>
+                                <Label>自定义域名</Label>
+                                <div className='flex gap-2'>
+                                  <Input
+                                    placeholder='输入域名，如 www.microsoft.com'
+                                    value={customDomainInput}
+                                    onChange={(e) =>
+                                      setCustomDomainInput(e.target.value)
+                                    }
+                                    onKeyDown={(e) =>
+                                      e.key === 'Enter' &&
+                                      handleAddCustomDomain()
+                                    }
+                                  />
+                                  <Button
+                                    type='button'
+                                    variant='outline'
+                                    size='sm'
+                                    onClick={handleAddCustomDomain}
+                                    disabled={
+                                      !customDomainInput.trim() ||
+                                      customDomainProbing ||
+                                      !effectiveServerId
+                                    }
+                                  >
+                                    {customDomainProbing ? (
+                                      <Loader2 className='h-4 w-4 animate-spin' />
+                                    ) : (
+                                      '探测'
+                                    )}
+                                  </Button>
+                                </div>
+                              </div>
                             </CardContent>
                           </Card>
                         )}
@@ -1310,6 +1385,40 @@ export function InboundWizard({
                                     </SelectContent>
                                   </Select>
                                 )}
+
+                                <div className='space-y-1'>
+                                  <Label className='text-xs'>自定义域名</Label>
+                                  <div className='flex gap-2'>
+                                    <Input
+                                      placeholder='输入域名，如 www.microsoft.com'
+                                      value={customDomainInput}
+                                      onChange={(e) =>
+                                        setCustomDomainInput(e.target.value)
+                                      }
+                                      onKeyDown={(e) =>
+                                        e.key === 'Enter' &&
+                                        handleAddCustomDomain()
+                                      }
+                                    />
+                                    <Button
+                                      type='button'
+                                      variant='outline'
+                                      size='sm'
+                                      onClick={handleAddCustomDomain}
+                                      disabled={
+                                        !customDomainInput.trim() ||
+                                        customDomainProbing ||
+                                        !effectiveServerId
+                                      }
+                                    >
+                                      {customDomainProbing ? (
+                                        <Loader2 className='h-4 w-4 animate-spin' />
+                                      ) : (
+                                        '探测'
+                                      )}
+                                    </Button>
+                                  </div>
+                                </div>
                               </div>
                             )}
 

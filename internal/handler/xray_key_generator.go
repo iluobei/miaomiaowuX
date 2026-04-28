@@ -153,8 +153,9 @@ func (h *XrayKeyGeneratorHandler) GenerateX25519(w http.ResponseWriter, r *http.
 	for _, line := range lines {
 		if strings.HasPrefix(line, "PrivateKey:") {
 			privateKey = strings.TrimSpace(strings.TrimPrefix(line, "PrivateKey:"))
+		} else if strings.HasPrefix(line, "Password (PublicKey):") {
+			publicKey = strings.TrimSpace(strings.TrimPrefix(line, "Password (PublicKey):"))
 		} else if strings.HasPrefix(line, "Password:") {
-			// 密码是x25519中的公钥
 			publicKey = strings.TrimSpace(strings.TrimPrefix(line, "Password:"))
 		}
 	}

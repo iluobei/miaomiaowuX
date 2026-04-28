@@ -342,6 +342,8 @@ func main() {
 	mux.Handle("/api/admin/remote/scan", auth.RequireAdmin(tokenStore, userRepo, http.HandlerFunc(remoteManageHandler.HandleScan)))
 	mux.Handle("/api/admin/remote/xray/system-config", auth.RequireAdmin(tokenStore, userRepo, http.HandlerFunc(remoteManageHandler.HandleXraySystemConfig)))
 	mux.Handle("/api/admin/remote/reality-domains", auth.RequireAdmin(tokenStore, userRepo, http.HandlerFunc(remoteManageHandler.HandleRealityDomains)))
+	mux.Handle("/api/admin/remote/reality-domains/custom", auth.RequireAdmin(tokenStore, userRepo, http.HandlerFunc(remoteManageHandler.HandleAddCustomRealityDomain)))
+	mux.Handle("/api/admin/remote/reality-domains/custom/delete", auth.RequireAdmin(tokenStore, userRepo, http.HandlerFunc(remoteManageHandler.HandleDeleteCustomRealityDomain)))
 	mux.Handle("/api/admin/remote/setup-ssl", auth.RequireAdmin(tokenStore, userRepo, http.HandlerFunc(remoteManageHandler.HandleSetupSSL)))
 	mux.Handle("/api/admin/remote/deploy-steal-self", auth.RequireAdmin(tokenStore, userRepo, http.HandlerFunc(remoteManageHandler.HandleDeployStealSelfConfig)))
 	mux.Handle("/api/admin/remote/sync-nodes", auth.RequireAdmin(tokenStore, userRepo, http.HandlerFunc(remoteManageHandler.HandleSyncInboundsToNodes)))

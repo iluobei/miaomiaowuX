@@ -181,6 +181,28 @@ func (h *RemoteManageHandler) collectRealityDomainCandidates(ctx context.Context
 	out := make([]string, 0, 64)
 	domainServerMap := make(map[string]domainServerInfo)
 
+	if masterDomain := getDomainFromMasterURL(h.repo, ctx); masterDomain != "" {
+		if d := normalizeDomainCandidate(masterDomain); d != "" {
+			seen[d] = struct{}{}
+			out = append(out, d)
+		}
+	}
+
+	customJSON, _ := h.repo.GetSystemSetting(ctx, "reality_domains")
+	if customJSON != "" {
+		var customDomains []string
+		if json.Unmarshal([]byte(customJSON), &customDomains) == nil {
+			for _, raw := range customDomains {
+				if d := normalizeDomainCandidate(raw); d != "" {
+					if _, exists := seen[d]; !exists {
+						seen[d] = struct{}{}
+						out = append(out, d)
+					}
+				}
+			}
+		}
+	}
+
 	for _, server := range servers {
 		serverDomainSources := []string{server.Domain, server.PullAddress}
 		for _, source := range serverDomainSources {
@@ -468,4 +490,109 @@ func extractRootDomain(domain string) string {
 		return domain
 	}
 	return strings.Join(parts[len(parts)-2:], ".")
+}
+
+func (h *RemoteManageHandler) HandleAddCustomRealityDomain(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		remoteWriteError(w, http.StatusMethodNotAllowed, "Method not allowed")
+		return
+	}
+
+	var req struct {
+		Domain   string `json:"domain"`
+		ServerID int64  `json:"server_id"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		remoteWriteError(w, http.StatusBadRequest, "invalid request")
+		return
+	}
+
+	domain := normalizeDomainCandidate(req.Domain)
+	if domain == "" {
+		remoteWriteError(w, http.StatusBadRequest, "域名不能为空")
+		return
+	}
+
+	ctx := r.Context()
+
+	var existing []string
+	if raw, _ := h.repo.GetSystemSetting(ctx, "reality_domains"); raw != "" {
+		_ = json.Unmarshal([]byte(raw), &existing)
+	}
+	found := false
+	for _, d := range existing {
+		if d == domain {
+			found = true
+			break
+		}
+	}
+	if !found {
+		existing = append(existing, domain)
+		if data, err := json.Marshal(existing); err == nil {
+			_ = h.repo.SetSystemSetting(ctx, "reality_domains", string(data))
+		}
+	}
+
+	result := map[string]any{
+		"success":    true,
+		"domain":     domain,
+		"latency_ms": nil,
+		"saved":      !found,
+	}
+
+	if req.ServerID > 0 && h.wsHandler != nil {
+		wsResult, err := h.wsHandler.SendDomainLatencyProbe(req.ServerID, []string{domain}, 2000)
+		if err == nil && wsResult != nil && wsResult.Success && len(wsResult.Results) > 0 {
+			r := wsResult.Results[0]
+			result["success"] = r.Success
+			result["latency_ms"] = r.LatencyMs
+			result["target"] = r.Target
+			result["error"] = r.Error
+			result["nginx_ssl_port"] = r.NginxSSLPort
+		} else if err != nil {
+			result["error"] = err.Error()
+		}
+	}
+
+	remoteWriteJSON(w, http.StatusOK, result)
+}
+
+func (h *RemoteManageHandler) HandleDeleteCustomRealityDomain(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		remoteWriteError(w, http.StatusMethodNotAllowed, "Method not allowed")
+		return
+	}
+
+	var req struct {
+		Domain string `json:"domain"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		remoteWriteError(w, http.StatusBadRequest, "invalid request")
+		return
+	}
+
+	domain := normalizeDomainCandidate(req.Domain)
+	if domain == "" {
+		remoteWriteError(w, http.StatusBadRequest, "域名不能为空")
+		return
+	}
+
+	ctx := r.Context()
+	var existing []string
+	if raw, _ := h.repo.GetSystemSetting(ctx, "reality_domains"); raw != "" {
+		_ = json.Unmarshal([]byte(raw), &existing)
+	}
+
+	filtered := make([]string, 0, len(existing))
+	for _, d := range existing {
+		if d != domain {
+			filtered = append(filtered, d)
+		}
+	}
+
+	if data, err := json.Marshal(filtered); err == nil {
+		_ = h.repo.SetSystemSetting(ctx, "reality_domains", string(data))
+	}
+
+	remoteWriteJSON(w, http.StatusOK, map[string]any{"success": true, "message": "已删除"})
 }
