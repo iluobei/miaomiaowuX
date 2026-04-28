@@ -204,6 +204,7 @@ show_status() {
     echo "  查看状态: systemctl status $SERVICE_NAME"
     echo "  查看日志: journalctl -u $SERVICE_NAME -f"
     echo "  更新版本: curl -sL https://raw.githubusercontent.com/${GITHUB_REPO}/main/install.sh | sudo bash -s update"
+    echo "  覆盖安装: curl -sL https://raw.githubusercontent.com/${GITHUB_REPO}/main/install.sh | sudo bash -s reinstall"
     echo "  卸载服务: curl -sL https://raw.githubusercontent.com/${GITHUB_REPO}/main/install.sh | sudo bash -s uninstall"
     echo ""
     echo "⚠️  首次访问需要完成初始化配置"
@@ -380,6 +381,53 @@ uninstall_service() {
     echo ""
 }
 
+# 覆盖安装（全量重装，保留数据）
+reinstall_service() {
+    echo_info "开始覆盖安装妙妙屋X..."
+    echo ""
+
+    # 停止已有服务
+    if systemctl is-active --quiet ${SERVICE_NAME}.service 2>/dev/null; then
+        echo_info "停止现有服务..."
+        systemctl stop ${SERVICE_NAME}.service || true
+    fi
+
+    # 备份当前二进制文件
+    if [ -f "$INSTALL_DIR/$SERVICE_NAME" ]; then
+        echo_info "备份当前版本..."
+        cp "$INSTALL_DIR/$SERVICE_NAME" "$INSTALL_DIR/${SERVICE_NAME}.bak"
+    fi
+
+    # 全量覆盖：下载、安装、重建目录和服务
+    download_binary
+    install_binary
+    create_directories
+    create_systemd_service
+
+    # 保存版本信息
+    echo "$VERSION" > "$DATA_DIR/.version"
+
+    if start_service; then
+        show_status
+        echo_info "覆盖安装完成！数据已保留。"
+        echo ""
+        echo "如遇问题可回滚到备份版本:"
+        echo "  sudo systemctl stop $SERVICE_NAME"
+        echo "  sudo mv $INSTALL_DIR/${SERVICE_NAME}.bak $INSTALL_DIR/$SERVICE_NAME"
+        echo "  sudo systemctl start $SERVICE_NAME"
+        echo ""
+    else
+        echo_error "覆盖安装后服务启动失败，正在回滚..."
+        if [ -f "$INSTALL_DIR/${SERVICE_NAME}.bak" ]; then
+            mv "$INSTALL_DIR/${SERVICE_NAME}.bak" "$INSTALL_DIR/$SERVICE_NAME"
+            systemctl start ${SERVICE_NAME}.service || true
+            echo_error "已回滚到之前版本"
+        fi
+        echo_error "请查看日志: journalctl -u $SERVICE_NAME -n 50"
+        exit 1
+    fi
+}
+
 # 主函数
 main() {
     # 检查命令行参数
@@ -390,6 +438,13 @@ main() {
         install_dependencies
         get_latest_version
         update_service
+    elif [ "$1" = "reinstall" ]; then
+        echo_info "进入覆盖安装模式..."
+        check_root
+        check_architecture
+        install_dependencies
+        get_latest_version
+        reinstall_service
     elif [ "$1" = "uninstall" ]; then
         echo_info "进入卸载模式..."
         check_root
