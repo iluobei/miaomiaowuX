@@ -646,7 +646,7 @@ function XrayServersPage() {
         </div>
         <Dialog open={isAddDialogOpen} onOpenChange={(open) => { setIsAddDialogOpen(open); if (!open) resetAddDialog() }}>
           <DialogTrigger asChild><Button><Plus className="mr-2 h-4 w-4" />添加服务器</Button></DialogTrigger>
-          <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+          <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>添加远程服务器</DialogTitle>
               <DialogDescription>添加一个远程 MMWX 服务器进行管理。输入名称后生成 Token，然后在远程服务器上执行安装命令。</DialogDescription>
