@@ -83,8 +83,6 @@ type WSCertRequestPayload struct {
 	WebrootPath    string `json:"webroot_path,omitempty"`
 	DNSProvider    string `json:"dns_provider,omitempty"`
 	DNSCredentials string `json:"dns_credentials,omitempty"` // JSON 字符串
-	EABKid         string `json:"eab_kid,omitempty"`
-	EABHmacKey     string `json:"eab_hmac_key,omitempty"`
 }
 
 // WSCertDeployPayload 表示证书部署负载（Master -> Agent）

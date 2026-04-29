@@ -537,6 +537,7 @@ func main() {
 	mux.Handle("/api/admin/certificates/auto-renew", auth.RequireAdmin(tokenStore, userRepo, http.HandlerFunc(certHandler.SetAutoRenew)))
 	mux.Handle("/api/admin/certificates/auto-deploy", auth.RequireAdmin(tokenStore, userRepo, http.HandlerFunc(certHandler.SetAutoDeploy)))
 	mux.Handle("/api/admin/certificates/deploy", auth.RequireAdmin(tokenStore, userRepo, http.HandlerFunc(certHandler.DeployCertificate)))
+	mux.Handle("/api/admin/certificates/upload", auth.RequireAdmin(tokenStore, userRepo, http.HandlerFunc(certHandler.UploadCertificate)))
 	mux.Handle("/api/admin/certificates/delete", auth.RequireAdmin(tokenStore, userRepo, http.HandlerFunc(certHandler.DeleteCertificate)))
 	mux.Handle("/api/admin/certificates/", auth.RequireAdmin(tokenStore, userRepo, http.HandlerFunc(certHandler.GetCertificate)))
 	mux.Handle("/api/admin/master-cert-status", auth.RequireAdmin(tokenStore, userRepo, http.HandlerFunc(certHandler.GetMasterCertStatus)))

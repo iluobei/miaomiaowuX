@@ -2,7 +2,10 @@ package handler
 
 import (
 	"context"
+	"crypto/x509"
+	"encoding/base64"
 	"encoding/json"
+	"encoding/pem"
 	"fmt"
 	"io"
 	"log"
@@ -398,7 +401,6 @@ func (h *CertificateHandler) requestRemoteCertificate(cert *storage.Certificate)
 	// 如果需要，解析 DNS 凭据
 	var dnsProviderType string
 	var dnsCredentials string
-	var eabKid, eabHmacKey string
 	if cert.ChallengeMode == storage.CertChallengeDNS && cert.DNSProviderID > 0 {
 		dnsProvider, dnsErr := h.repo.GetDNSProvider(ctx, cert.DNSProviderID)
 		if dnsErr != nil {
@@ -408,13 +410,6 @@ func (h *CertificateHandler) requestRemoteCertificate(cert *storage.Certificate)
 		}
 		dnsProviderType = dnsProvider.ProviderType
 		dnsCredentials = dnsProvider.Credentials
-
-		// 从凭证中提取 EAB
-		var creds map[string]string
-		if json.Unmarshal([]byte(dnsProvider.Credentials), &creds) == nil {
-			eabKid = creds["eab_kid"]
-			eabHmacKey = creds["eab_hmac_key"]
-		}
 	}
 
 	// 通过 WebSocket 发送证书请求
@@ -427,8 +422,6 @@ func (h *CertificateHandler) requestRemoteCertificate(cert *storage.Certificate)
 		WebrootPath:    cert.WebrootPath,
 		DNSProvider:    dnsProviderType,
 		DNSCredentials: dnsCredentials,
-		EABKid:         eabKid,
-		EABHmacKey:     eabHmacKey,
 	}
 
 	if err := h.wsHandler.SendCertRequest(server.Token, payload); err != nil {
@@ -754,14 +747,6 @@ func (h *CertificateHandler) buildCertRequest(ctx context.Context, cert *storage
 			return req, fmt.Errorf("parse DNS credentials: %w", err)
 		}
 		req.DNSCredentials = creds
-
-		// 提取 EAB 字段（如果存在）（对于 ZeroSSL 等）
-		if kid, ok := creds["eab_kid"]; ok {
-			req.EABKid = kid
-		}
-		if hmac, ok := creds["eab_hmac_key"]; ok {
-			req.EABHmacKey = hmac
-		}
 	}
 
 	return req, nil
@@ -1133,4 +1118,103 @@ func (h *CertificateHandler) DeleteDNSProvider(w http.ResponseWriter, r *http.Re
 	}
 
 	respondJSON(w, http.StatusOK, map[string]any{"success": true, "message": "删除成功"})
+}
+
+// UploadCertificate 处理手动上传证书（UI 和 API Token 均可调用）。
+// POST /api/admin/certificates/upload
+// 参数: domain, cert_pem (base64), key_pem (base64)
+func (h *CertificateHandler) UploadCertificate(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		respondJSON(w, http.StatusMethodNotAllowed, map[string]any{"success": false, "message": "Method not allowed"})
+		return
+	}
+	if !h.requireAdmin(r) {
+		respondJSON(w, http.StatusForbidden, map[string]any{"success": false, "message": "权限不足"})
+		return
+	}
+
+	var req struct {
+		Domain  string `json:"domain"`
+		CertPEM string `json:"cert_pem"`
+		KeyPEM  string `json:"key_pem"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		respondJSON(w, http.StatusBadRequest, map[string]any{"success": false, "message": "请求格式错误"})
+		return
+	}
+
+	req.Domain = strings.TrimSpace(req.Domain)
+	if req.Domain == "" || req.CertPEM == "" || req.KeyPEM == "" {
+		respondJSON(w, http.StatusBadRequest, map[string]any{"success": false, "message": "domain、cert_pem、key_pem 不能为空"})
+		return
+	}
+
+	certBytes, err := base64.StdEncoding.DecodeString(req.CertPEM)
+	if err != nil {
+		respondJSON(w, http.StatusBadRequest, map[string]any{"success": false, "message": "cert_pem base64 解码失败"})
+		return
+	}
+	keyBytes, err := base64.StdEncoding.DecodeString(req.KeyPEM)
+	if err != nil {
+		respondJSON(w, http.StatusBadRequest, map[string]any{"success": false, "message": "key_pem base64 解码失败"})
+		return
+	}
+
+	block, _ := pem.Decode(certBytes)
+	if block == nil {
+		respondJSON(w, http.StatusBadRequest, map[string]any{"success": false, "message": "无效的证书 PEM 格式"})
+		return
+	}
+	x509Cert, err := x509.ParseCertificate(block.Bytes)
+	if err != nil {
+		respondJSON(w, http.StatusBadRequest, map[string]any{"success": false, "message": fmt.Sprintf("证书解析失败: %v", err)})
+		return
+	}
+
+	issueDate := x509Cert.NotBefore
+	expiryDate := x509Cert.NotAfter
+
+	ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
+	defer cancel()
+
+	existing, err := h.repo.GetCertificateByDomain(ctx, req.Domain, 0)
+	if err == nil && existing != nil {
+		if err := h.repo.UpdateCertificateIssued(ctx, existing.ID, existing.CertPath, existing.KeyPath, string(certBytes), string(keyBytes), issueDate, expiryDate); err != nil {
+			respondJSON(w, http.StatusInternalServerError, map[string]any{"success": false, "message": fmt.Sprintf("更新证书失败: %v", err)})
+			return
+		}
+		respondJSON(w, http.StatusOK, map[string]any{"success": true, "message": "证书已更新", "certificate_id": existing.ID})
+		return
+	}
+
+	cert := &storage.Certificate{
+		Domain:        req.Domain,
+		Email:         auth.UsernameFromContext(r.Context()) + "@upload",
+		Provider:      "manual",
+		Status:        storage.CertStatusValid,
+		CertPEM:       string(certBytes),
+		KeyPEM:        string(keyBytes),
+		IssueDate:     &issueDate,
+		ExpiryDate:    &expiryDate,
+		AutoRenew:     false,
+		ChallengeMode: "manual",
+		DeployTarget:  "none",
+	}
+
+	certPath, keyPath := certDeployPaths(req.Domain, h.acmeClient.GetCertDir())
+	cert.CertPath = certPath
+	cert.KeyPath = keyPath
+
+	if err := h.repo.CreateCertificate(ctx, cert); err != nil {
+		respondJSON(w, http.StatusInternalServerError, map[string]any{"success": false, "message": fmt.Sprintf("创建证书记录失败: %v", err)})
+		return
+	}
+
+	if err := h.repo.UpdateCertificateIssued(ctx, cert.ID, certPath, keyPath, string(certBytes), string(keyBytes), issueDate, expiryDate); err != nil {
+		log.Printf("[Certificate] UpdateCertificateIssued after upload failed: %v", err)
+	}
+
+	h.checkMasterCertReady(cert)
+
+	respondJSON(w, http.StatusOK, map[string]any{"success": true, "message": "证书上传成功", "certificate_id": cert.ID})
 }

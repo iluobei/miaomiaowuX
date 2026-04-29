@@ -131,7 +131,6 @@ const DNS_PROVIDER_TYPES = [
 
 const CA_PROVIDERS = [
   { value: 'letsencrypt', label: "Let's Encrypt" },
-  { value: 'zerossl', label: 'ZeroSSL' },
 ]
 
 function CertificatesPage() {
@@ -143,6 +142,7 @@ function CertificatesPage() {
   const [isDNSProviderDialogOpen, setIsDNSProviderDialogOpen] = useState(false)
   const [isDeployDialogOpen, setIsDeployDialogOpen] = useState(false)
   const [isEnableHTTPSDialogOpen, setIsEnableHTTPSDialogOpen] = useState(false)
+  const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false)
   const [deployTarget, setDeployTarget] = useState<Certificate | null>(null)
 
   const [formData, setFormData] = useState({
@@ -169,6 +169,12 @@ function CertificatesPage() {
   const [deployForm, setDeployForm] = useState({
     deploy_cert_path: '/etc/nginx/ssl/cert.pem',
     deploy_key_path: '/etc/nginx/ssl/key.pem',
+  })
+
+  const [uploadForm, setUploadForm] = useState({
+    domain: '',
+    cert_pem: '',
+    key_pem: '',
   })
 
   // Fetch certificates
@@ -346,6 +352,24 @@ function CertificatesPage() {
     onError: handleServerError,
   })
 
+  const uploadMutation = useMutation({
+    mutationFn: async (data: { domain: string; cert_pem: string; key_pem: string }) => {
+      const response = await api.post('/api/admin/certificates/upload', {
+        domain: data.domain,
+        cert_pem: btoa(data.cert_pem),
+        key_pem: btoa(data.key_pem),
+      })
+      return response.data
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['certificates'] })
+      setIsUploadDialogOpen(false)
+      setUploadForm({ domain: '', cert_pem: '', key_pem: '' })
+      toast.success('证书上传成功')
+    },
+    onError: handleServerError,
+  })
+
   const resetForm = () => {
     setFormData({
       domain: '',
@@ -514,6 +538,10 @@ function CertificatesPage() {
           }}>
             <Plus className="h-4 w-4 mr-2" />
             申请证书
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => setIsUploadDialogOpen(true)}>
+            <Upload className="h-4 w-4 mr-2" />
+            上传证书
           </Button>
         </div>
       </div>
@@ -1101,6 +1129,79 @@ function CertificatesPage() {
               disabled={deployMutation.isPending}
             >
               {deployMutation.isPending ? '部署中...' : '确认部署'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Upload Certificate Dialog */}
+      <Dialog open={isUploadDialogOpen} onOpenChange={(open) => {
+        setIsUploadDialogOpen(open)
+        if (!open) setUploadForm({ domain: '', cert_pem: '', key_pem: '' })
+      }}>
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>上传证书</DialogTitle>
+            <DialogDescription>
+              手动上传 SSL/TLS 证书，粘贴 PEM 格式的证书和私钥内容
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="rounded-md bg-blue-50 dark:bg-blue-900/20 p-3 text-sm text-blue-800 dark:text-blue-200">
+              <p className="font-medium mb-1">API 上传</p>
+              <p className="text-xs">
+                也可通过 API Token 上传证书：POST /api/admin/certificates/upload，Header 添加 Authorization: Bearer {'<API Token>'}，Body 为 JSON：{'{'}
+                "domain": "example.com", "cert_pem": "&lt;base64&gt;", "key_pem": "&lt;base64&gt;"
+                {'}'}。API Token 可在系统设置中获取。
+              </p>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="upload_domain">域名 *</Label>
+              <Input
+                id="upload_domain"
+                placeholder="example.com 或 *.example.com"
+                value={uploadForm.domain}
+                onChange={(e) => setUploadForm({ ...uploadForm, domain: e.target.value })}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="upload_cert">证书内容 (PEM) *</Label>
+              <Textarea
+                id="upload_cert"
+                rows={6}
+                className="font-mono text-xs"
+                placeholder="-----BEGIN CERTIFICATE-----&#10;...&#10;-----END CERTIFICATE-----"
+                value={uploadForm.cert_pem}
+                onChange={(e) => setUploadForm({ ...uploadForm, cert_pem: e.target.value })}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="upload_key">私钥内容 (PEM) *</Label>
+              <Textarea
+                id="upload_key"
+                rows={6}
+                className="font-mono text-xs"
+                placeholder="-----BEGIN PRIVATE KEY-----&#10;...&#10;-----END PRIVATE KEY-----"
+                value={uploadForm.key_pem}
+                onChange={(e) => setUploadForm({ ...uploadForm, key_pem: e.target.value })}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsUploadDialogOpen(false)}>
+              取消
+            </Button>
+            <Button
+              onClick={() => {
+                if (!uploadForm.domain || !uploadForm.cert_pem || !uploadForm.key_pem) {
+                  toast.error('请填写域名、证书和私钥')
+                  return
+                }
+                uploadMutation.mutate(uploadForm)
+              }}
+              disabled={uploadMutation.isPending}
+            >
+              {uploadMutation.isPending ? '上传中...' : '上传证书'}
             </Button>
           </DialogFooter>
         </DialogContent>

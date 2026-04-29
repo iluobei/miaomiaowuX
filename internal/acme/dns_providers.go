@@ -76,13 +76,11 @@ func SetDNSCredentialEnv(providerType string, credentials map[string]string) (cl
 const (
 	CALetsEncrypt        = "letsencrypt"
 	CALetsEncryptStaging = "letsencrypt-staging"
-	CAZeroSSL            = "zerossl"
 )
 
 var CADirectoryURLs = map[string]string{
 	CALetsEncrypt:        "https://acme-v02.api.letsencrypt.org/directory",
 	CALetsEncryptStaging: "https://acme-staging-v02.api.letsencrypt.org/directory",
-	CAZeroSSL:            "https://acme.zerossl.com/v2/DV90",
 }
 
 // 返回给定提供程序名称的 ACME 目录 URL。

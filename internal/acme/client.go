@@ -6,18 +6,16 @@ import (
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
-	"encoding/json"
 	"encoding/pem"
 	"errors"
 	"fmt"
-	"io"
-	"net/http"
 	"os"
 	"path/filepath"
 	"time"
 
 	"github.com/go-acme/lego/v4/certcrypto"
 	"github.com/go-acme/lego/v4/certificate"
+	"github.com/go-acme/lego/v4/challenge/dns01"
 	"github.com/go-acme/lego/v4/challenge/http01"
 	"github.com/go-acme/lego/v4/lego"
 	"github.com/go-acme/lego/v4/registration"
@@ -225,14 +223,6 @@ func (c *Client) buildLegoClient(req CertRequest) (*lego.Client, error) {
 	}
 
 	// 注册用户（如果需要，使用 EAB）
-	if provider == CAZeroSSL && req.EABKid == "" {
-		kid, hmac, err := fetchZeroSSLEAB(req.Email)
-		if err != nil {
-			return nil, fmt.Errorf("auto-fetch ZeroSSL EAB: %w", err)
-		}
-		req.EABKid = kid
-		req.EABHmacKey = hmac
-	}
 	if req.EABKid != "" && req.EABHmacKey != "" {
 		reg, err := client.Registration.RegisterWithExternalAccountBinding(registration.RegisterEABOptions{
 			TermsOfServiceAgreed: true,
@@ -252,30 +242,6 @@ func (c *Client) buildLegoClient(req CertRequest) (*lego.Client, error) {
 	}
 
 	return client, nil
-}
-
-func fetchZeroSSLEAB(email string) (kid, hmacKey string, err error) {
-	resp, err := http.Post("https://api.zerossl.com/acme/eab-credentials-email?email="+email, "", nil)
-	if err != nil {
-		return "", "", fmt.Errorf("request ZeroSSL EAB: %w", err)
-	}
-	defer resp.Body.Close()
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return "", "", fmt.Errorf("read ZeroSSL EAB response: %w", err)
-	}
-	var result struct {
-		Success    bool   `json:"success"`
-		EABKID     string `json:"eab_kid"`
-		EABHMACKey string `json:"eab_hmac_key"`
-	}
-	if err := json.Unmarshal(body, &result); err != nil {
-		return "", "", fmt.Errorf("parse ZeroSSL EAB response: %w", err)
-	}
-	if !result.Success || result.EABKID == "" {
-		return "", "", fmt.Errorf("ZeroSSL EAB failed: %s", string(body))
-	}
-	return result.EABKID, result.EABHMACKey, nil
 }
 
 func (c *Client) setupDNSChallenge(client *lego.Client, req CertRequest) error {
@@ -299,7 +265,9 @@ func (c *Client) setupDNSChallenge(client *lego.Client, req CertRequest) error {
 		return fmt.Errorf("create DNS provider %s: %w", req.DNSProvider, err)
 	}
 
-	if err := client.Challenge.SetDNS01Provider(provider); err != nil {
+	if err := client.Challenge.SetDNS01Provider(provider,
+		dns01.AddRecursiveNameservers([]string{"8.8.8.8:53", "1.1.1.1:53"}),
+	); err != nil {
 		return fmt.Errorf("set DNS-01 provider: %w", err)
 	}
 	return nil
