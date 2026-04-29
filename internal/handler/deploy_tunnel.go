@@ -71,8 +71,8 @@ func (h *RemoteManageHandler) deployTunnelConfig(ctx context.Context, server *st
 		}
 	}
 
-	if _, err := h.forwardToRemoteServer(ctx, server.ID, http.MethodPost, "/api/child/services/control", []byte(`{"service":"xray","action":"restart"}`)); err != nil {
-		log.Printf("[DeployTunnel] Failed to restart xray on server %d: %v", server.ID, err)
+	if err := h.restartXrayWithRecovery(ctx, server.ID, "DeployTunnel"); err != nil {
+		log.Printf("[DeployTunnel] %v", err)
 	}
 
 	log.Printf("[DeployTunnel] Completed tunnel config deployment for server %d (%s), domain=%s", server.ID, server.Name, domain)

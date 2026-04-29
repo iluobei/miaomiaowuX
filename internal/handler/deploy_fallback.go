@@ -68,8 +68,8 @@ func (h *RemoteManageHandler) deployFallbackConfig(ctx context.Context, server *
 		}
 	}
 
-	if _, err := h.forwardToRemoteServer(ctx, server.ID, http.MethodPost, "/api/child/services/control", []byte(`{"service":"xray","action":"restart"}`)); err != nil {
-		log.Printf("[DeployFallback] Failed to restart xray on server %d: %v", server.ID, err)
+	if err := h.restartXrayWithRecovery(ctx, server.ID, "DeployFallback"); err != nil {
+		log.Printf("[DeployFallback] %v", err)
 	}
 
 	log.Printf("[DeployFallback] Completed fallback config deployment for server %d (%s), domain=%s", server.ID, server.Name, domain)
