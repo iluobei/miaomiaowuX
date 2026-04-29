@@ -3,7 +3,7 @@ import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState, useRef, useEffect } from 'react'
 import { toast } from 'sonner'
-import { Plus, RefreshCw, Search, Trash2, Download, Cog, ChevronDown, LayoutGrid, List, Terminal, Play, Square, RotateCcw, Copy, Pencil, X, Settings, Wifi, Radio, Eye } from 'lucide-react'
+import { Plus, RefreshCw, Search, Trash2, Download, Cog, ChevronDown, LayoutGrid, List, Terminal, Play, Square, RotateCcw, Copy, Pencil, X, Settings, Wifi, Radio, Eye, ArrowUpCircle } from 'lucide-react'
 
 import { InboundPanel } from '@/components/xray/inbound-panel'
 import { OutboundPanel } from '@/components/xray/outbound-panel'
@@ -378,6 +378,8 @@ function XrayServersPage() {
   const handleRemoteRemoveXray = (serverId: number) => streamRemoteOp(`/api/admin/remote/xray/remove-stream?server_id=${serverId}`, '卸载远程 Xray', () => { loadRemoteServerStatusToCache(serverId, true); if (managingRemoteServer) loadRemoteServicesStatus(managingRemoteServer.id) })
   const handleRemoteInstallNginx = (serverId: number) => streamRemoteOp(`/api/admin/remote/nginx/install-stream?server_id=${serverId}`, '安装远程 Nginx', () => { loadRemoteServerStatusToCache(serverId, true); if (managingRemoteServer) loadRemoteServicesStatus(managingRemoteServer.id) })
   const handleRemoteRemoveNginx = (serverId: number) => streamRemoteOp(`/api/admin/remote/nginx/remove-stream?server_id=${serverId}`, '卸载远程 Nginx', () => { loadRemoteServerStatusToCache(serverId, true); if (managingRemoteServer) loadRemoteServicesStatus(managingRemoteServer.id) })
+  const handleAgentUpgrade = (serverId: number) => streamRemoteOp(`/api/admin/remote/agent/upgrade-stream?server_id=${serverId}`, '升级远程 Agent')
+  const handleAgentUninstall = (serverId: number) => streamRemoteOp(`/api/admin/remote/agent/uninstall-stream?server_id=${serverId}`, '卸载远程 Agent')
 
   const handleSmartInstall = async (serverId: number, withNginx: boolean) => {
     const status = remoteServicesStatusMap[serverId]
@@ -750,10 +752,13 @@ function XrayServersPage() {
                       {remoteStatus?.xray?.installed && (<Button variant="outline" size="sm" className="flex-1 min-w-0" onClick={(e) => { e.stopPropagation(); handleOpenRemoteXrayConfig(server) }}><Cog className="h-4 w-4 mr-1" />Xray配置</Button>)}
                       {remoteStatus?.xray?.installed && (
                         <DropdownMenu>
-                          <DropdownMenuTrigger asChild><Button variant="outline" size="sm" className="flex-1 min-w-0"><Settings className="mr-1 h-3.5 w-3.5 shrink-0" /><ChevronDown className="ml-1 h-3.5 w-3.5 shrink-0" /></Button></DropdownMenuTrigger>
+                          <DropdownMenuTrigger asChild><Button variant="outline" size="sm" className="flex-1 min-w-0"><Settings className="mr-1 h-3.5 w-3.5 shrink-0" />Agent 管理<ChevronDown className="ml-1 h-3.5 w-3.5 shrink-0" /></Button></DropdownMenuTrigger>
                           <DropdownMenuContent align="start">
                             <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setSyncingServerId(server.id); setSyncServerHost(server.ip_address || ''); setIsSyncNodesDialogOpen(true) }}><RefreshCw className="mr-2 h-4 w-4" />同步节点</DropdownMenuItem>
                             {server.domain && (<><DropdownMenuSeparator /><DropdownMenuItem onClick={(e) => { e.stopPropagation(); deployStealSelfMutation.mutate(server.id) }} disabled={deployStealSelfMutation.isPending}><Download className="mr-2 h-4 w-4" />{deployStealSelfMutation.isPending ? '下发中...' : '下发配置'}</DropdownMenuItem></>)}
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleAgentUpgrade(server.id) }}><ArrowUpCircle className="mr-2 h-4 w-4" />升级 Agent</DropdownMenuItem>
+                            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleAgentUninstall(server.id) }} className="text-red-600"><Trash2 className="mr-2 h-4 w-4" />卸载 Agent</DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
                       )}
@@ -845,10 +850,13 @@ function XrayServersPage() {
                             {remoteStatus?.xray?.installed && (<Button variant="outline" size="sm" className="h-7 px-2" onClick={() => handleOpenRemoteXrayConfig(server)} title="Xray配置"><Cog className="h-3.5 w-3.5" /></Button>)}
                             {remoteStatus?.xray?.installed && (
                               <DropdownMenu>
-                                <DropdownMenuTrigger asChild><Button variant="outline" size="sm" className="h-7 px-2"><Settings className="h-3.5 w-3.5" /><ChevronDown className="h-3 w-3 ml-1" /></Button></DropdownMenuTrigger>
+                                <DropdownMenuTrigger asChild><Button variant="outline" size="sm" className="h-7 px-2" title="Agent 管理"><Settings className="h-3.5 w-3.5" /><ChevronDown className="h-3 w-3 ml-1" /></Button></DropdownMenuTrigger>
                                 <DropdownMenuContent>
                                   <DropdownMenuItem onClick={() => { setSyncingServerId(server.id); setSyncServerHost(server.ip_address || ''); setIsSyncNodesDialogOpen(true) }}><RefreshCw className="mr-2 h-4 w-4" />同步节点</DropdownMenuItem>
                                   {server.domain && (<><DropdownMenuSeparator /><DropdownMenuItem onClick={() => deployStealSelfMutation.mutate(server.id)} disabled={deployStealSelfMutation.isPending}><Download className="mr-2 h-4 w-4" />{deployStealSelfMutation.isPending ? '下发中...' : '下发配置'}</DropdownMenuItem></>)}
+                                  <DropdownMenuSeparator />
+                                  <DropdownMenuItem onClick={() => handleAgentUpgrade(server.id)}><ArrowUpCircle className="mr-2 h-4 w-4" />升级 Agent</DropdownMenuItem>
+                                  <DropdownMenuItem onClick={() => handleAgentUninstall(server.id)} className="text-red-600"><Trash2 className="mr-2 h-4 w-4" />卸载 Agent</DropdownMenuItem>
                                 </DropdownMenuContent>
                               </DropdownMenu>
                             )}

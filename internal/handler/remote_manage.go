@@ -478,6 +478,32 @@ func (h *RemoteManageHandler) HandleNginxRemoveStream(w http.ResponseWriter, r *
 	h.forwardStreamToRemote(w, r, id, "/api/child/nginx/remove-stream")
 }
 
+func (h *RemoteManageHandler) HandleAgentUpgradeStream(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		remoteWriteError(w, http.StatusMethodNotAllowed, "Method not allowed")
+		return
+	}
+	id, err := strconv.ParseInt(r.URL.Query().Get("server_id"), 10, 64)
+	if err != nil {
+		remoteSSEError(w, "invalid server_id")
+		return
+	}
+	h.forwardStreamToRemote(w, r, id, "/api/child/agent/upgrade-stream")
+}
+
+func (h *RemoteManageHandler) HandleAgentUninstallStream(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		remoteWriteError(w, http.StatusMethodNotAllowed, "Method not allowed")
+		return
+	}
+	id, err := strconv.ParseInt(r.URL.Query().Get("server_id"), 10, 64)
+	if err != nil {
+		remoteSSEError(w, "invalid server_id")
+		return
+	}
+	h.forwardStreamToRemote(w, r, id, "/api/child/agent/uninstall-stream")
+}
+
 // 将 nginx 配置请求代理到远程服务器
 func (h *RemoteManageHandler) HandleNginxConfig(w http.ResponseWriter, r *http.Request) {
 	serverID := r.URL.Query().Get("server_id")
