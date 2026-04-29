@@ -201,8 +201,10 @@ func (h *CertificateHandler) EnableHTTPS(w http.ResponseWriter, r *http.Request)
 		respondJSON(w, http.StatusInternalServerError, map[string]any{"success": false, "message": fmt.Sprintf("读取 domain_proxy.conf 模板失败: %v", err)})
 		return
 	}
+	certName := certDeployFilename(cert.Domain)
 	domainConf := strings.ReplaceAll(string(domainTpl), "{domain}", domain)
 	domainConf = strings.ReplaceAll(domainConf, "{root_domain}", rootDomain)
+	domainConf = strings.ReplaceAll(domainConf, "{cert_name}", certName)
 	if err := os.WriteFile(filepath.Join("/usr/local/nginx/servers", domain+".conf"), []byte(domainConf), 0644); err != nil {
 		respondJSON(w, http.StatusInternalServerError, map[string]any{"success": false, "message": fmt.Sprintf("写入 domain.conf 失败: %v", err)})
 		return
@@ -220,8 +222,8 @@ func (h *CertificateHandler) EnableHTTPS(w http.ResponseWriter, r *http.Request)
 		}
 	}
 
-	certPath := filepath.Join("/usr/local/nginx/cert", rootDomain+".pem")
-	keyPath := filepath.Join("/usr/local/nginx/cert", rootDomain+".key")
+	certPath := filepath.Join("/usr/local/nginx/cert", certName+".pem")
+	keyPath := filepath.Join("/usr/local/nginx/cert", certName+".key")
 	if err := os.WriteFile(certPath, []byte(cert.CertPEM), 0644); err != nil {
 		respondJSON(w, http.StatusInternalServerError, map[string]any{"success": false, "message": fmt.Sprintf("写入证书失败: %v", err)})
 		return

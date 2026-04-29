@@ -361,7 +361,12 @@ func deployLocalNginxWithCert(domain string, cert *storage.Certificate) error {
 	if err != nil {
 		return fmt.Errorf("读取 mmwx_domain.conf 模板失败: %w", err)
 	}
+	certName := domain
+	if cert != nil {
+		certName = certDeployFilename(cert.Domain)
+	}
 	domainConf := strings.ReplaceAll(string(domainTpl), "{domain}", domain)
+	domainConf = strings.ReplaceAll(domainConf, "{cert_name}", certName)
 
 	dirs := []string{"/usr/local/nginx/conf", "/usr/local/nginx/servers", "/usr/local/nginx/cert", "/usr/local/nginx/html"}
 	for _, dir := range dirs {
@@ -376,10 +381,10 @@ func deployLocalNginxWithCert(domain string, cert *storage.Certificate) error {
 		return fmt.Errorf("写入 domain.conf 失败: %w", err)
 	}
 	if cert != nil && cert.CertPEM != "" && cert.KeyPEM != "" {
-		if err := os.WriteFile(filepath.Join("/usr/local/nginx/cert", domain+".pem"), []byte(cert.CertPEM), 0644); err != nil {
+		if err := os.WriteFile(filepath.Join("/usr/local/nginx/cert", certName+".pem"), []byte(cert.CertPEM), 0644); err != nil {
 			return fmt.Errorf("写入证书失败: %w", err)
 		}
-		if err := os.WriteFile(filepath.Join("/usr/local/nginx/cert", domain+".key"), []byte(cert.KeyPEM), 0600); err != nil {
+		if err := os.WriteFile(filepath.Join("/usr/local/nginx/cert", certName+".key"), []byte(cert.KeyPEM), 0600); err != nil {
 			return fmt.Errorf("写入密钥失败: %w", err)
 		}
 	}
@@ -403,8 +408,9 @@ func deployCertToLocal(domain string, repo *storage.TrafficRepository) {
 		logger.Warn("[本机Nginx] 未找到域名证书，跳过证书部署", "domain", domain)
 		return
 	}
-	certPath := filepath.Join("/usr/local/nginx/cert", domain+".pem")
-	keyPath := filepath.Join("/usr/local/nginx/cert", domain+".key")
+	certFilename := certDeployFilename(cert.Domain)
+	certPath := filepath.Join("/usr/local/nginx/cert", certFilename+".pem")
+	keyPath := filepath.Join("/usr/local/nginx/cert", certFilename+".key")
 	if err := os.WriteFile(certPath, []byte(cert.CertPEM), 0644); err != nil {
 		logger.Error("[本机Nginx] 写入证书失败", "error", err)
 		return
