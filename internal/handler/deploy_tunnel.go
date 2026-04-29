@@ -38,9 +38,13 @@ func (h *RemoteManageHandler) deployTunnelConfig(ctx context.Context, server *st
 	}
 	log.Printf("[DeployTunnel] Deployed nginx config to server %d (%s)", server.ID, server.Name)
 
-	configTpl, err := templates.ReadFile("tunnel/config.json")
+	configFile := "tunnel/config.json"
+	if domain == rootDomain {
+		configFile = "tunnel/config_ip.json"
+	}
+	configTpl, err := templates.ReadFile(configFile)
 	if err != nil {
-		return fmt.Errorf("读取 tunnel/config.json 模板失败: %w", err)
+		return fmt.Errorf("读取 %s 模板失败: %w", configFile, err)
 	}
 	configJSON := strings.ReplaceAll(string(configTpl), "{proxy_domain}", domain)
 	configJSON = strings.ReplaceAll(configJSON, "{nginx_domain}", rootDomain)
