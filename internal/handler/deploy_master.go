@@ -134,19 +134,7 @@ func isNginxInstalled() bool {
 }
 
 func installNginxLocal() error {
-	scriptPaths := []string{"install-nginx.sh", "/app/install-nginx.sh"}
-	var scriptPath string
-	for _, p := range scriptPaths {
-		if _, err := os.Stat(p); err == nil {
-			scriptPath = p
-			break
-		}
-	}
-	if scriptPath == "" {
-		return fmt.Errorf("install-nginx.sh 脚本未找到")
-	}
-
-	cmd := exec.Command("bash", scriptPath)
+	cmd := exec.Command("bash", "-c", "curl -fsSL https://raw.githubusercontent.com/iluobei/miaomiaowuX/main/install-nginx.sh | bash")
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	return cmd.Run()

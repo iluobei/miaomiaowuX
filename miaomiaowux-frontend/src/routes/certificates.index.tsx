@@ -869,7 +869,7 @@ function CertificatesPage() {
                 )}
               </div>
             )}
-            <div className="space-y-2">
+            {/* <div className="space-y-2">
               <Label>证书部署</Label>
               <Select
                 value={formData.deploy_target}
@@ -893,7 +893,7 @@ function CertificatesPage() {
                   <SelectItem value="both">部署到 Nginx + Xray</SelectItem>
                 </SelectContent>
               </Select>
-            </div>
+            </div> */}
             {formData.deploy_target !== 'none' && (
               <>
                 <div className="space-y-2">
