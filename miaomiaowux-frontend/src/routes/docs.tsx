@@ -185,9 +185,14 @@ function DocsPage() {
           <div className='flex items-center gap-4'>
             <Link to='/' className='flex items-center gap-2'>
               <img
+                src='/images/mmwx_light.webp'
+                alt='妙妙屋 Logo'
+                className='h-8 w-8 border-2 border-[color:rgba(241,140,110,0.4)] shadow-[2px_2px_0_rgba(0,0,0,0.2)] dark:hidden'
+              />
+              <img
                 src='/images/logo.webp'
                 alt='妙妙屋 Logo'
-                className='h-8 w-8 border-2 border-[color:rgba(241,140,110,0.4)] shadow-[2px_2px_0_rgba(0,0,0,0.2)]'
+                className='h-8 w-8 border-2 border-[color:rgba(241,140,110,0.4)] shadow-[2px_2px_0_rgba(0,0,0,0.2)] hidden dark:block'
               />
               <span className='font-bold text-lg pixel-text text-primary'>妙妙屋文档</span>
             </Link>
