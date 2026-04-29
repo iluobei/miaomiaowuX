@@ -642,10 +642,10 @@ function CertificatesPage() {
                                   className="h-8 w-8"
                                   onClick={() => {
                                     setDeployTarget(cert)
-                                    const domain = cert.domain.replace('*.', '')
+                                    const filename = cert.domain.startsWith('*.') ? `_.${cert.domain.slice(2)}` : cert.domain
                                     setDeployForm({
-                                      deploy_cert_path: cert.deploy_cert_path || `/usr/local/nginx/cert/${domain}.pem`,
-                                      deploy_key_path: cert.deploy_key_path || `/usr/local/nginx/cert/${domain}.key`,
+                                      deploy_cert_path: cert.deploy_cert_path || `/usr/local/nginx/cert/${filename}.pem`,
+                                      deploy_key_path: cert.deploy_key_path || `/usr/local/nginx/cert/${filename}.key`,
                                     })
                                     setIsDeployDialogOpen(true)
                                   }}
@@ -876,9 +876,9 @@ function CertificatesPage() {
                 onValueChange={(v) => {
                   const updates: any = { deploy_target: v }
                   if (v !== 'none' && !formData.deploy_cert_path && formData.domain) {
-                    const domain = formData.domain.replace('*.', '')
-                    updates.deploy_cert_path = `/usr/local/nginx/cert/${domain}.pem`
-                    updates.deploy_key_path = `/usr/local/nginx/cert/${domain}.key`
+                    const filename = formData.domain.startsWith('*.') ? `_.${formData.domain.slice(2)}` : formData.domain
+                    updates.deploy_cert_path = `/usr/local/nginx/cert/${filename}.pem`
+                    updates.deploy_key_path = `/usr/local/nginx/cert/${filename}.key`
                   }
                   setFormData({ ...formData, ...updates })
                 }}

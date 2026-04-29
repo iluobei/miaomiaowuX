@@ -334,8 +334,8 @@ func (h *RemoteManageHandler) HandleSetupSSL(w http.ResponseWriter, r *http.Requ
 	if h.certHandler != nil {
 		cert, certErr := h.repo.GetCertificateByDomain(r.Context(), rootDomain, id)
 		if certErr == nil && cert != nil && cert.CertPEM != "" && cert.KeyPEM != "" {
-			certPath := fmt.Sprintf("/usr/local/nginx/cert/%s.pem", rootDomain)
-			keyPath := fmt.Sprintf("/usr/local/nginx/cert/%s.key", rootDomain)
+			certPath := fmt.Sprintf("/usr/local/nginx/cert/%s.pem", certDeployFilename(cert.Domain))
+			keyPath := fmt.Sprintf("/usr/local/nginx/cert/%s.key", certDeployFilename(cert.Domain))
 
 			payload := WSCertDeployPayload{
 				Domain:   rootDomain,

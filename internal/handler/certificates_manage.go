@@ -7,6 +7,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -17,6 +18,21 @@ import (
 )
 
 // CertificateHandler 处理证书管理 API 端点。
+
+// certDeployFilename 根据证书域名生成部署文件名。
+// 泛域名 *.example.com → _.example.com，单域名保持原样。
+func certDeployFilename(domain string) string {
+	if strings.HasPrefix(domain, "*.") {
+		return "_." + domain[2:]
+	}
+	return domain
+}
+
+// certDeployPaths 根据证书域名和基础目录生成部署路径。
+func certDeployPaths(domain, dir string) (certPath, keyPath string) {
+	name := certDeployFilename(domain)
+	return filepath.Join(dir, name+".pem"), filepath.Join(dir, name+".key")
+}
 type CertificateHandler struct {
 	repo       *storage.TrafficRepository
 	wsHandler  *RemoteWSHandler
@@ -812,8 +828,8 @@ func (h *CertificateHandler) deployRemoteCertificate(cert *storage.Certificate, 
 		Domain:   cert.Domain,
 		CertPEM:  certPEM,
 		KeyPEM:   keyPEM,
-		CertPath: cert.DeployCertPath,
-		KeyPath:  cert.DeployKeyPath,
+		CertPath: filepath.Join(filepath.Dir(cert.DeployCertPath), certDeployFilename(cert.Domain)+filepath.Ext(cert.DeployCertPath)),
+		KeyPath:  filepath.Join(filepath.Dir(cert.DeployKeyPath), certDeployFilename(cert.Domain)+filepath.Ext(cert.DeployKeyPath)),
 		Reload:   cert.DeployTarget,
 	}
 
@@ -853,8 +869,8 @@ func (h *CertificateHandler) deployToAllRemotes(domain, certPEM, keyPEM, certPat
 		Domain:   domain,
 		CertPEM:  certPEM,
 		KeyPEM:   keyPEM,
-		CertPath: certPath,
-		KeyPath:  keyPath,
+		CertPath: filepath.Join(filepath.Dir(certPath), certDeployFilename(domain)+filepath.Ext(certPath)),
+		KeyPath:  filepath.Join(filepath.Dir(keyPath), certDeployFilename(domain)+filepath.Ext(keyPath)),
 		Reload:   reloadTarget,
 	}
 
@@ -984,8 +1000,8 @@ func (h *CertificateHandler) DeployAutoDeployCertificates(serverID int64) {
 			Domain:   cert.Domain,
 			CertPEM:  cert.CertPEM,
 			KeyPEM:   cert.KeyPEM,
-			CertPath: cert.DeployCertPath,
-			KeyPath:  cert.DeployKeyPath,
+			CertPath: filepath.Join(filepath.Dir(cert.DeployCertPath), certDeployFilename(cert.Domain)+filepath.Ext(cert.DeployCertPath)),
+			KeyPath:  filepath.Join(filepath.Dir(cert.DeployKeyPath), certDeployFilename(cert.Domain)+filepath.Ext(cert.DeployKeyPath)),
 			Reload:   "both",
 		}
 		go h.deployToRemoteServer(server, payload)

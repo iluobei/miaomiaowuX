@@ -2188,8 +2188,8 @@ func (h *RemoteManageHandler) HandleAddWebsite(w http.ResponseWriter, r *http.Re
 				Domain:   rootDomain,
 				CertPEM:  cert.CertPEM,
 				KeyPEM:   cert.KeyPEM,
-				CertPath: fmt.Sprintf("/usr/local/nginx/cert/%s.pem", rootDomain),
-				KeyPath:  fmt.Sprintf("/usr/local/nginx/cert/%s.key", rootDomain),
+				CertPath: fmt.Sprintf("/usr/local/nginx/cert/%s.pem", certDeployFilename(cert.Domain)),
+				KeyPath:  fmt.Sprintf("/usr/local/nginx/cert/%s.key", certDeployFilename(cert.Domain)),
 				Reload:   "nginx",
 			}
 			h.certHandler.deployToRemoteServer(server, payload)
