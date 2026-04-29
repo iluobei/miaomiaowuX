@@ -42,7 +42,8 @@ func (h *RemoteManageHandler) deployTunnelConfig(ctx context.Context, server *st
 	if err != nil {
 		return fmt.Errorf("读取 tunnel/config.json 模板失败: %w", err)
 	}
-	configJSON := strings.ReplaceAll(string(configTpl), "{domain}", fmt.Sprintf("%q", domain))
+	configJSON := strings.ReplaceAll(string(configTpl), "{proxy_domain}", domain)
+	configJSON = strings.ReplaceAll(configJSON, "{nginx_domain}", rootDomain)
 
 	configPayload, _ := json.Marshal(map[string]string{
 		"config": configJSON,

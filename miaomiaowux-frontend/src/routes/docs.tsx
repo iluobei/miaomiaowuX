@@ -719,7 +719,7 @@ function DocsPage() {
                             <div className='ml-4'>user: root</div>
                             <div className='ml-4 mt-2'>environment:</div>
                             <div className='ml-6'>- PORT=12889</div>
-                            <div className='ml-6'>- DATABASE_PATH=/app/data/traffic.db</div>
+                            <div className='ml-6'>- DATABASE_PATH=/app/data/mmwx.db</div>
                             <div className='ml-6'>- LOG_LEVEL=info</div>
                             <div className='ml-4 mt-2'>ports:</div>
                             <div className='ml-6'>- "12889:12889"</div>

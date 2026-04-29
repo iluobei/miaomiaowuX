@@ -1984,14 +1984,12 @@ func (h *RemoteManageHandler) HandleResetAllTokens(w http.ResponseWriter, r *htt
 	})
 }
 
-// 主控使用stream 模拟xray tunnel时, 先清理stream配置, 再重启xray, 以恢复被占用的443端口
 func (h *RemoteManageHandler) restartXrayWithRecovery(ctx context.Context, serverID int64, logPrefix string) error {
-	restartAndVerify := func() error {
+	restartAndVerify := func(waitSec int) error {
 		if _, err := h.forwardToRemoteServer(ctx, serverID, http.MethodPost, "/api/child/services/control", []byte(`{"service":"xray","action":"restart"}`)); err != nil {
 			return err
 		}
-		// systemctl restart 可能返回成功但 xray 因端口占用立即崩溃，等待后验证实际状态
-		time.Sleep(2 * time.Second)
+		time.Sleep(time.Duration(waitSec) * time.Second)
 		statusResult, err := h.forwardToRemoteServer(ctx, serverID, http.MethodGet, "/api/child/services/status", nil)
 		if err != nil {
 			return fmt.Errorf("failed to check xray status: %v", err)
@@ -2010,36 +2008,54 @@ func (h *RemoteManageHandler) restartXrayWithRecovery(ctx context.Context, serve
 		return nil
 	}
 
-	if err := restartAndVerify(); err == nil {
+	// 第一轮：直接重启，等 2 秒验证
+	if err := restartAndVerify(2); err == nil {
 		return nil
 	} else {
-		log.Printf("[%s] Xray restart failed on server %d: %v, attempting stream port cleanup", logPrefix, serverID, err)
+		log.Printf("[%s] Xray restart attempt 1 failed on server %d: %v", logPrefix, serverID, err)
 	}
 
+	// 第二轮：可能只是启动慢，等久一点再验证
+	if err := restartAndVerify(4); err == nil {
+		log.Printf("[%s] Xray restarted on server %d after longer wait", logPrefix, serverID)
+		return nil
+	} else {
+		log.Printf("[%s] Xray restart attempt 2 failed on server %d: %v, trying stream cleanup", logPrefix, serverID, err)
+	}
+
+	// 第三轮：清理 nginx stream 端口冲突后重试
 	clearPayload, _ := json.Marshal(map[string]int{"port": 443})
 	clearResult, clearErr := h.forwardToRemoteServer(ctx, serverID, http.MethodPost, "/api/child/nginx/clear-stream-port", clearPayload)
-	if clearErr != nil {
-		log.Printf("[%s] Failed to clear stream port on server %d: %v", logPrefix, serverID, clearErr)
-		return fmt.Errorf("xray restart failed and stream cleanup also failed: %v", clearErr)
+	if clearErr == nil {
+		var clearResp struct {
+			Removed int `json:"removed"`
+		}
+		json.Unmarshal(clearResult, &clearResp)
+		if clearResp.Removed > 0 {
+			log.Printf("[%s] Removed %d stream config(s) on server %d, retrying", logPrefix, clearResp.Removed, serverID)
+			if err := restartAndVerify(3); err == nil {
+				log.Printf("[%s] Xray restarted after stream cleanup on server %d", logPrefix, serverID)
+				return nil
+			}
+		}
+	} else {
+		log.Printf("[%s] Stream cleanup failed on server %d: %v", logPrefix, serverID, clearErr)
 	}
 
-	var clearResp struct {
-		Removed int `json:"removed"`
-	}
-	json.Unmarshal(clearResult, &clearResp)
+	// 第四轮兜底：先停 nginx 释放端口 → 重启 xray → 再启 nginx
+	log.Printf("[%s] All normal attempts failed on server %d, trying nginx stop → xray restart → nginx start", logPrefix, serverID)
+	h.forwardToRemoteServer(ctx, serverID, http.MethodPost, "/api/child/services/control", []byte(`{"service":"nginx","action":"stop"}`))
+	time.Sleep(1 * time.Second)
 
-	if clearResp.Removed == 0 {
-		log.Printf("[%s] No stream configs found on port 443 for server %d, cannot recover", logPrefix, serverID)
-		return fmt.Errorf("xray not running after restart (no nginx stream conflict found)")
-	}
-
-	log.Printf("[%s] Removed %d stream config(s) on server %d, retrying xray restart", logPrefix, clearResp.Removed, serverID)
-
-	if retryErr := restartAndVerify(); retryErr != nil {
-		log.Printf("[%s] Xray restart still failed after stream cleanup on server %d: %v", logPrefix, serverID, retryErr)
-		return fmt.Errorf("xray restart failed after stream cleanup: %v", retryErr)
+	if err := restartAndVerify(3); err != nil {
+		// xray 还是起不来，把 nginx 恢复
+		h.forwardToRemoteServer(ctx, serverID, http.MethodPost, "/api/child/services/control", []byte(`{"service":"nginx","action":"start"}`))
+		log.Printf("[%s] Xray restart failed even after stopping nginx on server %d: %v", logPrefix, serverID, err)
+		return fmt.Errorf("xray restart failed after all recovery attempts: %v", err)
 	}
 
-	log.Printf("[%s] Xray restarted successfully after stream port cleanup on server %d", logPrefix, serverID)
+	// xray 起来了，恢复 nginx
+	h.forwardToRemoteServer(ctx, serverID, http.MethodPost, "/api/child/services/control", []byte(`{"service":"nginx","action":"start"}`))
+	log.Printf("[%s] Xray restarted via nginx stop/start fallback on server %d", logPrefix, serverID)
 	return nil
 }
