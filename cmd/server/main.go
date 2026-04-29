@@ -279,6 +279,7 @@ func main() {
 	mux.Handle("/api/admin/remote-servers/create", auth.RequireAdmin(tokenStore, userRepo, http.HandlerFunc(xrayServerHandler.CreateRemoteServer)))
 	mux.Handle("/api/admin/remote-servers/update", auth.RequireAdmin(tokenStore, userRepo, http.HandlerFunc(xrayServerHandler.UpdateRemoteServer)))
 	mux.Handle("/api/admin/remote-servers/delete", auth.RequireAdmin(tokenStore, userRepo, http.HandlerFunc(xrayServerHandler.DeleteRemoteServer)))
+	mux.Handle("/api/admin/check-same-ip", auth.RequireAdmin(tokenStore, userRepo, http.HandlerFunc(xrayServerHandler.CheckSameIP)))
 
 	// 远程服务器公共端点（无管理员身份验证，基于令牌）
 	mux.Handle("/api/remote/heartbeat", http.HandlerFunc(xrayServerHandler.RemoteHeartbeat))

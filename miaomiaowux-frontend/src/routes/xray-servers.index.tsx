@@ -208,6 +208,15 @@ function XrayServersPage() {
 
   const masterOrigin = masterUrlData?.master_url || window.location.origin
 
+  const { data: masterCertData } = useQuery({
+    queryKey: ['master-cert-status'],
+    queryFn: async () => {
+      const response = await api.get('/api/admin/master-cert-status')
+      return response.data as { success: boolean; domain: string; https_enabled: boolean }
+    },
+    staleTime: 5 * 60 * 1000,
+  })
+
   const saveXrayRawConfigMutation = useMutation({
     mutationFn: async ({ serverId, config }: { serverId: number; config: string }) => {
       const response = await api.post(`/api/admin/remote/xray/config?server_id=${serverId}`, { config })
@@ -380,6 +389,16 @@ function XrayServersPage() {
   const handleRemoteRemoveNginx = (serverId: number) => streamRemoteOp(`/api/admin/remote/nginx/remove-stream?server_id=${serverId}`, '卸载远程 Nginx', () => { loadRemoteServerStatusToCache(serverId, true); if (managingRemoteServer) loadRemoteServicesStatus(managingRemoteServer.id) })
   const handleAgentUpgrade = (serverId: number) => streamRemoteOp(`/api/admin/remote/agent/upgrade-stream?server_id=${serverId}`, '升级远程 Agent')
   const handleAgentUninstall = (serverId: number) => streamRemoteOp(`/api/admin/remote/agent/uninstall-stream?server_id=${serverId}`, '卸载远程 Agent')
+
+  const checkSameIP = async (address: string) => {
+    if (!address.trim() || !createStealSelf) return
+    try {
+      const res = await api.get(`/api/admin/check-same-ip?address=${encodeURIComponent(address.trim())}`)
+      if (res.data.same_ip && res.data.https_enabled) {
+        setCreateDomain(res.data.master_domain)
+      }
+    } catch {}
+  }
 
   const handleSmartInstall = async (serverId: number, withNginx: boolean) => {
     const status = remoteServicesStatusMap[serverId]
@@ -606,7 +625,7 @@ function XrayServersPage() {
                 </div>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 bg-muted/50 rounded-lg">
-                <div className="grid gap-2"><Label htmlFor="pull-address">服务器地址</Label><Input id="pull-address" value={pullAddress} onChange={(e) => setPullAddress(e.target.value)} placeholder="例如：example.com" disabled={!!generatedToken} /></div>
+                <div className="grid gap-2"><Label htmlFor="pull-address">服务器地址</Label><Input id="pull-address" value={pullAddress} onChange={(e) => setPullAddress(e.target.value)} onBlur={(e) => checkSameIP(e.target.value)} placeholder="例如：example.com" disabled={!!generatedToken} /></div>
                 <div className="grid gap-2"><Label htmlFor="pull-port">Agent 端口</Label><Input id="pull-port" type="number" value={pullPort} onChange={(e) => setPullPort(e.target.value)} placeholder="23889" disabled={!!generatedToken} /></div>
                 <div className="grid gap-2"><Label htmlFor="pull-token">Agent 认证 Token (可选)</Label><Input id="pull-token" value={pullToken} onChange={(e) => setPullToken(e.target.value)} placeholder="自动生成" disabled={!!generatedToken} readOnly={!!generatedToken} /></div>
                 <div className="grid gap-2"><Label htmlFor="add-traffic-limit">流量限制 (GB)</Label><Input id="add-traffic-limit" type="number" step="0.01" placeholder="留空表示不限制" value={formData.traffic_limit_gb} onChange={(e) => setFormData({ ...formData, traffic_limit_gb: e.target.value })} disabled={!!generatedToken} /></div>
@@ -614,14 +633,14 @@ function XrayServersPage() {
                 <div className="grid gap-2"><Label htmlFor="add-reset-day">重置日期 (每月)</Label><Input id="add-reset-day" type="number" min="1" max="31" placeholder="1-31，留空不重置" value={formData.traffic_reset_day} onChange={(e) => setFormData({ ...formData, traffic_reset_day: e.target.value })} disabled={!!generatedToken} /></div>
               </div>
               <div className="grid gap-3 p-4 border rounded-lg">
-                <div className="flex items-center justify-between"><Label htmlFor="create-steal-self" className="cursor-pointer">我要偷自己</Label><Switch id="create-steal-self" checked={createStealSelf} onCheckedChange={setCreateStealSelf} disabled={!!generatedToken} /></div>
+                <div className="flex items-center justify-between"><Label htmlFor="create-steal-self" className="cursor-pointer">我要偷自己</Label><Switch id="create-steal-self" checked={createStealSelf} onCheckedChange={(checked) => { setCreateStealSelf(checked); if (checked) setCreateUse443(true) }} disabled={!!generatedToken} /></div>
                 <div className="grid gap-2">
                   <Label>前置选择</Label>
                   <RadioGroup value={createFrontService} onValueChange={(value) => setCreateFrontService(value as 'xray' | 'nginx')} className="flex gap-4">
                     <div className="flex items-center gap-2"><RadioGroupItem value="xray" id="create-front-xray" disabled={!!generatedToken || !createStealSelf} /><Label htmlFor="create-front-xray" className="text-sm cursor-pointer">xray</Label></div>
                     <div className="flex items-center gap-2 opacity-60"><RadioGroupItem value="nginx" id="create-front-nginx" disabled /><Label htmlFor="create-front-nginx" className="text-sm cursor-not-allowed">nginx（暂不支持）</Label></div>
                   </RadioGroup>
-                  <p className="text-xs text-muted-foreground">开启"我要偷自己"后，安装 mmw-agent 完成后会自动安装 Xray + Nginx（与创建后点击安装一致）。</p>
+                  <p className="text-xs text-muted-foreground">开启"我要偷自己"后，安装 mmw-agent 完成后会自动安装 Xray + Nginx</p>
                 </div>
                 <div className="grid gap-2">
                   <Label>部署模式</Label>
@@ -629,16 +648,20 @@ function XrayServersPage() {
                     <div className="flex items-center gap-2"><RadioGroupItem value="tunnel" id="steal-mode-tunnel" disabled={!!generatedToken || !createStealSelf} /><Label htmlFor="steal-mode-tunnel" className="text-sm cursor-pointer">Tunnel 模式</Label></div>
                     <div className="flex items-center gap-2"><RadioGroupItem value="fallback" id="steal-mode-fallback" disabled={!!generatedToken || !createStealSelf} /><Label htmlFor="steal-mode-fallback" className="text-sm cursor-pointer">回落模式</Label></div>
                   </RadioGroup>
-                  <p className="text-xs text-muted-foreground">{createStealMode === 'tunnel' ? 'Xray 监听 443 端口，通过 tunnel 转发到 Nginx' : 'Nginx 做 SSL 终结，Xray 直接监听协议端口'}</p>
+                  <p className="text-xs text-muted-foreground">{createStealMode === 'tunnel' ? 'Xray 监听 443 端口，通过 tunnel 转发到 Nginx' : 'Nginx 做 SSL 中转，Xray 直接监听协议端口'}</p>
                 </div>
                 {createStealSelf && (
                   <>
-                    <div className="flex items-center justify-between"><Label htmlFor="create-use-443" className="cursor-pointer">使用443端口部署</Label><Switch id="create-use-443" checked={createUse443} onCheckedChange={(checked) => { setCreateUse443(checked); if (!checked) setCreateDomain('') }} disabled={!!generatedToken} /></div>
+                    <div className="flex items-center justify-between"><Label htmlFor="create-use-443" className="cursor-pointer">使用443端口部署</Label><Switch id="create-use-443" checked={createUse443} onCheckedChange={(checked) => { setCreateUse443(checked); if (!checked) setCreateDomain('') }} disabled={!!generatedToken || createStealSelf} /></div>
                     {createUse443 && (
                       <div className="grid gap-2">
                         <Label htmlFor="create-domain">域名 <span className="text-destructive">*</span></Label>
                         <Input id="create-domain" value={createDomain} onChange={(e) => setCreateDomain(e.target.value)} placeholder="例如：us1.example.com" disabled={!!generatedToken} />
-                        <p className="text-xs text-muted-foreground">Agent 连接后将自动下发 Nginx + Xray 443端口配置和证书。建议为每个地区增加一个偷自己的服务器。</p>
+                        {createDomain && masterCertData?.domain && createDomain === masterCertData.domain ? (
+                          <p className="text-xs text-blue-600">已自动填充主控域名（服务器 IP 与主控一致）</p>
+                        ) : (
+                          <p className="text-xs text-muted-foreground">Agent 连接后将自动下发 Nginx + Xray 443端口配置和证书。建议为每个地区增加一个偷自己的服务器。</p>
+                        )}
                       </div>
                     )}
                   </>
@@ -1028,7 +1051,7 @@ function XrayServersPage() {
                   <div className="flex items-center gap-2"><RadioGroupItem value="fallback" id="edit-steal-fallback" /><Label htmlFor="edit-steal-fallback" className="text-sm cursor-pointer">回落</Label></div>
                   <div className="flex items-center gap-2"><RadioGroupItem value="default" id="edit-steal-default" /><Label htmlFor="edit-steal-default" className="text-sm cursor-pointer">默认</Label></div>
                 </RadioGroup>
-                <p className="text-xs text-muted-foreground">{remoteFormData.steal_mode === 'tunnel' ? 'Xray 监听 443，通过 tunnel 转发到 Nginx' : remoteFormData.steal_mode === 'fallback' ? 'Nginx 做 SSL 终结，Xray 直接监听协议端口' : '无偷自己，Xray 直接监听协议端口'}</p>
+                <p className="text-xs text-muted-foreground">{remoteFormData.steal_mode === 'tunnel' ? 'Xray 监听 443，通过 tunnel 转发到 Nginx' : remoteFormData.steal_mode === 'fallback' ? 'Nginx 做 SSL 中转，Xray 直接监听协议端口' : '无偷自己，Xray 直接监听协议端口'}</p>
                 {remoteFormData.steal_mode !== (editingRemoteServer?.steal_mode || 'tunnel') && (<p className="text-xs text-yellow-600 dark:text-yellow-400">切换模式将重新部署配置，已有入站会自动保留</p>)}
               </div>
             )}

@@ -205,13 +205,34 @@ func (h *XrayServerHandler) CreateRemoteServer(w stdhttp.ResponseWriter, r *stdh
 	ctx := r.Context()
 	reqDomain := strings.ToLower(strings.TrimSpace(req.Domain))
 	mmwxDomain := getDomainFromMasterURL(h.repo, ctx)
+
+	isLocalByAddr := false
+	if req.PullAddress != "" && mmwxDomain != "" {
+		addrIPs := resolveIPs(req.PullAddress)
+		mmwxIPs := resolveIPs(mmwxDomain)
+		mmwxIPSet := make(map[string]struct{})
+		for _, ip := range mmwxIPs {
+			mmwxIPSet[ip] = struct{}{}
+		}
+		for _, ip := range addrIPs {
+			if _, ok := mmwxIPSet[ip]; ok {
+				isLocalByAddr = true
+				break
+			}
+		}
+	}
+
+	masterURL, _ := h.repo.GetSystemSetting(ctx, "master_url")
+	httpsEnabled := strings.HasPrefix(masterURL, "https://")
 	if reqDomain != "" && mmwxDomain != "" && reqDomain == mmwxDomain {
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(RemoteServerResponse{
-			Success: false,
-			Message: "域名不能与 MMWX 安装域名相同",
-		})
-		return
+		if !(isLocalByAddr && req.StealSelf && httpsEnabled) {
+			w.Header().Set("Content-Type", "application/json")
+			json.NewEncoder(w).Encode(RemoteServerResponse{
+				Success: false,
+				Message: "域名不能与 MMWX 安装域名相同",
+			})
+			return
+		}
 	}
 
 	// 生成安全令牌
@@ -321,8 +342,8 @@ func (h *XrayServerHandler) CreateRemoteServer(w stdhttp.ResponseWriter, r *stdh
 	}
 
 	// 本机检测：域名解析 IP 与 mmwx_domain 解析 IP 一致则为本机
-	isLocal := false
-	if reqDomain != "" && mmwxDomain != "" {
+	isLocal := isLocalByAddr
+	if !isLocal && reqDomain != "" && mmwxDomain != "" {
 		reqIPs, err1 := net.LookupHost(reqDomain)
 		mmwxIPs, err2 := net.LookupHost(mmwxDomain)
 		if err1 == nil && err2 == nil {
@@ -493,5 +514,59 @@ func (h *XrayServerHandler) UpdateRemoteServer(w stdhttp.ResponseWriter, r *stdh
 	json.NewEncoder(w).Encode(RemoteServerResponse{
 		Success: true,
 		Message: "服务器信息已更新",
+	})
+}
+
+func resolveIPs(address string) []string {
+	if ip := net.ParseIP(address); ip != nil {
+		return []string{ip.String()}
+	}
+	ips, err := net.LookupHost(address)
+	if err != nil {
+		return nil
+	}
+	return ips
+}
+
+func (h *XrayServerHandler) CheckSameIP(w stdhttp.ResponseWriter, r *stdhttp.Request) {
+	if r.Method != stdhttp.MethodGet {
+		stdhttp.Error(w, "Method not allowed", stdhttp.StatusMethodNotAllowed)
+		return
+	}
+
+	address := strings.TrimSpace(r.URL.Query().Get("address"))
+	if address == "" {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]any{"success": false, "message": "address 参数不能为空"})
+		return
+	}
+
+	ctx := r.Context()
+	mmwxDomain := getDomainFromMasterURL(h.repo, ctx)
+	masterURL, _ := h.repo.GetSystemSetting(ctx, "master_url")
+	httpsEnabled := strings.HasPrefix(masterURL, "https://")
+
+	sameIP := false
+	if mmwxDomain != "" {
+		addrIPs := resolveIPs(address)
+		mmwxIPs := resolveIPs(mmwxDomain)
+		mmwxIPSet := make(map[string]struct{})
+		for _, ip := range mmwxIPs {
+			mmwxIPSet[ip] = struct{}{}
+		}
+		for _, ip := range addrIPs {
+			if _, ok := mmwxIPSet[ip]; ok {
+				sameIP = true
+				break
+			}
+		}
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]any{
+		"success":       true,
+		"same_ip":       sameIP,
+		"master_domain": mmwxDomain,
+		"https_enabled": httpsEnabled,
 	})
 }
