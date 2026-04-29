@@ -6,9 +6,12 @@ import (
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
+	"encoding/json"
 	"encoding/pem"
 	"errors"
 	"fmt"
+	"io"
+	"net/http"
 	"os"
 	"path/filepath"
 	"time"
@@ -222,7 +225,14 @@ func (c *Client) buildLegoClient(req CertRequest) (*lego.Client, error) {
 	}
 
 	// 注册用户（如果需要，使用 EAB）
-	regOpts := registration.RegisterOptions{TermsOfServiceAgreed: true}
+	if provider == CAZeroSSL && req.EABKid == "" {
+		kid, hmac, err := fetchZeroSSLEAB(req.Email)
+		if err != nil {
+			return nil, fmt.Errorf("auto-fetch ZeroSSL EAB: %w", err)
+		}
+		req.EABKid = kid
+		req.EABHmacKey = hmac
+	}
 	if req.EABKid != "" && req.EABHmacKey != "" {
 		reg, err := client.Registration.RegisterWithExternalAccountBinding(registration.RegisterEABOptions{
 			TermsOfServiceAgreed: true,
@@ -234,7 +244,7 @@ func (c *Client) buildLegoClient(req CertRequest) (*lego.Client, error) {
 		}
 		user.Registration = reg
 	} else {
-		reg, err := client.Registration.Register(regOpts)
+		reg, err := client.Registration.Register(registration.RegisterOptions{TermsOfServiceAgreed: true})
 		if err != nil {
 			return nil, fmt.Errorf("register with ACME: %w", err)
 		}
@@ -242,6 +252,30 @@ func (c *Client) buildLegoClient(req CertRequest) (*lego.Client, error) {
 	}
 
 	return client, nil
+}
+
+func fetchZeroSSLEAB(email string) (kid, hmacKey string, err error) {
+	resp, err := http.Post("https://api.zerossl.com/acme/eab-credentials-email?email="+email, "", nil)
+	if err != nil {
+		return "", "", fmt.Errorf("request ZeroSSL EAB: %w", err)
+	}
+	defer resp.Body.Close()
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", "", fmt.Errorf("read ZeroSSL EAB response: %w", err)
+	}
+	var result struct {
+		Success    bool   `json:"success"`
+		EABKID     string `json:"eab_kid"`
+		EABHMACKey string `json:"eab_hmac_key"`
+	}
+	if err := json.Unmarshal(body, &result); err != nil {
+		return "", "", fmt.Errorf("parse ZeroSSL EAB response: %w", err)
+	}
+	if !result.Success || result.EABKID == "" {
+		return "", "", fmt.Errorf("ZeroSSL EAB failed: %s", string(body))
+	}
+	return result.EABKID, result.EABHMACKey, nil
 }
 
 func (c *Client) setupDNSChallenge(client *lego.Client, req CertRequest) error {

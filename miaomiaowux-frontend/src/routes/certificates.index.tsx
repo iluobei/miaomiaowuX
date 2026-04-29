@@ -132,7 +132,6 @@ const DNS_PROVIDER_TYPES = [
 const CA_PROVIDERS = [
   { value: 'letsencrypt', label: "Let's Encrypt" },
   { value: 'zerossl', label: 'ZeroSSL' },
-  { value: 'buypass', label: 'Buypass' },
 ]
 
 function CertificatesPage() {
