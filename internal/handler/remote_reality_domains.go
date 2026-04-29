@@ -292,6 +292,13 @@ func (h *RemoteManageHandler) HandleSetupSSL(w http.ResponseWriter, r *http.Requ
 		nginxTplPath = "fallback/nginx.conf"
 		domainTplPath = "fallback/domain_static.conf"
 	}
+	if server.SiteType == "proxy" {
+		if server.StealMode == "fallback" {
+			domainTplPath = "fallback/domain_proxy.conf"
+		} else {
+			domainTplPath = "tunnel/domain_proxy.conf"
+		}
+	}
 
 	// 步骤1：读取nginx.conf基本模板（无需域替换）
 	nginxConf, readErr := templates.ReadFile(nginxTplPath)
@@ -308,6 +315,8 @@ func (h *RemoteManageHandler) HandleSetupSSL(w http.ResponseWriter, r *http.Requ
 	}
 	domainConf := strings.ReplaceAll(string(domainTpl), "{domain}", domain)
 	domainConf = strings.ReplaceAll(domainConf, "{root_domain}", rootDomain)
+	domainConf = strings.ReplaceAll(domainConf, "{static_root_path}", server.SiteValue)
+	domainConf = strings.ReplaceAll(domainConf, "{proxy_pass_server}", server.SiteValue)
 
 	sslPayload, _ := json.Marshal(map[string]any{
 		"domain":        domain,

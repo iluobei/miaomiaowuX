@@ -3,7 +3,7 @@ import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState, useRef, useEffect } from 'react'
 import { toast } from 'sonner'
-import { Plus, RefreshCw, Search, Trash2, Download, Cog, ChevronDown, LayoutGrid, List, Terminal, Play, Square, RotateCcw, Copy, Pencil, X, Settings, Wifi, Radio, Eye, ArrowUpCircle } from 'lucide-react'
+import { Plus, RefreshCw, Search, Trash2, Download, Cog, ChevronDown, LayoutGrid, List, Terminal, Play, Square, RotateCcw, Copy, Pencil, X, Settings, Wifi, Radio, Eye, ArrowUpCircle, Globe, CheckCircle, XCircle, Loader2 } from 'lucide-react'
 
 import { InboundPanel } from '@/components/xray/inbound-panel'
 import { OutboundPanel } from '@/components/xray/outbound-panel'
@@ -141,6 +141,16 @@ function XrayServersPage() {
   const [createUse443, setCreateUse443] = useState(false)
   const [createDomain, setCreateDomain] = useState('')
   const [domainAutoFilled, setDomainAutoFilled] = useState(false)
+  const [createSiteType, setCreateSiteType] = useState<'static' | 'proxy'>('static')
+  const [createSiteValue, setCreateSiteValue] = useState('')
+  const [isAddWebsiteDialogOpen, setIsAddWebsiteDialogOpen] = useState(false)
+  const [addWebsiteServerId, setAddWebsiteServerId] = useState<number | null>(null)
+  const [addWebsiteDomain, setAddWebsiteDomain] = useState('')
+  const [addWebsiteSiteType, setAddWebsiteSiteType] = useState<'static' | 'proxy'>('static')
+  const [addWebsiteSiteValue, setAddWebsiteSiteValue] = useState('')
+  const [addWebsiteValidating, setAddWebsiteValidating] = useState(false)
+  const [addWebsiteValidResult, setAddWebsiteValidResult] = useState<{ ok: boolean; msg: string } | null>(null)
+  const [addWebsiteSubmitting, setAddWebsiteSubmitting] = useState(false)
   const [isDeleteRemoteServerDialogOpen, setIsDeleteRemoteServerDialogOpen] = useState(false)
   const [deletingRemoteServerId, setDeletingRemoteServerId] = useState<number | null>(null)
   const [selectedRemoteServer, setSelectedRemoteServer] = useState<RemoteServer | null>(null)
@@ -391,6 +401,27 @@ function XrayServersPage() {
   const handleAgentUpgrade = (serverId: number) => streamRemoteOp(`/api/admin/remote/agent/upgrade-stream?server_id=${serverId}`, '升级远程 Agent')
   const handleAgentUninstall = (serverId: number) => streamRemoteOp(`/api/admin/remote/agent/uninstall-stream?server_id=${serverId}`, '卸载远程 Agent')
 
+  const resetAddWebsiteDialog = () => { setAddWebsiteDomain(''); setAddWebsiteSiteType('static'); setAddWebsiteSiteValue(''); setAddWebsiteValidating(false); setAddWebsiteValidResult(null); setAddWebsiteSubmitting(false) }
+  const validateWebsite = async () => {
+    if (!addWebsiteServerId || !addWebsiteSiteValue.trim()) return
+    setAddWebsiteValidating(true); setAddWebsiteValidResult(null)
+    try {
+      const res = await api.post('/api/admin/remote/website/validate', { server_id: addWebsiteServerId, site_type: addWebsiteSiteType, site_value: addWebsiteSiteValue.trim() })
+      setAddWebsiteValidResult({ ok: res.data.success, msg: res.data.message })
+    } catch { setAddWebsiteValidResult({ ok: false, msg: '验证请求失败' }) }
+    finally { setAddWebsiteValidating(false) }
+  }
+  const submitAddWebsite = async () => {
+    if (!addWebsiteServerId || !addWebsiteDomain.trim() || !addWebsiteSiteValue.trim()) { toast.error('请填写完整信息'); return }
+    setAddWebsiteSubmitting(true)
+    try {
+      const res = await api.post('/api/admin/remote/website/add', { server_id: addWebsiteServerId, domain: addWebsiteDomain.trim(), site_type: addWebsiteSiteType, site_value: addWebsiteSiteValue.trim() })
+      if (res.data.success) { toast.success('网站添加成功'); setIsAddWebsiteDialogOpen(false); resetAddWebsiteDialog() }
+      else { toast.error(res.data.message || '添加失败') }
+    } catch (error) { handleServerError(error) }
+    finally { setAddWebsiteSubmitting(false) }
+  }
+
   const checkSameIP = async (address: string) => {
     if (!address.trim()) return
     try {
@@ -398,6 +429,8 @@ function XrayServersPage() {
       if (res.data.same_ip && res.data.https_enabled) {
         setCreateDomain(res.data.master_domain)
         setDomainAutoFilled(true)
+        setCreateSiteType('proxy')
+        setCreateSiteValue('http://127.0.0.1:12889')
       }
     } catch {}
   }
@@ -497,14 +530,14 @@ function XrayServersPage() {
     const trafficUsedOffsetBytes = formData.traffic_used_gb ? Math.round(parseFloat(formData.traffic_used_gb) * 1024 * 1024 * 1024) : 0
     const trafficResetDay = formData.traffic_reset_day ? parseInt(formData.traffic_reset_day) : 0
     setIsGeneratingToken(true)
-    createRemoteServerMutation.mutate({ name: remoteServerName, traffic_limit: trafficLimitBytes, traffic_used_offset: trafficUsedOffsetBytes, traffic_reset_day: trafficResetDay, connection_mode: 'auto', pull_address: pullAddress || undefined, pull_port: pullPort ? parseInt(pullPort) : undefined, pull_token: pullToken || undefined, steal_self: createStealSelf, front_service: createFrontService, domain: createDomain.trim() || undefined, use_443: createUse443 || undefined, steal_mode: createStealSelf ? createStealMode : undefined })
+    createRemoteServerMutation.mutate({ name: remoteServerName, traffic_limit: trafficLimitBytes, traffic_used_offset: trafficUsedOffsetBytes, traffic_reset_day: trafficResetDay, connection_mode: 'auto', pull_address: pullAddress || undefined, pull_port: pullPort ? parseInt(pullPort) : undefined, pull_token: pullToken || undefined, steal_self: createStealSelf, front_service: createFrontService, domain: createDomain.trim() || undefined, use_443: createUse443 || undefined, steal_mode: createStealSelf ? createStealMode : undefined, site_type: createStealSelf ? createSiteType : undefined, site_value: createStealSelf ? createSiteValue : undefined })
   }
 
   const copyToClipboard = (text: string, label: string) => { navigator.clipboard.writeText(text).then(() => toast.success(`${label}已复制到剪贴板`)).catch(() => toast.error('复制失败')) }
 
   const resetAddDialog = () => {
     setRemoteServerName(''); setGeneratedToken(''); setInstallCommand(''); setIsGeneratingToken(false)
-    setPullAddress(''); setPullPort('23889'); setPullToken(''); setCreateStealSelf(false); setCreateFrontService('xray'); setCreateStealMode('tunnel'); setCreateUse443(false); setCreateDomain(''); setDomainAutoFilled(false)
+    setPullAddress(''); setPullPort('23889'); setPullToken(''); setCreateStealSelf(false); setCreateFrontService('xray'); setCreateStealMode('tunnel'); setCreateUse443(false); setCreateDomain(''); setDomainAutoFilled(false); setCreateSiteType('static'); setCreateSiteValue('')
     setFormData({ ...formData, traffic_limit_gb: '', traffic_used_gb: '', traffic_reset_day: '' })
   }
 
@@ -666,6 +699,17 @@ function XrayServersPage() {
                         )}
                       </div>
                     )}
+                    <div className="grid gap-2">
+                      <Label>网站类型</Label>
+                      <div className="flex gap-2">
+                        <Button type="button" size="sm" variant={createSiteType === 'static' ? 'default' : 'outline'} onClick={() => setCreateSiteType('static')} disabled={!!generatedToken} className="flex-1">静态页面</Button>
+                        <Button type="button" size="sm" variant={createSiteType === 'proxy' ? 'default' : 'outline'} onClick={() => setCreateSiteType('proxy')} disabled={!!generatedToken} className="flex-1">反向代理</Button>
+                      </div>
+                    </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor="create-site-value">{createSiteType === 'static' ? '静态页面路径' : '反向代理地址'}</Label>
+                      <Input id="create-site-value" value={createSiteValue} onChange={(e) => setCreateSiteValue(e.target.value)} placeholder={createSiteType === 'static' ? '例如：/var/www/html' : '例如：http://127.0.0.1:8080'} disabled={!!generatedToken} />
+                    </div>
                   </>
                 )}
               </div>
@@ -782,6 +826,8 @@ function XrayServersPage() {
                             <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setSyncingServerId(server.id); setSyncServerHost(server.ip_address || ''); setIsSyncNodesDialogOpen(true) }}><RefreshCw className="mr-2 h-4 w-4" />同步节点</DropdownMenuItem>
                             {server.domain && (<><DropdownMenuSeparator /><DropdownMenuItem onClick={(e) => { e.stopPropagation(); deployStealSelfMutation.mutate(server.id) }} disabled={deployStealSelfMutation.isPending}><Download className="mr-2 h-4 w-4" />{deployStealSelfMutation.isPending ? '下发中...' : '下发配置'}</DropdownMenuItem></>)}
                             <DropdownMenuSeparator />
+                            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setAddWebsiteServerId(server.id); setIsAddWebsiteDialogOpen(true) }}><Globe className="mr-2 h-4 w-4" />添加网站</DropdownMenuItem>
+                            <DropdownMenuSeparator />
                             <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleAgentUpgrade(server.id) }}><ArrowUpCircle className="mr-2 h-4 w-4" />升级 Agent</DropdownMenuItem>
                             <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleAgentUninstall(server.id) }} className="text-red-600"><Trash2 className="mr-2 h-4 w-4" />卸载 Agent</DropdownMenuItem>
                           </DropdownMenuContent>
@@ -879,6 +925,8 @@ function XrayServersPage() {
                                 <DropdownMenuContent>
                                   <DropdownMenuItem onClick={() => { setSyncingServerId(server.id); setSyncServerHost(server.ip_address || ''); setIsSyncNodesDialogOpen(true) }}><RefreshCw className="mr-2 h-4 w-4" />同步节点</DropdownMenuItem>
                                   {server.domain && (<><DropdownMenuSeparator /><DropdownMenuItem onClick={() => deployStealSelfMutation.mutate(server.id)} disabled={deployStealSelfMutation.isPending}><Download className="mr-2 h-4 w-4" />{deployStealSelfMutation.isPending ? '下发中...' : '下发配置'}</DropdownMenuItem></>)}
+                                  <DropdownMenuSeparator />
+                                  <DropdownMenuItem onClick={() => { setAddWebsiteServerId(server.id); setIsAddWebsiteDialogOpen(true) }}><Globe className="mr-2 h-4 w-4" />添加网站</DropdownMenuItem>
                                   <DropdownMenuSeparator />
                                   <DropdownMenuItem onClick={() => handleAgentUpgrade(server.id)}><ArrowUpCircle className="mr-2 h-4 w-4" />升级 Agent</DropdownMenuItem>
                                   <DropdownMenuItem onClick={() => handleAgentUninstall(server.id)} className="text-red-600"><Trash2 className="mr-2 h-4 w-4" />卸载 Agent</DropdownMenuItem>
@@ -1139,6 +1187,47 @@ function XrayServersPage() {
           <DialogFooter>
             <Button variant="outline" onClick={() => { setIsSyncNodesDialogOpen(false); setSyncingServerId(null); setSyncServerHost(''); setSyncForceOverride(false) }}>取消</Button>
             <Button onClick={() => { if (syncingServerId && syncServerHost) syncNodesMutation.mutate({ serverId: syncingServerId, serverHost: syncServerHost, forceOverride: syncForceOverride }) }} disabled={!syncServerHost || syncNodesMutation.isPending}>{syncNodesMutation.isPending ? '同步中...' : '开始同步'}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isAddWebsiteDialogOpen} onOpenChange={(open) => { if (!open) { setIsAddWebsiteDialogOpen(false); resetAddWebsiteDialog() } }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2"><Globe className="h-5 w-5" />添加网站</DialogTitle>
+            <DialogDescription>为远程服务器添加新的网站域名</DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label htmlFor="add-website-domain">域名 <span className="text-destructive">*</span></Label>
+              <Input id="add-website-domain" value={addWebsiteDomain} onChange={(e) => setAddWebsiteDomain(e.target.value)} placeholder="例如：blog.example.com" />
+            </div>
+            <div className="grid gap-2">
+              <Label>网站类型</Label>
+              <div className="flex gap-2">
+                <Button type="button" size="sm" variant={addWebsiteSiteType === 'static' ? 'default' : 'outline'} onClick={() => { setAddWebsiteSiteType('static'); setAddWebsiteValidResult(null) }} className="flex-1">静态页面</Button>
+                <Button type="button" size="sm" variant={addWebsiteSiteType === 'proxy' ? 'default' : 'outline'} onClick={() => { setAddWebsiteSiteType('proxy'); setAddWebsiteValidResult(null) }} className="flex-1">反向代理</Button>
+              </div>
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="add-website-value">{addWebsiteSiteType === 'static' ? '静态页面路径' : '反向代理地址'} <span className="text-destructive">*</span></Label>
+              <div className="flex gap-2">
+                <Input id="add-website-value" value={addWebsiteSiteValue} onChange={(e) => { setAddWebsiteSiteValue(e.target.value); setAddWebsiteValidResult(null) }} placeholder={addWebsiteSiteType === 'static' ? '例如：/var/www/html' : '例如：http://127.0.0.1:8080'} className="flex-1" />
+                <Button type="button" variant="outline" size="sm" onClick={validateWebsite} disabled={addWebsiteValidating || !addWebsiteSiteValue.trim()}>
+                  {addWebsiteValidating ? <Loader2 className="h-4 w-4 animate-spin" /> : '验证'}
+                </Button>
+              </div>
+              {addWebsiteValidResult && (
+                <div className={`flex items-center gap-1.5 text-xs ${addWebsiteValidResult.ok ? 'text-green-600' : 'text-red-600'}`}>
+                  {addWebsiteValidResult.ok ? <CheckCircle className="h-3.5 w-3.5" /> : <XCircle className="h-3.5 w-3.5" />}
+                  {addWebsiteValidResult.msg}
+                </div>
+              )}
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setIsAddWebsiteDialogOpen(false); resetAddWebsiteDialog() }}>取消</Button>
+            <Button onClick={submitAddWebsite} disabled={addWebsiteSubmitting || !addWebsiteDomain.trim() || !addWebsiteSiteValue.trim()}>{addWebsiteSubmitting ? '添加中...' : '添加'}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

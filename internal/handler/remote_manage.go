@@ -16,6 +16,7 @@ import (
 	"miaomiaowu/internal/event"
 	"miaomiaowu/internal/storage"
 	"miaomiaowu/internal/version"
+	"miaomiaowu/templates"
 )
 
 // RemoteManageHandler 处理需要转发到子服务器的管理请求
@@ -2058,4 +2059,222 @@ func (h *RemoteManageHandler) restartXrayWithRecovery(ctx context.Context, serve
 	h.forwardToRemoteServer(ctx, serverID, http.MethodPost, "/api/child/services/control", []byte(`{"service":"nginx","action":"start"}`))
 	log.Printf("[%s] Xray restarted via nginx stop/start fallback on server %d", logPrefix, serverID)
 	return nil
+}
+
+func (h *RemoteManageHandler) HandleValidateSite(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var req struct {
+		ServerID  int64  `json:"server_id"`
+		SiteType  string `json:"site_type"`
+		SiteValue string `json:"site_value"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.ServerID == 0 || req.SiteValue == "" {
+		remoteWriteError(w, http.StatusBadRequest, "server_id and site_value are required")
+		return
+	}
+
+	payload, _ := json.Marshal(map[string]string{
+		"site_type":  req.SiteType,
+		"site_value": req.SiteValue,
+	})
+	resp, err := h.forwardToRemoteServer(r.Context(), req.ServerID, http.MethodPost, "/api/child/validate-site", payload)
+	if err != nil {
+		remoteWriteError(w, http.StatusBadGateway, fmt.Sprintf("验证失败: %v", err))
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(resp)
+}
+
+func (h *RemoteManageHandler) HandleAddWebsite(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var req struct {
+		ServerID  int64  `json:"server_id"`
+		Domain    string `json:"domain"`
+		SiteType  string `json:"site_type"`
+		SiteValue string `json:"site_value"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.ServerID == 0 || req.Domain == "" {
+		remoteWriteError(w, http.StatusBadRequest, "server_id and domain are required")
+		return
+	}
+
+	ctx := r.Context()
+	server, err := h.repo.GetRemoteServer(ctx, req.ServerID)
+	if err != nil {
+		remoteWriteError(w, http.StatusNotFound, "server not found")
+		return
+	}
+
+	domain := strings.ToLower(strings.TrimSpace(req.Domain))
+	rootDomain := extractRootDomain(domain)
+
+	// 1. 生成 nginx domain config
+	tplDir := "tunnel"
+	if server.StealMode == "fallback" {
+		tplDir = "fallback"
+	}
+	tplFile := tplDir + "/domain_static.conf"
+	if req.SiteType == "proxy" {
+		tplFile = tplDir + "/domain_proxy.conf"
+	}
+	domainTpl, err := templates.ReadFile(tplFile)
+	if err != nil {
+		remoteWriteError(w, http.StatusInternalServerError, fmt.Sprintf("读取模板失败: %v", err))
+		return
+	}
+	domainConf := strings.ReplaceAll(string(domainTpl), "{domain}", domain)
+	domainConf = strings.ReplaceAll(domainConf, "{root_domain}", rootDomain)
+	domainConf = strings.ReplaceAll(domainConf, "{static_root_path}", req.SiteValue)
+	domainConf = strings.ReplaceAll(domainConf, "{proxy_pass_server}", req.SiteValue)
+
+	// 2. 部署 nginx domain config（不覆盖 nginx.conf）
+	sslPayload, _ := json.Marshal(map[string]any{
+		"domain":        domain,
+		"domain_config": domainConf,
+	})
+	if _, err := h.forwardToRemoteServer(ctx, req.ServerID, http.MethodPost, "/api/child/nginx/setup-ssl", sslPayload); err != nil {
+		remoteWriteError(w, http.StatusBadGateway, fmt.Sprintf("部署 nginx 配置失败: %v", err))
+		return
+	}
+
+	// 3. 读取当前 xray 配置
+	xrayResp, err := h.forwardToRemoteServer(ctx, req.ServerID, http.MethodGet, "/api/child/xray/config", nil)
+	if err != nil {
+		remoteWriteError(w, http.StatusBadGateway, fmt.Sprintf("读取 xray 配置失败: %v", err))
+		return
+	}
+	var xrayConfigResp struct {
+		Config string `json:"config"`
+	}
+	json.Unmarshal(xrayResp, &xrayConfigResp)
+
+	var xrayConfig map[string]any
+	if err := json.Unmarshal([]byte(xrayConfigResp.Config), &xrayConfig); err != nil {
+		remoteWriteError(w, http.StatusInternalServerError, fmt.Sprintf("解析 xray 配置失败: %v", err))
+		return
+	}
+
+	// 4. 修改 xray 配置
+	if server.StealMode == "fallback" {
+		h.addWebsiteFallbackConfig(xrayConfig, domain)
+	} else {
+		h.addWebsiteTunnelConfig(xrayConfig, domain)
+	}
+
+	updatedConfig, _ := json.MarshalIndent(xrayConfig, "", "    ")
+	configPayload, _ := json.Marshal(map[string]string{
+		"config": string(updatedConfig),
+	})
+	if _, err := h.forwardToRemoteServer(ctx, req.ServerID, http.MethodPost, "/api/child/xray/config", configPayload); err != nil {
+		remoteWriteError(w, http.StatusBadGateway, fmt.Sprintf("写入 xray 配置失败: %v", err))
+		return
+	}
+
+	// 5. 部署证书
+	if h.certHandler != nil {
+		cert, certErr := h.repo.GetCertificateByDomain(ctx, rootDomain, req.ServerID)
+		if certErr == nil && cert != nil && cert.CertPEM != "" && cert.KeyPEM != "" {
+			payload := WSCertDeployPayload{
+				Domain:   rootDomain,
+				CertPEM:  cert.CertPEM,
+				KeyPEM:   cert.KeyPEM,
+				CertPath: fmt.Sprintf("/usr/local/nginx/cert/%s.pem", rootDomain),
+				KeyPath:  fmt.Sprintf("/usr/local/nginx/cert/%s.key", rootDomain),
+				Reload:   "nginx",
+			}
+			h.certHandler.deployToRemoteServer(server, payload)
+		}
+	}
+
+	// 6. 重启 xray
+	if err := h.restartXrayWithRecovery(ctx, req.ServerID, "AddWebsite"); err != nil {
+		log.Printf("[AddWebsite] %v", err)
+	}
+
+	remoteWriteJSON(w, http.StatusOK, map[string]any{
+		"success": true,
+		"message": fmt.Sprintf("网站 %s 添加成功", domain),
+	})
+}
+
+func (h *RemoteManageHandler) addWebsiteTunnelConfig(config map[string]any, domain string) {
+	routing, _ := config["routing"].(map[string]any)
+	if routing == nil {
+		return
+	}
+	rules, _ := routing["rules"].([]any)
+
+	for _, rule := range rules {
+		r, _ := rule.(map[string]any)
+		if r == nil {
+			continue
+		}
+		outTag, _ := r["outboundTag"].(string)
+		if outTag != "nginx" {
+			continue
+		}
+		inTags, _ := r["inboundTag"].([]any)
+		hasTunnelIn := false
+		for _, t := range inTags {
+			if s, _ := t.(string); s == "tunnel-in" {
+				hasTunnelIn = true
+				break
+			}
+		}
+		if !hasTunnelIn {
+			continue
+		}
+		domains, _ := r["domain"].([]any)
+		for _, d := range domains {
+			if s, _ := d.(string); s == domain {
+				return
+			}
+		}
+		r["domain"] = append(domains, domain)
+		return
+	}
+
+	newRule := map[string]any{
+		"inboundTag":  []any{"tunnel-in"},
+		"domain":      []any{domain},
+		"outboundTag": "nginx",
+	}
+	rules = append([]any{newRule}, rules...)
+	routing["rules"] = rules
+}
+
+func (h *RemoteManageHandler) addWebsiteFallbackConfig(config map[string]any, domain string) {
+	inbounds, _ := config["inbounds"].([]any)
+	for _, inb := range inbounds {
+		ib, _ := inb.(map[string]any)
+		if ib == nil {
+			continue
+		}
+		settings, _ := ib["settings"].(map[string]any)
+		if settings == nil {
+			continue
+		}
+		realitySettings, _ := settings["realitySettings"].(map[string]any)
+		if realitySettings == nil {
+			continue
+		}
+		serverNames, _ := realitySettings["serverNames"].([]any)
+		for _, sn := range serverNames {
+			if s, _ := sn.(string); s == domain {
+				return
+			}
+		}
+		realitySettings["serverNames"] = append(serverNames, domain)
+		return
+	}
 }

@@ -51,6 +51,8 @@ type RemoteServerCreateRequest struct {
 	Domain            string `json:"domain"`              // 服务器域（443模式）
 	Use443            bool   `json:"use_443"`             // 使用 443 端口与 nginx 隧道
 	StealMode         string `json:"steal_mode"`          // "tunnel" | "fallback"，默认 tunnel
+	SiteType          string `json:"site_type"`           // "static" | "proxy"
+	SiteValue         string `json:"site_value"`          // 静态路径或反向代理地址
 }
 
 // RemoteServerResponse 表示带有远程服务器数据的响应
@@ -282,6 +284,8 @@ func (h *XrayServerHandler) CreateRemoteServer(w stdhttp.ResponseWriter, r *stdh
 		Domain:         strings.TrimSpace(req.Domain),
 		Use443:         req.Use443,
 		StealMode:      stealMode,
+		SiteType:       req.SiteType,
+		SiteValue:      req.SiteValue,
 	}
 
 	if err := h.repo.CreateRemoteServer(ctx, server); err != nil {

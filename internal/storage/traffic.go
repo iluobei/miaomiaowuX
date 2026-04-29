@@ -428,6 +428,8 @@ type RemoteServer struct {
 	LastAgentTokenRefresh *time.Time `json:"last_agent_token_refresh,omitempty"`
 	Use443                bool       `json:"use_443"`                // 是否使用443端口与nginx+xray隧道
 	StealMode             string     `json:"steal_mode,omitempty"` // "tunnel" | "fallback"，默认 tunnel
+	SiteType              string     `json:"site_type,omitempty"`  // "static" | "proxy"
+	SiteValue             string     `json:"site_value,omitempty"` // 静态路径或反向代理地址
 	CreatedAt             time.Time  `json:"created_at"`
 	UpdatedAt             time.Time  `json:"updated_at"`
 }
@@ -1264,6 +1266,12 @@ CREATE INDEX IF NOT EXISTS idx_remote_servers_status ON remote_servers(status);
 		return err
 	}
 	if err := r.ensureRemoteServerColumn("steal_mode", "TEXT NOT NULL DEFAULT 'tunnel'"); err != nil {
+		return err
+	}
+	if err := r.ensureRemoteServerColumn("site_type", "TEXT NOT NULL DEFAULT ''"); err != nil {
+		return err
+	}
+	if err := r.ensureRemoteServerColumn("site_value", "TEXT NOT NULL DEFAULT ''"); err != nil {
 		return err
 	}
 

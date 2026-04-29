@@ -351,6 +351,8 @@ func main() {
 	mux.Handle("/api/admin/remote/deploy-steal-self", auth.RequireAdmin(tokenStore, userRepo, http.HandlerFunc(remoteManageHandler.HandleDeployStealSelfConfig)))
 	mux.Handle("/api/admin/remote/sync-nodes", auth.RequireAdmin(tokenStore, userRepo, http.HandlerFunc(remoteManageHandler.HandleSyncInboundsToNodes)))
 	mux.Handle("/api/admin/remote/switch-steal-mode", auth.RequireAdmin(tokenStore, userRepo, http.HandlerFunc(remoteManageHandler.HandleSwitchStealMode)))
+	mux.Handle("/api/admin/remote/website/add", auth.RequireAdmin(tokenStore, userRepo, http.HandlerFunc(remoteManageHandler.HandleAddWebsite)))
+	mux.Handle("/api/admin/remote/website/validate", auth.RequireAdmin(tokenStore, userRepo, http.HandlerFunc(remoteManageHandler.HandleValidateSite)))
 	// 令牌重置端点
 	mux.Handle("/api/admin/remote-servers/reset-server-token", auth.RequireAdmin(tokenStore, userRepo, http.HandlerFunc(remoteManageHandler.HandleResetServerToken)))
 	mux.Handle("/api/admin/remote-servers/reset-agent-token", auth.RequireAdmin(tokenStore, userRepo, http.HandlerFunc(remoteManageHandler.HandleResetAgentToken)))

@@ -22,12 +22,18 @@ func (h *RemoteManageHandler) deployTunnelConfig(ctx context.Context, server *st
 		return fmt.Errorf("读取 tunnel/nginx.conf 模板失败: %w", err)
 	}
 
-	domainTpl, err := templates.ReadFile("tunnel/domain_static.conf")
+	domainTplPath := "tunnel/domain_static.conf"
+	if server.SiteType == "proxy" {
+		domainTplPath = "tunnel/domain_proxy.conf"
+	}
+	domainTpl, err := templates.ReadFile(domainTplPath)
 	if err != nil {
-		return fmt.Errorf("读取 tunnel/domain_static.conf 模板失败: %w", err)
+		return fmt.Errorf("读取 %s 模板失败: %w", domainTplPath, err)
 	}
 	domainConf := strings.ReplaceAll(string(domainTpl), "{domain}", domain)
 	domainConf = strings.ReplaceAll(domainConf, "{root_domain}", rootDomain)
+	domainConf = strings.ReplaceAll(domainConf, "{static_root_path}", server.SiteValue)
+	domainConf = strings.ReplaceAll(domainConf, "{proxy_pass_server}", server.SiteValue)
 
 	sslPayload, _ := json.Marshal(map[string]any{
 		"domain":        domain,
