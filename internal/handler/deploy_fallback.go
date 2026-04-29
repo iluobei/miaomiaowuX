@@ -29,8 +29,13 @@ func (h *RemoteManageHandler) deployFallbackConfig(ctx context.Context, server *
 	if err != nil {
 		return fmt.Errorf("读取 %s 模板失败: %w", domainTplPath, err)
 	}
+	certName := "_." + rootDomain
+	if cert, certErr := h.repo.GetCertificateByDomain(ctx, rootDomain, server.ID); certErr == nil && cert != nil {
+		certName = certDeployFilename(cert.Domain)
+	}
 	domainConf := strings.ReplaceAll(string(domainTpl), "{domain}", domain)
 	domainConf = strings.ReplaceAll(domainConf, "{root_domain}", rootDomain)
+	domainConf = strings.ReplaceAll(domainConf, "{cert_name}", certName)
 	domainConf = strings.ReplaceAll(domainConf, "{static_root_path}", server.SiteValue)
 	domainConf = strings.ReplaceAll(domainConf, "{proxy_pass_server}", server.SiteValue)
 

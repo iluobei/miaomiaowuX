@@ -313,8 +313,15 @@ func (h *RemoteManageHandler) HandleSetupSSL(w http.ResponseWriter, r *http.Requ
 		remoteWriteError(w, http.StatusInternalServerError, fmt.Sprintf("读取 domain.conf 模板失败: %v", readErr))
 		return
 	}
+	certName := "_." + rootDomain
+	if h.certHandler != nil {
+		if cert, certErr := h.repo.GetCertificateByDomain(r.Context(), rootDomain, id); certErr == nil && cert != nil {
+			certName = certDeployFilename(cert.Domain)
+		}
+	}
 	domainConf := strings.ReplaceAll(string(domainTpl), "{domain}", domain)
 	domainConf = strings.ReplaceAll(domainConf, "{root_domain}", rootDomain)
+	domainConf = strings.ReplaceAll(domainConf, "{cert_name}", certName)
 	domainConf = strings.ReplaceAll(domainConf, "{static_root_path}", server.SiteValue)
 	domainConf = strings.ReplaceAll(domainConf, "{proxy_pass_server}", server.SiteValue)
 
