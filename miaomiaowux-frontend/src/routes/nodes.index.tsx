@@ -576,7 +576,7 @@ function NodesPage() {
   const remoteServers = useMemo(() => (remoteServersData?.servers || []).filter(s => s.status === 'connected'), [remoteServersData])
 
   // 添加节点：提交入站 → 创建 freedom 出站（单服务器）
-  const handleQuickCreateSubmit = async (serverIds: number[], inbound: any, tag: string) => {
+  const handleQuickCreateSubmit = async (serverIds: number[], inbound: any, tag: string, nodeName?: string) => {
     if (serverIds.length === 0) {
       toast.error('请选择至少一台服务器')
       return
@@ -592,10 +592,14 @@ function NodesPage() {
       let successCount = 0
       for (const serverId of serverIds) {
         // 1. 创建入站
-        const inboundRes = await api.post(`/api/admin/remote/inbounds?server_id=${serverId}`, {
+        const inboundPayload: any = {
           action: 'add',
           inbound: { ...inbound, tag: trimmedTag },
-        })
+        }
+        if (nodeName) {
+          inboundPayload.node_name = nodeName
+        }
+        const inboundRes = await api.post(`/api/admin/remote/inbounds?server_id=${serverId}`, inboundPayload)
         if (!inboundRes.data.success) {
           const serverName = remoteServers.find(s => s.id === serverId)?.name || serverId
           toast.error(`服务器 ${serverName} 入站创建失败: ${inboundRes.data.message || '未知错误'}`)

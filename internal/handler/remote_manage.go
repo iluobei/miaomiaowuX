@@ -754,6 +754,7 @@ func (h *RemoteManageHandler) HandleInbounds(w http.ResponseWriter, r *http.Requ
 						tag, _ := inbound["tag"].(string)
 						protocol, _ := inbound["protocol"].(string)
 						port, _ := inbound["port"].(float64)
+						customNodeName, _ := inboundReq["node_name"].(string)
 						// 转换为 map[string]any
 						inboundAny := make(map[string]any)
 						for k, v := range inbound {
@@ -766,6 +767,7 @@ func (h *RemoteManageHandler) HandleInbounds(w http.ResponseWriter, r *http.Requ
 							Protocol: protocol,
 							Port:     int(port),
 							Inbound:  inboundAny,
+							NodeName: customNodeName,
 						})
 					}
 				} else if actionLower == "remove" {

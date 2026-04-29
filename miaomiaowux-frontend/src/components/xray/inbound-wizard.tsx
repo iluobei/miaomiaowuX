@@ -52,6 +52,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover'
+import {
+  FLAG_OPTIONS,
+  countryCodeToFlag,
+  getGeoIPInfo,
+} from '@/lib/country-flag'
 import { ArrayField } from './array-field'
 import { FormField } from './form-field'
 import { VlessDecryptionField } from './vless-decryption-field'
@@ -143,7 +153,7 @@ interface InboundWizardProps {
   servers: Server[]
   selectedServerIds: number[]
   onCancel: () => void
-  onSubmit: (serverIds: number[], inbound: any, tag: string) => Promise<void>
+  onSubmit: (serverIds: number[], inbound: any, tag: string, nodeName?: string) => Promise<void>
   /** 是否跳过服务器选择（远程模式时为 true） */
   skipServerSelection?: boolean
   /** 已被占用的端口列表 */
@@ -239,6 +249,14 @@ export function InboundWizard({
   const [customDomainInput, setCustomDomainInput] = useState('')
   const [customDomainProbing, setCustomDomainProbing] = useState(false)
   const simpleRealityAutoLoaded = useRef(false)
+
+  // 节点名称 + 国旗选择器
+  const [nodeName, setNodeName] = useState('')
+  const [selectedFlag, setSelectedFlag] = useState('')
+  const [showFlagPicker, setShowFlagPicker] = useState(false)
+
+  // 常用用户快捷添加
+  const [frequentUsers, setFrequentUsers] = useState<any[]>([])
 
   // 切换服务器选择（单选）
   const toggleServerSelection = (serverId: number) => {
@@ -393,6 +411,33 @@ export function InboundWizard({
     }))
   }, [isSimpleMode, selectedProtocol])
 
+  // GeoIP 自动检测国旗
+  useEffect(() => {
+    if (!effectiveServerId) return
+    const server = servers.find((s) => s.id === effectiveServerId)
+    if (!server?.host) return
+    getGeoIPInfo(server.host)
+      .then((info) => setSelectedFlag(info.country_code))
+      .catch(() => {})
+  }, [effectiveServerId, servers])
+
+  // 常用用户加载
+  useEffect(() => {
+    const cached = localStorage.getItem('inbound-wizard-frequent-users')
+    if (cached) {
+      try { setFrequentUsers(JSON.parse(cached)) } catch {}
+    } else {
+      api.get('/api/admin/users').then((res) => {
+        const users = Array.isArray(res.data) ? res.data : (res.data?.users || [])
+        const admin = users.find((u: any) => u.role === 'admin')
+        const others = users.filter((u: any) => u.role !== 'admin').sort((a: any, b: any) => b.id - a.id).slice(0, 2)
+        const defaults = admin ? [admin, ...others] : others
+        setFrequentUsers(defaults)
+        localStorage.setItem('inbound-wizard-frequent-users', JSON.stringify(defaults))
+      }).catch(() => {})
+    }
+  }, [])
+
   // SS2022 进入协议或切换加密方法时自动生成服务器密码和用户密码
   const prevSS2022MethodRef = useRef<string | undefined>(undefined)
   useEffect(() => {
@@ -459,6 +504,73 @@ export function InboundWizard({
 
   const handleSecuritySelect = (security: string) => {
     setSelectedSecurity(security)
+  }
+
+  const generateUUID = () => {
+    if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+      return crypto.randomUUID()
+    }
+    const bytes = new Uint8Array(16)
+    crypto.getRandomValues(bytes)
+    bytes[6] = (bytes[6] & 0x0f) | 0x40
+    bytes[8] = (bytes[8] & 0x3f) | 0x80
+    const hex = Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('')
+    return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`
+  }
+
+  const generateRandomPassword = (length = 16) => {
+    const charset = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*'
+    let password = ''
+    for (let i = 0; i < length; i++) {
+      password += charset.charAt(Math.floor(Math.random() * charset.length))
+    }
+    return password
+  }
+
+  const buildClientFromUser = (user: any) => {
+    const fields = clientFieldsWithFlow
+    const userObj: any = {}
+    const hasUserOrIdField = fields.some((f) => f.name === 'user' || f.name === 'id')
+    fields.forEach((field) => {
+      if (field.name === 'id') {
+        userObj[field.name] = generateUUID()
+      } else if (field.name === 'user') {
+        userObj[field.name] = user.username || user.email
+      } else if (field.name === 'email') {
+        userObj[field.name] = hasUserOrIdField
+          ? (user.email || user.username)
+          : user.username
+      } else if (field.name === 'password' || field.name === 'pass') {
+        const isSS2022PskField = field.label?.includes('PSK')
+        if (isSS2022PskField) {
+          const method = formData.method || '2022-blake3-aes-128-gcm'
+          const byteLength = method.includes('128') ? 16 : 32
+          userObj[field.name] = generateBase64Key(byteLength)
+        } else {
+          userObj[field.name] = generateRandomPassword()
+        }
+      } else {
+        userObj[field.name] = field.defaultValue ?? ''
+      }
+    })
+    return userObj
+  }
+
+  const handleQuickAddUser = (user: any) => {
+    const fieldName = (selectedProtocol === 'Socks5' || selectedProtocol === 'HTTP') ? 'accounts' : 'clients'
+    const existing = formData[fieldName] || []
+    if (existing.some((c: any) => c.email === user.username || c.user === user.username)) {
+      toast.info('该用户已添加')
+      return
+    }
+    const newClient = buildClientFromUser(user)
+    handleFieldChange(fieldName, [...existing, newClient])
+    // 更新常用用户缓存
+    setFrequentUsers((prev) => {
+      const updated = [user, ...prev.filter((u: any) => u.id !== user.id)].slice(0, 5)
+      localStorage.setItem('inbound-wizard-frequent-users', JSON.stringify(updated))
+      return updated
+    })
   }
 
   const handleFieldChange = (fieldName: string, value: any) => {
@@ -787,7 +899,14 @@ export function InboundWizard({
       tag = buildDefaultTag(submitData.port)
     }
 
-    await onSubmit(effectiveServerIds, inbound, tag)
+    // 简易模式下构建自定义节点名称
+    let customNodeName = ''
+    if (isSimpleMode && nodeName) {
+      const flag = selectedFlag ? countryCodeToFlag(selectedFlag) + ' ' : ''
+      customNodeName = flag + nodeName
+    }
+
+    await onSubmit(effectiveServerIds, inbound, tag, customNodeName)
   }
 
   // Get current field sets based on selections
@@ -958,6 +1077,50 @@ export function InboundWizard({
                     {/* 简易模式也使用左右分栏：左侧表单，右侧JSON预览 */}
                     <div className='flex gap-6'>
                       <div className='min-w-0 flex-1 space-y-6'>
+                        {/* 节点名称 */}
+                        <Card>
+                          <CardHeader>
+                            <CardTitle>节点名称</CardTitle>
+                            <CardDescription>
+                              自定义节点显示名称，国旗根据服务器 IP 自动选择
+                            </CardDescription>
+                          </CardHeader>
+                          <CardContent>
+                            <div className='flex items-center gap-2'>
+                              <Popover open={showFlagPicker} onOpenChange={setShowFlagPicker}>
+                                <PopoverTrigger asChild>
+                                  <Button variant='outline' size='sm' className='text-lg px-2' type='button'>
+                                    {selectedFlag ? countryCodeToFlag(selectedFlag) : '\u{1F3F3}\u{FE0F}'}
+                                  </Button>
+                                </PopoverTrigger>
+                                <PopoverContent className='w-72 p-2' align='start'>
+                                  <div className='grid grid-cols-7 gap-1'>
+                                    {FLAG_OPTIONS.map((opt) => (
+                                      <Button
+                                        key={opt.code}
+                                        variant='ghost'
+                                        size='sm'
+                                        className='text-lg px-1'
+                                        type='button'
+                                        onClick={() => { setSelectedFlag(opt.code); setShowFlagPicker(false) }}
+                                        title={opt.label}
+                                      >
+                                        {countryCodeToFlag(opt.code)}
+                                      </Button>
+                                    ))}
+                                  </div>
+                                </PopoverContent>
+                              </Popover>
+                              <Input
+                                placeholder='输入节点名称'
+                                value={nodeName}
+                                onChange={(e) => setNodeName(e.target.value)}
+                                className='flex-1'
+                              />
+                            </div>
+                          </CardContent>
+                        </Card>
+
                         {/* REALITY 域名选择 */}
                         {isRealitySecurity && (
                           <Card>
@@ -1105,6 +1268,24 @@ export function InboundWizard({
                               </CardDescription>
                             </CardHeader>
                             <CardContent>
+                              {frequentUsers.length > 0 && (
+                                <div className='mb-3 space-y-1'>
+                                  <Label className='text-muted-foreground text-xs'>常用用户</Label>
+                                  <div className='flex flex-wrap gap-1'>
+                                    {frequentUsers.map((user) => (
+                                      <Button
+                                        key={user.id}
+                                        variant='outline'
+                                        size='sm'
+                                        type='button'
+                                        onClick={() => handleQuickAddUser(user)}
+                                      >
+                                        {user.username}
+                                      </Button>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
                               <ArrayField
                                 label={
                                   selectedProtocol === 'Socks5' ||

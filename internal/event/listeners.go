@@ -53,9 +53,11 @@ func (l *NodeSyncListener) handleAdded(ctx context.Context, event InboundEvent) 
 		return
 	}
 
-	// 生成节点名称：如果没有 tag，使用 protocol:port
+	// 生成节点名称：优先使用自定义名称，否则使用 tag 或 protocol:port
 	var nodeName string
-	if event.Tag != "" {
+	if event.NodeName != "" {
+		nodeName = event.NodeName
+	} else if event.Tag != "" {
 		nodeName = fmt.Sprintf("[%s] %s", server.Name, event.Tag)
 	} else {
 		nodeName = fmt.Sprintf("[%s] %s:%d", server.Name, event.Protocol, event.Port)

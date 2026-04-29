@@ -17,6 +17,7 @@ type InboundEvent struct {
 	Protocol string         // 协议类型
 	Port     int            // 端口
 	Inbound  map[string]any // 完整入站配置 (添加/更新时)
+	NodeName string         // 自定义节点显示名称（可选）
 }
 
 // Listener 事件监听器接口
