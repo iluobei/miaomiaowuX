@@ -1,4 +1,9 @@
+
 # 妙妙屋X - Xray 服务器管理与订阅拼车系统
+
+<div align="center">
+  <img src="https://raw.githubusercontent.com/iluobei/miaomiaowuX/refs/heads/main/miaomiaowux-frontend/public/images/logo.webp" />
+</div>
 
 妙妙屋X 是 [妙妙屋](https://github.com/iluobei/miaomiaowu) 的增强版本，在原有 Clash 订阅管理基础上，新增 Xray 多服务器管理、远程节点部署、流量监控、证书管理等功能。支持主控/子服务器架构，通过 [mmw-agent](https://github.com/iluobei/mmw-agent) 实现远程服务器的统一管理。
 
