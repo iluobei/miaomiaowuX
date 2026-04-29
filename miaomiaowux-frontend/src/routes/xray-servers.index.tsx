@@ -140,6 +140,7 @@ function XrayServersPage() {
   const [createStealMode, setCreateStealMode] = useState<'tunnel' | 'fallback'>('tunnel')
   const [createUse443, setCreateUse443] = useState(false)
   const [createDomain, setCreateDomain] = useState('')
+  const [domainAutoFilled, setDomainAutoFilled] = useState(false)
   const [isDeleteRemoteServerDialogOpen, setIsDeleteRemoteServerDialogOpen] = useState(false)
   const [deletingRemoteServerId, setDeletingRemoteServerId] = useState<number | null>(null)
   const [selectedRemoteServer, setSelectedRemoteServer] = useState<RemoteServer | null>(null)
@@ -391,11 +392,12 @@ function XrayServersPage() {
   const handleAgentUninstall = (serverId: number) => streamRemoteOp(`/api/admin/remote/agent/uninstall-stream?server_id=${serverId}`, '卸载远程 Agent')
 
   const checkSameIP = async (address: string) => {
-    if (!address.trim() || !createStealSelf) return
+    if (!address.trim()) return
     try {
       const res = await api.get(`/api/admin/check-same-ip?address=${encodeURIComponent(address.trim())}`)
       if (res.data.same_ip && res.data.https_enabled) {
         setCreateDomain(res.data.master_domain)
+        setDomainAutoFilled(true)
       }
     } catch {}
   }
@@ -502,7 +504,7 @@ function XrayServersPage() {
 
   const resetAddDialog = () => {
     setRemoteServerName(''); setGeneratedToken(''); setInstallCommand(''); setIsGeneratingToken(false)
-    setPullAddress(''); setPullPort('23889'); setPullToken(''); setCreateStealSelf(false); setCreateFrontService('xray'); setCreateStealMode('tunnel'); setCreateUse443(false); setCreateDomain('')
+    setPullAddress(''); setPullPort('23889'); setPullToken(''); setCreateStealSelf(false); setCreateFrontService('xray'); setCreateStealMode('tunnel'); setCreateUse443(false); setCreateDomain(''); setDomainAutoFilled(false)
     setFormData({ ...formData, traffic_limit_gb: '', traffic_used_gb: '', traffic_reset_day: '' })
   }
 
@@ -625,7 +627,7 @@ function XrayServersPage() {
                 </div>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 bg-muted/50 rounded-lg">
-                <div className="grid gap-2"><Label htmlFor="pull-address">服务器地址</Label><Input id="pull-address" value={pullAddress} onChange={(e) => setPullAddress(e.target.value)} onBlur={(e) => checkSameIP(e.target.value)} placeholder="例如：example.com" disabled={!!generatedToken} /></div>
+                <div className="grid gap-2"><Label htmlFor="pull-address">服务器地址</Label><Input id="pull-address" value={pullAddress} onChange={(e) => setPullAddress(e.target.value)} onBlur={(e) => { if (createStealSelf) checkSameIP(e.target.value) }} placeholder="例如：example.com" disabled={!!generatedToken} /></div>
                 <div className="grid gap-2"><Label htmlFor="pull-port">Agent 端口</Label><Input id="pull-port" type="number" value={pullPort} onChange={(e) => setPullPort(e.target.value)} placeholder="23889" disabled={!!generatedToken} /></div>
                 <div className="grid gap-2"><Label htmlFor="pull-token">Agent 认证 Token (可选)</Label><Input id="pull-token" value={pullToken} onChange={(e) => setPullToken(e.target.value)} placeholder="自动生成" disabled={!!generatedToken} readOnly={!!generatedToken} /></div>
                 <div className="grid gap-2"><Label htmlFor="add-traffic-limit">流量限制 (GB)</Label><Input id="add-traffic-limit" type="number" step="0.01" placeholder="留空表示不限制" value={formData.traffic_limit_gb} onChange={(e) => setFormData({ ...formData, traffic_limit_gb: e.target.value })} disabled={!!generatedToken} /></div>
@@ -633,7 +635,7 @@ function XrayServersPage() {
                 <div className="grid gap-2"><Label htmlFor="add-reset-day">重置日期 (每月)</Label><Input id="add-reset-day" type="number" min="1" max="31" placeholder="1-31，留空不重置" value={formData.traffic_reset_day} onChange={(e) => setFormData({ ...formData, traffic_reset_day: e.target.value })} disabled={!!generatedToken} /></div>
               </div>
               <div className="grid gap-3 p-4 border rounded-lg">
-                <div className="flex items-center justify-between"><Label htmlFor="create-steal-self" className="cursor-pointer">我要偷自己</Label><Switch id="create-steal-self" checked={createStealSelf} onCheckedChange={(checked) => { setCreateStealSelf(checked); if (checked) setCreateUse443(true) }} disabled={!!generatedToken} /></div>
+                <div className="flex items-center justify-between"><Label htmlFor="create-steal-self" className="cursor-pointer">我要偷自己</Label><Switch id="create-steal-self" checked={createStealSelf} onCheckedChange={(checked) => { setCreateStealSelf(checked); if (checked) { setCreateUse443(true); if (pullAddress.trim()) checkSameIP(pullAddress) } }} disabled={!!generatedToken} /></div>
                 <div className="grid gap-2">
                   <Label>前置选择</Label>
                   <RadioGroup value={createFrontService} onValueChange={(value) => setCreateFrontService(value as 'xray' | 'nginx')} className="flex gap-4">
@@ -656,8 +658,8 @@ function XrayServersPage() {
                     {createUse443 && (
                       <div className="grid gap-2">
                         <Label htmlFor="create-domain">域名 <span className="text-destructive">*</span></Label>
-                        <Input id="create-domain" value={createDomain} onChange={(e) => setCreateDomain(e.target.value)} placeholder="例如：us1.example.com" disabled={!!generatedToken} />
-                        {createDomain && masterCertData?.domain && createDomain === masterCertData.domain ? (
+                        <Input id="create-domain" value={createDomain} onChange={(e) => { setCreateDomain(e.target.value); setDomainAutoFilled(false) }} placeholder="例如：us1.example.com" disabled={!!generatedToken} />
+                        {domainAutoFilled ? (
                           <p className="text-xs text-blue-600">已自动填充主控域名（服务器 IP 与主控一致）</p>
                         ) : (
                           <p className="text-xs text-muted-foreground">Agent 连接后将自动下发 Nginx + Xray 443端口配置和证书。建议为每个地区增加一个偷自己的服务器。</p>
