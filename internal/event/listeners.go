@@ -95,7 +95,7 @@ func (l *NodeSyncListener) handleAdded(ctx context.Context, event InboundEvent) 
 		return
 	}
 
-	// 将 Clash 配置中的 name 替换为实际节点名称
+	// 用实际节点名称覆盖 Clash 配置中的 name 字段
 	var clashMap map[string]any
 	if json.Unmarshal([]byte(clashConfig), &clashMap) == nil {
 		clashMap["name"] = nodeName
