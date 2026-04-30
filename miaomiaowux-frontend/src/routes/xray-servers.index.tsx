@@ -683,7 +683,7 @@ function XrayServersPage() {
                     <div className="flex items-center gap-2"><RadioGroupItem value="tunnel" id="steal-mode-tunnel" disabled={!!generatedToken || !createStealSelf} /><Label htmlFor="steal-mode-tunnel" className="text-sm cursor-pointer">Tunnel 模式</Label></div>
                     <div className="flex items-center gap-2"><RadioGroupItem value="fallback" id="steal-mode-fallback" disabled={!!generatedToken || !createStealSelf} /><Label htmlFor="steal-mode-fallback" className="text-sm cursor-pointer">回落模式</Label></div>
                   </RadioGroup>
-                  <p className="text-xs text-muted-foreground">{createStealMode === 'tunnel' ? 'Xray 监听 443 端口，通过 tunnel 转发到 Nginx' : 'Nginx 做 SSL 中转，Xray 直接监听协议端口'}</p>
+                  <p className="text-xs text-muted-foreground">{createStealMode === 'tunnel' ? 'Xray 监听 443 端口，通过 tunnel 转发到 Nginx' : 'Xray 监听443端口，通过fallback回落到Nginx'}</p>
                 </div>
                 {createStealSelf && (
                   <>
@@ -1101,7 +1101,7 @@ function XrayServersPage() {
                   <div className="flex items-center gap-2"><RadioGroupItem value="fallback" id="edit-steal-fallback" /><Label htmlFor="edit-steal-fallback" className="text-sm cursor-pointer">回落</Label></div>
                   <div className="flex items-center gap-2"><RadioGroupItem value="default" id="edit-steal-default" /><Label htmlFor="edit-steal-default" className="text-sm cursor-pointer">默认</Label></div>
                 </RadioGroup>
-                <p className="text-xs text-muted-foreground">{remoteFormData.steal_mode === 'tunnel' ? 'Xray 监听 443，通过 tunnel 转发到 Nginx' : remoteFormData.steal_mode === 'fallback' ? 'Nginx 做 SSL 中转，Xray 直接监听协议端口' : '无偷自己，Xray 直接监听协议端口'}</p>
+                <p className="text-xs text-muted-foreground">{remoteFormData.steal_mode === 'tunnel' ? 'Xray 监听 443，通过 tunnel 转发到 Nginx' : remoteFormData.steal_mode === 'fallback' ? 'Xray 监听443端口，通过fallback回落到Nginx' : '无偷自己，Xray 直接监听协议端口'}</p>
                 {remoteFormData.steal_mode !== (editingRemoteServer?.steal_mode || 'tunnel') && (<p className="text-xs text-yellow-600 dark:text-yellow-400">切换模式将重新部署配置，已有入站会自动保留</p>)}
               </div>
             )}

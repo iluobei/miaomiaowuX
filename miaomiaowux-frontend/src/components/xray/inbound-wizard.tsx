@@ -263,9 +263,11 @@ export function InboundWizard({
   // 常用用户快捷添加
   const [frequentUsers, setFrequentUsers] = useState<any[]>([])
 
-  // tunnel-in 端口加载后更新默认端口
   useEffect(() => {
-    if (tunnelInPort > 0) {
+    if (tunnelInPort <= 0 || resolvedUsedPorts.includes(tunnelInPort)) return
+    const isRealitySecurity =
+      selectedSecurity === 'REALITY' || selectedSecurity === 'XTLS-Vision-REALITY'
+    if (isRealitySecurity && selectedRealityDomain && isSelfDomain(selectedRealityDomain)) {
       setFormData((prev: any) => prev.port === 443 ? { ...prev, port: tunnelInPort } : prev)
     }
   }, [tunnelInPort])
@@ -608,6 +610,22 @@ export function InboundWizard({
     return `127.0.0.1:${port}`
   }
 
+  const generateRandomPort = (usedPorts: number[]) => {
+    const min = 10000
+    const max = 65535
+    const used = new Set(usedPorts)
+    let port: number
+    do {
+      port = Math.floor(Math.random() * (max - min + 1)) + min
+    } while (used.has(port))
+    return port
+  }
+
+  const isSelfDomain = (domain: string, serverMap?: Record<string, DomainServerInfo>) => {
+    const servers = serverMap || domainServers
+    return servers[domain]?.server_id === effectiveServerId
+  }
+
   const applyRealityDomain = (
     domain: string,
     serverMap?: Record<string, DomainServerInfo>,
@@ -621,6 +639,12 @@ export function InboundWizard({
     )
     handleFieldChange('serverNames', domain)
     handleFieldChange('xver', isLocal ? 1 : 0)
+
+    if (isLocal && tunnelInPort > 0 && !resolvedUsedPorts.includes(tunnelInPort)) {
+      setFormData((prev: any) => ({ ...prev, port: tunnelInPort }))
+    } else {
+      setFormData((prev: any) => ({ ...prev, port: generateRandomPort(resolvedUsedPorts) }))
+    }
   }
 
   const handleSelectRealityDomain = (domain: string) => {
@@ -817,8 +841,16 @@ export function InboundWizard({
         return
       }
 
-      // 通用默认值
-      if (!submitData.port) submitData.port = tunnelInPort || 443
+      if (!submitData.port) {
+        const isRealitySecurity =
+          selectedSecurity === 'REALITY' || selectedSecurity === 'XTLS-Vision-REALITY'
+        const selfDomain = isRealitySecurity && selectedRealityDomain && isSelfDomain(selectedRealityDomain)
+        if (selfDomain && tunnelInPort > 0 && !resolvedUsedPorts.includes(tunnelInPort)) {
+          submitData.port = tunnelInPort
+        } else {
+          submitData.port = generateRandomPort(resolvedUsedPorts)
+        }
+      }
       if (resolvedUsedPorts.includes(Number(submitData.port))) {
         let nextPort = Number(submitData.port) + 1
         while (resolvedUsedPorts.includes(nextPort) && nextPort <= 65535) nextPort++
