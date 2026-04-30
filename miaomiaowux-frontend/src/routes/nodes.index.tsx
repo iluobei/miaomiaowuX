@@ -569,7 +569,7 @@ function NodesPage() {
     queryKey: ['remote-servers'],
     queryFn: async () => {
       const response = await api.get('/api/admin/remote-servers')
-      return response.data as { success: boolean; servers: Array<{ id: number; name: string; status: string; ip_address?: string }> }
+      return response.data as { success: boolean; servers: Array<{ id: number; name: string; status: string; ip_address?: string; pull_address?: string; domain?: string }> }
     },
     staleTime: 30_000,
   })
@@ -3948,7 +3948,7 @@ anytls://password@example.com:443/?sni=example.com&fp=chrome&alpn=h2#AnyTLSèŠ‚ç‚
                 </div>
               ) : (
                 <InboundWizard
-                  servers={remoteServers.map(s => ({ id: s.id, name: s.name, host: s.ip_address || '', port: 0 }))}
+                  servers={remoteServers.map(s => ({ id: s.id, name: s.name, host: s.ip_address || s.pull_address || s.domain || '', port: 0 }))}
                   selectedServerIds={landingServerId ? [landingServerId] : []}
                   onCancel={() => setLandingStep('select')}
                   onSubmit={handleLandingInboundCreated}
@@ -4450,7 +4450,7 @@ anytls://password@example.com:443/?sni=example.com&fp=chrome&alpn=h2#AnyTLSèŠ‚ç‚
           {quickCreateStep === 'inbound' && (
             <div className='flex-1 overflow-y-auto'>
               <InboundWizard
-                servers={remoteServers.map(s => ({ id: s.id, name: s.name, host: s.ip_address || '', port: 0 }))}
+                servers={remoteServers.map(s => ({ id: s.id, name: s.name, host: s.ip_address || s.pull_address || s.domain || '', port: 0 }))}
                 selectedServerIds={quickCreateServerId ? [quickCreateServerId] : []}
                 onCancel={() => setQuickCreateOpen(false)}
                 onSubmit={handleQuickCreateSubmit}

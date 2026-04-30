@@ -646,7 +646,7 @@ function XrayServersPage() {
         </div>
         <Dialog open={isAddDialogOpen} onOpenChange={(open) => { setIsAddDialogOpen(open); if (!open) resetAddDialog() }}>
           <DialogTrigger asChild><Button><Plus className="mr-2 h-4 w-4" />添加服务器</Button></DialogTrigger>
-          <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
+          <DialogContent className="w-[90vw] md:w-[60vw] max-w-none max-h-[85vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>添加远程服务器</DialogTitle>
               <DialogDescription>添加一个远程 MMWX 服务器进行管理。输入名称后生成 Token，然后在远程服务器上执行安装命令。</DialogDescription>
@@ -717,7 +717,7 @@ function XrayServersPage() {
                 <>
                   <div className="grid gap-2"><Label>主服务器 Token</Label><div className="flex gap-2"><Input value={generatedToken} readOnly className="font-mono text-sm" /><Button variant="outline" size="icon" onClick={() => copyToClipboard(generatedToken, '主服务器 Token')}><Copy className="h-4 w-4" /></Button></div></div>
                   <div className="grid gap-2"><Label>子服务器 Token</Label><div className="flex gap-2"><Input value={pullToken} readOnly className="font-mono text-sm" /><Button variant="outline" size="icon" onClick={() => copyToClipboard(pullToken, '子服务器 Token')}><Copy className="h-4 w-4" /></Button></div></div>
-                  <div className="grid gap-2"><Label htmlFor="install-command">安装命令</Label><div className="flex gap-2"><Textarea id="install-command" value={installCommand} readOnly className="font-mono text-xs min-h-[80px]" /><Button variant="outline" size="icon" className="shrink-0" onClick={() => copyToClipboard(installCommand, '安装命令')}><Copy className="h-4 w-4" /></Button></div></div>
+                  <div className="grid gap-2"><Label htmlFor="install-command">安装命令</Label><div className="flex gap-2"><Textarea id="install-command" value={installCommand} readOnly className="font-mono text-xs h-[80px] resize-none" /><Button variant="outline" size="icon" className="shrink-0" onClick={() => copyToClipboard(installCommand, '安装命令')}><Copy className="h-4 w-4" /></Button></div></div>
                   <p className="text-xs text-muted-foreground">主服务器 Token 用于 Agent 连接主服务器认证；子服务器 Token 用于主服务器拉取 Agent 数据时认证。当 Agent 无法主动上报时，主服务器将自动切换为拉取模式。</p>
                 </>
               )}

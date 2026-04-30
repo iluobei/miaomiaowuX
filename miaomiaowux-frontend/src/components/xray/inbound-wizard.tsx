@@ -62,6 +62,7 @@ import {
   countryCodeToFlag,
   getGeoIPInfo,
 } from '@/lib/country-flag'
+import { Twemoji } from '@/components/twemoji'
 import { ArrayField } from './array-field'
 import { FormField } from './form-field'
 import { VlessDecryptionField } from './vless-decryption-field'
@@ -204,17 +205,21 @@ export function InboundWizard({
       : internalSelectedServerId
   const effectiveServerIds = effectiveServerId ? [effectiveServerId] : []
 
-  const { data: fetchedPorts } = useQuery({
+  const { data: inboundInfo } = useQuery({
     queryKey: ['inbound-ports', effectiveServerId],
     queryFn: async () => {
-      if (!effectiveServerId) return []
+      if (!effectiveServerId) return { ports: [] as number[], tunnelInPort: 0 }
       const res = await api.get(`/api/admin/remote/inbounds?server_id=${effectiveServerId}`)
       const inbounds = res.data.inbounds || []
-      return inbounds.map((item: any) => Number(item.port)).filter(Boolean)
+      const ports = inbounds.map((item: any) => Number(item.port)).filter(Boolean)
+      const tunnelIn = inbounds.find((item: any) => item.tag === 'tunnel-in')
+      const tunnelInPort = tunnelIn?.settings?.port ? Number(tunnelIn.settings.port) : 0
+      return { ports, tunnelInPort }
     },
     enabled: !!effectiveServerId && usedPorts.length === 0,
   })
-  const resolvedUsedPorts = usedPorts.length > 0 ? usedPorts : (fetchedPorts || [])
+  const resolvedUsedPorts = usedPorts.length > 0 ? usedPorts : (inboundInfo?.ports || [])
+  const tunnelInPort = inboundInfo?.tunnelInPort || 0
 
   const [selectedProtocol, setSelectedProtocol] = useState<string>('VLESS')
   const [selectedTransport, setSelectedTransport] = useState<string>('TCP')
@@ -257,6 +262,13 @@ export function InboundWizard({
 
   // 常用用户快捷添加
   const [frequentUsers, setFrequentUsers] = useState<any[]>([])
+
+  // tunnel-in 端口加载后更新默认端口
+  useEffect(() => {
+    if (tunnelInPort > 0) {
+      setFormData((prev: any) => prev.port === 443 ? { ...prev, port: tunnelInPort } : prev)
+    }
+  }, [tunnelInPort])
 
   // 切换服务器选择（单选）
   const toggleServerSelection = (serverId: number) => {
@@ -806,7 +818,7 @@ export function InboundWizard({
       }
 
       // 通用默认值
-      if (!submitData.port) submitData.port = 443
+      if (!submitData.port) submitData.port = tunnelInPort || 443
       if (resolvedUsedPorts.includes(Number(submitData.port))) {
         let nextPort = Number(submitData.port) + 1
         while (resolvedUsedPorts.includes(nextPort) && nextPort <= 65535) nextPort++
@@ -1090,7 +1102,7 @@ export function InboundWizard({
                               <Popover open={showFlagPicker} onOpenChange={setShowFlagPicker}>
                                 <PopoverTrigger asChild>
                                   <Button variant='outline' size='sm' className='text-lg px-2' type='button'>
-                                    {selectedFlag ? countryCodeToFlag(selectedFlag) : '\u{1F3F3}\u{FE0F}'}
+                                    <Twemoji>{selectedFlag ? countryCodeToFlag(selectedFlag) : '\u{1F3F3}\u{FE0F}'}</Twemoji>
                                   </Button>
                                 </PopoverTrigger>
                                 <PopoverContent className='w-72 p-2' align='start'>
@@ -1105,7 +1117,7 @@ export function InboundWizard({
                                         onClick={() => { setSelectedFlag(opt.code); setShowFlagPicker(false) }}
                                         title={opt.label}
                                       >
-                                        {countryCodeToFlag(opt.code)}
+                                        <Twemoji>{countryCodeToFlag(opt.code)}</Twemoji>
                                       </Button>
                                     ))}
                                   </div>
