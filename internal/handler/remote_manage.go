@@ -901,10 +901,22 @@ func (h *RemoteManageHandler) autoSyncInboundToNodes(ctx context.Context, server
 		return
 	}
 
-	// 转换入站为 Clash 代理配置（有域名说明走 tunnel 模式，端口用 443）
+	// tunnel 模式：仅当入站端口 == tunnel-in 的 settings.port 时，才使用域名+443
 	tunnelPort := 0
-	if server.Domain != "" {
-		tunnelPort = 443
+	if server.Domain != "" && (server.StealMode == "tunnel" || server.StealMode == "") {
+		inboundPort := 0
+		if p, ok := inbound["port"].(float64); ok {
+			inboundPort = int(p)
+		} else if p, ok := inbound["port"].(int); ok {
+			inboundPort = p
+		}
+		if inboundPort > 0 {
+			tunnelInSettingsPort := h.getTunnelInSettingsPort(ctx, serverID)
+			if tunnelInSettingsPort > 0 && inboundPort == tunnelInSettingsPort {
+				serverHost = server.Domain
+				tunnelPort = 443
+			}
+		}
 	}
 	clashProxy, err := h.inboundToClashProxy(inbound, serverHost, server.Name, tunnelPort)
 	if err != nil {
@@ -1127,12 +1139,6 @@ func (h *RemoteManageHandler) syncInboundsToNodesInternal(ctx context.Context, s
 		return response
 	}
 
-	// 有域名且为 tunnel 模式，节点端口用 443
-	tunnelPort := 0
-	if server.Domain != "" && server.StealMode == "tunnel" {
-		tunnelPort = 443
-	}
-
 	// 从远程服务器获取入站
 	result, err := h.forwardToRemoteServer(ctx, serverID, "GET", "/api/child/inbounds", nil)
 	if err != nil {
@@ -1155,6 +1161,21 @@ func (h *RemoteManageHandler) syncInboundsToNodesInternal(ctx context.Context, s
 		response.Success = false
 		response.Errors = append(response.Errors, "远程服务器返回错误")
 		return response
+	}
+
+	// 提取 tunnel-in 的 settings.port
+	tunnelInSettingsPort := 0
+	if server.Domain != "" && (server.StealMode == "tunnel" || server.StealMode == "") {
+		for _, ib := range inboundsResp.Inbounds {
+			if tag, _ := ib["tag"].(string); tag == "tunnel-in" {
+				if s, _ := ib["settings"].(map[string]interface{}); s != nil {
+					if p, ok := s["port"].(float64); ok && p > 0 {
+						tunnelInSettingsPort = int(p)
+					}
+				}
+				break
+			}
+		}
 	}
 
 	username := "admin"
@@ -1212,7 +1233,13 @@ func (h *RemoteManageHandler) syncInboundsToNodesInternal(ctx context.Context, s
 		}
 
 		// 将入站转换为 Clash 代理配置
-		clashProxy, err := h.inboundToClashProxy(inbound, serverHost, server.Name, tunnelPort)
+		tunnelPort := 0
+		host := serverHost
+		if tunnelInSettingsPort > 0 && int(port) == tunnelInSettingsPort {
+			host = server.Domain
+			tunnelPort = 443
+		}
+		clashProxy, err := h.inboundToClashProxy(inbound, host, server.Name, tunnelPort)
 		if err != nil {
 			response.Errors = append(response.Errors, fmt.Sprintf("tag=%s: %v", tag, err))
 			response.SkippedCount++
@@ -1380,6 +1407,21 @@ func (h *RemoteManageHandler) HandleSyncInboundsToNodes(w http.ResponseWriter, r
 		return
 	}
 
+	// 提取 tunnel-in 的 settings.port
+	tunnelInSettingsPort := 0
+	if server.Domain != "" && (server.StealMode == "tunnel" || server.StealMode == "") {
+		for _, ib := range inboundsResp.Inbounds {
+			if tag, _ := ib["tag"].(string); tag == "tunnel-in" {
+				if s, _ := ib["settings"].(map[string]interface{}); s != nil {
+					if p, ok := s["port"].(float64); ok && p > 0 {
+						tunnelInSettingsPort = int(p)
+					}
+				}
+				break
+			}
+		}
+	}
+
 	// 从请求上下文中获取用户名（管理员用户）
 	username := "admin" // 目前默认为管理员
 	if u := r.Context().Value("username"); u != nil {
@@ -1452,10 +1494,12 @@ func (h *RemoteManageHandler) HandleSyncInboundsToNodes(w http.ResponseWriter, r
 
 		// 将入站转换为 Clash 代理配置
 		tunnelPort := 0
-		if server.Domain != "" {
+		host := req.ServerHost
+		if tunnelInSettingsPort > 0 && int(port) == tunnelInSettingsPort {
+			host = server.Domain
 			tunnelPort = 443
 		}
-		clashProxy, err := h.inboundToClashProxy(inbound, req.ServerHost, server.Name, tunnelPort)
+		clashProxy, err := h.inboundToClashProxy(inbound, host, server.Name, tunnelPort)
 		if err != nil {
 			log.Printf("[Sync Nodes] Error converting inbound %s: %v", tag, err)
 			response.Errors = append(response.Errors, fmt.Sprintf("tag=%s: %v", tag, err))
@@ -1796,6 +1840,34 @@ func (h *RemoteManageHandler) addStreamSettings(proxy map[string]interface{}, st
 	}
 }
 
+func (h *RemoteManageHandler) getTunnelInSettingsPort(ctx context.Context, serverID int64) int {
+	result, err := h.forwardToRemoteServer(ctx, serverID, "GET", "/api/child/inbounds", nil)
+	if err != nil {
+		return 0
+	}
+	var resp struct {
+		Inbounds []map[string]interface{} `json:"inbounds"`
+	}
+	if json.Unmarshal(result, &resp) != nil {
+		return 0
+	}
+	for _, ib := range resp.Inbounds {
+		tag, _ := ib["tag"].(string)
+		if tag != "tunnel-in" {
+			continue
+		}
+		settings, _ := ib["settings"].(map[string]interface{})
+		if settings == nil {
+			return 0
+		}
+		if p, ok := settings["port"].(float64); ok && p > 0 {
+			return int(p)
+		}
+		return 0
+	}
+	return 0
+}
+
 // InboundToClashProxyByServerID 将 Xray 入站配置转换为 Clash 代理 JSON 字符串。
 // 这是供事件侦听器使用的导出方法。
 func (h *RemoteManageHandler) InboundToClashProxyByServerID(serverID int64, inbound map[string]any) (string, error) {
@@ -1805,21 +1877,34 @@ func (h *RemoteManageHandler) InboundToClashProxyByServerID(serverID int64, inbo
 		return "", fmt.Errorf("get server: %w", err)
 	}
 
-	// 使用节点服务器字段的 IP 地址
 	serverHost := server.IPAddress
+	tunnelPort := 0
+
+	// tunnel 模式：仅当新入站端口 == tunnel-in 的 settings.port 时，才使用域名+443
+	if server.Domain != "" && (server.StealMode == "tunnel" || server.StealMode == "") {
+		inboundPort := 0
+		if p, ok := inbound["port"].(float64); ok {
+			inboundPort = int(p)
+		} else if p, ok := inbound["port"].(int); ok {
+			inboundPort = p
+		}
+
+		if inboundPort > 0 {
+			tunnelInSettingsPort := h.getTunnelInSettingsPort(ctx, serverID)
+			if tunnelInSettingsPort > 0 && inboundPort == tunnelInSettingsPort {
+				serverHost = server.Domain
+				tunnelPort = 443
+			}
+		}
+	}
+
 	if serverHost == "" {
 		return "", fmt.Errorf("server has no IP or domain")
 	}
 
-	// 将现有方法的入站转换为map[string]接口
 	inboundMap := make(map[string]interface{})
 	for k, v := range inbound {
 		inboundMap[k] = v
-	}
-
-	tunnelPort := 0
-	if server.Domain != "" {
-		tunnelPort = 443
 	}
 
 	proxy, err := h.inboundToClashProxy(inboundMap, serverHost, server.Name, tunnelPort)
