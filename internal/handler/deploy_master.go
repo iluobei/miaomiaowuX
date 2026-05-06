@@ -16,6 +16,17 @@ import (
 	"miaomiaowux/templates"
 )
 
+func localPanelBackend(masterURL string) string {
+	u := strings.TrimPrefix(masterURL, "https://")
+	u = strings.TrimPrefix(u, "http://")
+	if idx := strings.Index(u, ":"); idx != -1 {
+		if port := strings.Split(u[idx+1:], "/")[0]; port != "" {
+			return "http://127.0.0.1:" + port
+		}
+	}
+	return "http://127.0.0.1:12889"
+}
+
 func getDomainFromMasterURL(repo *storage.TrafficRepository, ctx context.Context) string {
 	masterURL, _ := repo.GetSystemSetting(ctx, "master_url")
 	if masterURL == "" {
@@ -205,6 +216,8 @@ func (h *CertificateHandler) EnableHTTPS(w http.ResponseWriter, r *http.Request)
 	domainConf := strings.ReplaceAll(string(domainTpl), "{domain}", domain)
 	domainConf = strings.ReplaceAll(domainConf, "{root_domain}", rootDomain)
 	domainConf = strings.ReplaceAll(domainConf, "{cert_name}", certName)
+	masterURLRaw, _ := h.repo.GetSystemSetting(ctx, "master_url")
+	domainConf = strings.ReplaceAll(domainConf, "{proxy_pass_server}", localPanelBackend(masterURLRaw))
 	if err := os.WriteFile(filepath.Join("/usr/local/nginx/servers", domain+".conf"), []byte(domainConf), 0644); err != nil {
 		respondJSON(w, http.StatusInternalServerError, map[string]any{"success": false, "message": fmt.Sprintf("写入 domain.conf 失败: %v", err)})
 		return

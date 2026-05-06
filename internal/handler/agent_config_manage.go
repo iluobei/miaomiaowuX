@@ -42,6 +42,7 @@ type RemoteServerCreateRequest struct {
 	TrafficLimit      int64  `json:"traffic_limit"`       // 流量限制（以字节为单位）
 	TrafficUsedOffset int64  `json:"traffic_used_offset"` // 手动偏移校准
 	TrafficResetDay   int    `json:"traffic_reset_day"`   // 要重置的月份日期 (1-31)
+	IPAddress         string `json:"ip_address"`          // 子服务器 IP 地址
 	ConnectionMode    string `json:"connection_mode"`     // push | pull | websocket
 	PullAddress       string `json:"pull_address"`        // 对于pull模式
 	PullPort          int    `json:"pull_port"`           // 对于pull模式
@@ -209,32 +210,35 @@ func (h *XrayServerHandler) CreateRemoteServer(w stdhttp.ResponseWriter, r *stdh
 	mmwxDomain := getDomainFromMasterURL(h.repo, ctx)
 
 	isLocalByAddr := false
-	if req.PullAddress != "" && mmwxDomain != "" {
-		addrIPs := resolveIPs(req.PullAddress)
-		mmwxIPs := resolveIPs(mmwxDomain)
-		mmwxIPSet := make(map[string]struct{})
-		for _, ip := range mmwxIPs {
-			mmwxIPSet[ip] = struct{}{}
-		}
-		for _, ip := range addrIPs {
+	mmwxIPs := resolveIPs(mmwxDomain)
+	mmwxIPSet := make(map[string]struct{})
+	for _, ip := range mmwxIPs {
+		mmwxIPSet[ip] = struct{}{}
+	}
+	checkAddrLocal := func(addr string) bool {
+		for _, ip := range resolveIPs(addr) {
 			if _, ok := mmwxIPSet[ip]; ok {
-				isLocalByAddr = true
-				break
+				return true
 			}
+		}
+		return false
+	}
+	if mmwxDomain != "" {
+		if req.IPAddress != "" {
+			isLocalByAddr = checkAddrLocal(req.IPAddress)
+		}
+		if !isLocalByAddr && req.PullAddress != "" {
+			isLocalByAddr = checkAddrLocal(req.PullAddress)
 		}
 	}
 
-	masterURL, _ := h.repo.GetSystemSetting(ctx, "master_url")
-	httpsEnabled := strings.HasPrefix(masterURL, "https://")
-	if reqDomain != "" && mmwxDomain != "" && reqDomain == mmwxDomain {
-		if !(isLocalByAddr && req.StealSelf && httpsEnabled) {
-			w.Header().Set("Content-Type", "application/json")
-			json.NewEncoder(w).Encode(RemoteServerResponse{
-				Success: false,
-				Message: "域名不能与 MMWX 安装域名相同",
-			})
-			return
-		}
+	if reqDomain != "" && mmwxDomain != "" && reqDomain == mmwxDomain && !isLocalByAddr {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(RemoteServerResponse{
+			Success: false,
+			Message: "域名不能与 MMWX 安装域名相同",
+		})
+		return
 	}
 
 	// 生成安全令牌
@@ -277,6 +281,7 @@ func (h *XrayServerHandler) CreateRemoteServer(w stdhttp.ResponseWriter, r *stdh
 		Name:           req.Name,
 		Token:          token,
 		Status:         storage.RemoteServerStatusPending,
+		IPAddress:      req.IPAddress,
 		ConnectionMode: connectionMode,
 		PullAddress:    req.PullAddress,
 		PullPort:       req.PullPort,
