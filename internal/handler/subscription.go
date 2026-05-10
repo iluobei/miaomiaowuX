@@ -259,6 +259,14 @@ func (h *SubscriptionHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 	}
 	logger.Info("[⏱️ 耗时监测] 文件查找完成", "step", "file_lookup", "duration_ms", time.Since(stepStart).Milliseconds(), "filename", filename)
 
+	if username != "" {
+		clientType := r.Header.Get("User-Agent")
+		if clientType == "" {
+			clientType = "unknown"
+		}
+		SendSubscribeFetchNotification(r.Context(), username, clientType, GetClientIP(r))
+	}
+
 	cleanedName := filepath.Clean(filename)
 	if strings.HasPrefix(cleanedName, "..") || filepath.IsAbs(cleanedName) {
 		writeError(w, http.StatusBadRequest, errors.New("invalid rule filename"))

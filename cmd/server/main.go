@@ -16,6 +16,7 @@ import (
 
 	"miaomiaowux/internal/agentlog"
 	"miaomiaowux/internal/auth"
+	"miaomiaowux/internal/notify"
 	"miaomiaowux/internal/child"
 	"miaomiaowux/internal/event"
 	"miaomiaowux/internal/handler"
@@ -138,6 +139,20 @@ func main() {
 	}
 
 	agentlog.SetEnabled(systemConfig.AgentLogEnabled)
+
+	handler.InitNotifier(notify.Config{
+		Enabled:                 systemConfig.NotifyEnabled,
+		BotToken:                systemConfig.TelegramBotToken,
+		ChatID:                  systemConfig.TelegramChatID,
+		NotifyLogin:             systemConfig.NotifyLogin,
+		NotifySubscribeFetch:    systemConfig.NotifySubscribeFetch,
+		NotifyDailyTraffic:      systemConfig.NotifyDailyTraffic,
+		NotifyServerOffline:     systemConfig.NotifyServerOffline,
+		NotifyServerOnline:      systemConfig.NotifyServerOnline,
+		NotifyTrafficThreshold:  systemConfig.NotifyTrafficThreshold,
+		DailyTrafficTime:        systemConfig.NotifyDailyTrafficTime,
+		TrafficThresholdPercent: systemConfig.NotifyTrafficThresholdPercent,
+	})
 
 	// 从远程拉取配置
 	data, resolvedURL, fetchErr := proxygroups.FetchConfig(systemConfig.ProxyGroupsSourceURL)
@@ -531,6 +546,11 @@ func main() {
 		}
 	})))
 
+	// 通知配置 API（仅限管理员）
+	notifyConfigHandler := handler.NewNotifyConfigHandler(repo)
+	mux.Handle("/api/admin/notify-config", auth.RequireAdmin(tokenStore, userRepo, notifyConfigHandler))
+	mux.Handle("/api/admin/notify-config/test", auth.RequireAdmin(tokenStore, userRepo, notifyConfigHandler))
+
 	// 证书管理 API（仅限管理员）
 	certHandler := handler.NewCertificateHandler(repo, remoteWSHandler)
 	remoteManageHandler.SetCertificateHandler(certHandler)
@@ -626,6 +646,7 @@ func main() {
 
 	collectorCtx, stopCollector := context.WithCancel(context.Background())
 
+	trafficCollector.OnServerOffline = handler.SendServerOfflineNotification
 	// 启动 Xray 流量收集器（每 1 分钟）
 	go trafficCollector.Start(collectorCtx)
 	// 启动拉模式服务器的速度收集（每 3 秒）
@@ -637,6 +658,8 @@ func main() {
 	go trafficEnforcer.Start(collectorCtx, time.Duration(systemConfig.TrafficCheckInterval)*time.Second)
 	// 启动 WebSocket 陈旧连接清理
 	remoteWSHandler.StartCleanupLoop(collectorCtx, 1*time.Minute)
+	// 启动通知调度器
+	go handler.StartNotifyScheduler(collectorCtx, repo)
 	// 启动证书自动续订检查程序（每 24 小时检查一次是否有 30 天内过期的证书）
 	certHandler.StartRenewalChecker(collectorCtx)
 	// TODO: 启动远程服务器离线检测任务（功能尚未实现）

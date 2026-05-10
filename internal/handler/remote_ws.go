@@ -357,6 +357,10 @@ func (h *RemoteWSHandler) handleAuth(conn *websocket.Conn, remoteAddr string, pa
 		log.Printf("[Remote WS] Failed to update server status for %s: %v", server.Name, err)
 	}
 
+	if server.Status != "connected" {
+		SendServerOnlineNotification(updateCtx, server.Name, ip)
+	}
+
 	// 重置回退状态，以便当 WS 处于活动状态时拉收集器停止
 	if err := h.repo.ResetRemoteServerPushFailCount(updateCtx, server.ID); err != nil {
 		log.Printf("[Remote WS] Failed to reset fallback for %s: %v", server.Name, err)

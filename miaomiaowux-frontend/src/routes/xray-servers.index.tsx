@@ -3,7 +3,8 @@ import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState, useRef, useEffect } from 'react'
 import { toast } from 'sonner'
-import { Plus, RefreshCw, Search, Trash2, Download, Cog, ChevronDown, LayoutGrid, List, Terminal, Play, Square, RotateCcw, Copy, Pencil, X, Settings, Wifi, Radio, Eye, ArrowUpCircle, Globe, CheckCircle, XCircle, Loader2, AlertTriangle } from 'lucide-react'
+import { Plus, RefreshCw, Search, Trash2, Download, Cog, ChevronDown, Terminal, Play, Square, RotateCcw, Copy, Pencil, X, Settings, Wifi, Radio, Eye, ArrowUpCircle, Globe, CheckCircle, XCircle, Loader2, AlertTriangle } from 'lucide-react'
+import { ViewToggle, type ViewMode } from '@/components/ui/view-toggle'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 
 import { InboundPanel } from '@/components/xray/inbound-panel'
@@ -113,7 +114,7 @@ function XrayServersPage() {
   const queryClient = useQueryClient()
   const navigate = useNavigate()
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
-  const [viewMode, setViewMode] = useState<'card' | 'list'>('card')
+  const [viewMode, setViewMode] = useState<ViewMode>('card')
   const [formData, setFormData] = useState({
     name: '',
     traffic_limit_gb: '',
@@ -642,10 +643,7 @@ function XrayServersPage() {
         <p className="text-gray-600">管理远程服务器</p>
       </div>
       <div className="flex flex-wrap gap-4 mb-6">
-        <div className="flex gap-1">
-          <Button variant={viewMode === 'card' ? 'default' : 'outline'} size="icon" onClick={() => setViewMode('card')} title="卡片视图"><LayoutGrid className="h-4 w-4" /></Button>
-          <Button variant={viewMode === 'list' ? 'default' : 'outline'} size="icon" onClick={() => setViewMode('list')} title="列表视图"><List className="h-4 w-4" /></Button>
-        </div>
+        <ViewToggle view={viewMode} onViewChange={setViewMode} />
         <Dialog open={isAddDialogOpen} onOpenChange={(open) => { setIsAddDialogOpen(open); if (!open) resetAddDialog() }}>
           <DialogTrigger asChild><Button><Plus className="mr-2 h-4 w-4" />添加服务器</Button></DialogTrigger>
           <DialogContent className="w-[90vw] md:w-[60vw] max-w-none max-h-[85vh] overflow-y-auto">
@@ -874,19 +872,25 @@ function XrayServersPage() {
                     <TableCell className="font-medium">
                       <div className="flex items-center gap-2">
                         <div className={cn("w-2.5 h-2.5 rounded-full flex-shrink-0", server.status === 'connected' ? "bg-green-500" : server.status === 'pending' ? "bg-yellow-500" : "bg-red-500")} />
-                        <span className={server.status !== 'connected' ? 'cursor-pointer hover:text-primary' : ''} onClick={() => { if (server.status !== 'connected') { setSelectedRemoteServer(server); setIsRemoteServerDetailDialogOpen(true) } }}>{server.name}</span>
-                        <RemoteServerStatusBadge status={server.status} />
-                        {Math.abs(server.time_offset_seconds ?? 0) > 10 && (
-                          <TooltipProvider>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <AlertTriangle className="h-4 w-4 text-yellow-500 cursor-help flex-shrink-0" />
-                              </TooltipTrigger>
-                              <TooltipContent>服务器时间有误差，可能导致vmess、ss等时间敏感协议无法使用</TooltipContent>
-                            </Tooltip>
-                          </TooltipProvider>
-                        )}
-                        {server.fallback_to_pull && (<Badge variant="secondary" className="text-xs bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">已降级</Badge>)}
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className={cn("truncate", server.status !== 'connected' && 'cursor-pointer hover:text-primary')} onClick={() => { if (server.status !== 'connected') { setSelectedRemoteServer(server); setIsRemoteServerDetailDialogOpen(true) } }}>{server.name}</span>
+                            <RemoteServerStatusBadge status={server.status} />
+                            {Math.abs(server.time_offset_seconds ?? 0) > 10 && (
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <AlertTriangle className="h-4 w-4 text-yellow-500 cursor-help flex-shrink-0" />
+                                  </TooltipTrigger>
+                                  <TooltipContent>服务器时间有误差，可能导致vmess、ss等时间敏感协议无法使用</TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
+                            )}
+                            {server.fallback_to_pull && (<Badge variant="secondary" className="text-xs bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">已降级</Badge>)}
+                            {server.steal_mode && server.steal_mode !== 'tunnel' && (<Badge variant="outline" className="text-xs">{server.steal_mode === 'fallback' ? '回落' : '默认'}</Badge>)}
+                          </div>
+                          {server.last_heartbeat && (<div className="text-xs text-muted-foreground mt-0.5">心跳: {new Date(server.last_heartbeat).toLocaleString()}</div>)}
+                        </div>
                       </div>
                     </TableCell>
                     <TableCell>

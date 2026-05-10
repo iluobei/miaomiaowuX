@@ -262,6 +262,18 @@ type SystemConfig struct {
 	TrafficCheckInterval    int    // 流量限额检查间隔（秒），默认 120
 	HeartbeatInterval       int    // 心跳间隔（秒），默认 30
 	AgentLogEnabled         bool   // 是否打印 agent 交互日志，默认关闭
+
+	NotifyEnabled               bool
+	TelegramBotToken            string
+	TelegramChatID              string
+	NotifyLogin                 bool
+	NotifySubscribeFetch        bool
+	NotifyDailyTraffic          bool
+	NotifyServerOffline         bool
+	NotifyServerOnline          bool
+	NotifyTrafficThreshold      bool
+	NotifyDailyTrafficTime      string // "HH:MM"，默认 "08:00"
+	NotifyTrafficThresholdPercent int  // 0-100，默认 80
 }
 
 // ExternalSubscription表示用户导入的外部订阅URL。
@@ -1001,6 +1013,40 @@ WHERE NOT EXISTS (SELECT 1 FROM system_config WHERE id = 1);
 		return err
 	}
 
+	if err := r.ensureSystemConfigColumn("notify_enabled", "INTEGER NOT NULL DEFAULT 0"); err != nil {
+		return err
+	}
+	if err := r.ensureSystemConfigColumn("telegram_bot_token", "TEXT NOT NULL DEFAULT ''"); err != nil {
+		return err
+	}
+	if err := r.ensureSystemConfigColumn("telegram_chat_id", "TEXT NOT NULL DEFAULT ''"); err != nil {
+		return err
+	}
+	if err := r.ensureSystemConfigColumn("notify_login", "INTEGER NOT NULL DEFAULT 0"); err != nil {
+		return err
+	}
+	if err := r.ensureSystemConfigColumn("notify_subscribe_fetch", "INTEGER NOT NULL DEFAULT 0"); err != nil {
+		return err
+	}
+	if err := r.ensureSystemConfigColumn("notify_daily_traffic", "INTEGER NOT NULL DEFAULT 0"); err != nil {
+		return err
+	}
+	if err := r.ensureSystemConfigColumn("notify_server_offline", "INTEGER NOT NULL DEFAULT 0"); err != nil {
+		return err
+	}
+	if err := r.ensureSystemConfigColumn("notify_server_online", "INTEGER NOT NULL DEFAULT 0"); err != nil {
+		return err
+	}
+	if err := r.ensureSystemConfigColumn("notify_traffic_threshold", "INTEGER NOT NULL DEFAULT 0"); err != nil {
+		return err
+	}
+	if err := r.ensureSystemConfigColumn("notify_daily_traffic_time", "TEXT NOT NULL DEFAULT '08:00'"); err != nil {
+		return err
+	}
+	if err := r.ensureSystemConfigColumn("notify_traffic_threshold_percent", "INTEGER NOT NULL DEFAULT 80"); err != nil {
+		return err
+	}
+
 	const customRulesSchema = `
 CREATE TABLE IF NOT EXISTS custom_rules (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -1587,6 +1633,16 @@ CREATE TABLE IF NOT EXISTS user_outbounds (
 `
 	if _, err := r.db.Exec(userOutboundsSchema); err != nil {
 		return fmt.Errorf("migrate user_outbounds: %w", err)
+	}
+
+	const trafficThresholdNotifiedSchema = `
+CREATE TABLE IF NOT EXISTS traffic_threshold_notified (
+    server_id INTEGER PRIMARY KEY,
+    notified_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+`
+	if _, err := r.db.Exec(trafficThresholdNotifiedSchema); err != nil {
+		return fmt.Errorf("migrate traffic_threshold_notified: %w", err)
 	}
 
 	return nil
@@ -5002,22 +5058,32 @@ func (r *TrafficRepository) GetSystemConfig(ctx context.Context) (SystemConfig, 
 SELECT proxy_groups_source_url, client_compatibility_mode, COALESCE(enable_short_link, 1),
        COALESCE(speed_collect_interval, 3), COALESCE(traffic_collect_interval, 60),
        COALESCE(traffic_check_interval, 120), COALESCE(heartbeat_interval, 30),
-       COALESCE(agent_log_enabled, 0)
+       COALESCE(agent_log_enabled, 0),
+       COALESCE(notify_enabled, 0), COALESCE(telegram_bot_token, ''), COALESCE(telegram_chat_id, ''),
+       COALESCE(notify_login, 0), COALESCE(notify_subscribe_fetch, 0), COALESCE(notify_daily_traffic, 0),
+       COALESCE(notify_server_offline, 0), COALESCE(notify_server_online, 0), COALESCE(notify_traffic_threshold, 0),
+       COALESCE(notify_daily_traffic_time, '08:00'), COALESCE(notify_traffic_threshold_percent, 80)
 FROM system_config
 WHERE id = 1
 `
 
 	var cfg SystemConfig
 	var compatibilityMode, enableShortLink, agentLogEnabled int
+	var notifyEnabled, notifyLogin, notifySubFetch, notifyDailyTraffic int
+	var notifyServerOffline, notifyServerOnline, notifyTrafficThreshold int
 	err := r.db.QueryRowContext(ctx, query).Scan(
 		&cfg.ProxyGroupsSourceURL, &compatibilityMode, &enableShortLink,
 		&cfg.SpeedCollectInterval, &cfg.TrafficCollectInterval,
 		&cfg.TrafficCheckInterval, &cfg.HeartbeatInterval,
 		&agentLogEnabled,
+		&notifyEnabled, &cfg.TelegramBotToken, &cfg.TelegramChatID,
+		&notifyLogin, &notifySubFetch, &notifyDailyTraffic,
+		&notifyServerOffline, &notifyServerOnline, &notifyTrafficThreshold,
+		&cfg.NotifyDailyTrafficTime, &cfg.NotifyTrafficThresholdPercent,
 	)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return SystemConfig{EnableShortLink: true, SpeedCollectInterval: 3, TrafficCollectInterval: 60, TrafficCheckInterval: 120, HeartbeatInterval: 30}, nil
+			return SystemConfig{EnableShortLink: true, SpeedCollectInterval: 3, TrafficCollectInterval: 60, TrafficCheckInterval: 120, HeartbeatInterval: 30, NotifyDailyTrafficTime: "08:00", NotifyTrafficThresholdPercent: 80}, nil
 		}
 		return SystemConfig{}, fmt.Errorf("query system config: %w", err)
 	}
@@ -5025,6 +5091,13 @@ WHERE id = 1
 	cfg.ClientCompatibilityMode = compatibilityMode != 0
 	cfg.EnableShortLink = enableShortLink != 0
 	cfg.AgentLogEnabled = agentLogEnabled != 0
+	cfg.NotifyEnabled = notifyEnabled != 0
+	cfg.NotifyLogin = notifyLogin != 0
+	cfg.NotifySubscribeFetch = notifySubFetch != 0
+	cfg.NotifyDailyTraffic = notifyDailyTraffic != 0
+	cfg.NotifyServerOffline = notifyServerOffline != 0
+	cfg.NotifyServerOnline = notifyServerOnline != 0
+	cfg.NotifyTrafficThreshold = notifyTrafficThreshold != 0
 	return cfg, nil
 }
 
@@ -5041,6 +5114,17 @@ SET proxy_groups_source_url = ?,
     traffic_check_interval = ?,
     heartbeat_interval = ?,
     agent_log_enabled = ?,
+    notify_enabled = ?,
+    telegram_bot_token = ?,
+    telegram_chat_id = ?,
+    notify_login = ?,
+    notify_subscribe_fetch = ?,
+    notify_daily_traffic = ?,
+    notify_server_offline = ?,
+    notify_server_online = ?,
+    notify_traffic_threshold = ?,
+    notify_daily_traffic_time = ?,
+    notify_traffic_threshold_percent = ?,
     updated_at = CURRENT_TIMESTAMP
 WHERE id = 1
 `
@@ -5058,9 +5142,20 @@ WHERE id = 1
 		agentLogEnabled = 1
 	}
 
+	boolToInt := func(b bool) int {
+		if b {
+			return 1
+		}
+		return 0
+	}
+
 	result, err := r.db.ExecContext(ctx, updateStmt, cfg.ProxyGroupsSourceURL, compatibilityMode, enableShortLink,
 		cfg.SpeedCollectInterval, cfg.TrafficCollectInterval, cfg.TrafficCheckInterval, cfg.HeartbeatInterval,
-		agentLogEnabled)
+		agentLogEnabled,
+		boolToInt(cfg.NotifyEnabled), cfg.TelegramBotToken, cfg.TelegramChatID,
+		boolToInt(cfg.NotifyLogin), boolToInt(cfg.NotifySubscribeFetch), boolToInt(cfg.NotifyDailyTraffic),
+		boolToInt(cfg.NotifyServerOffline), boolToInt(cfg.NotifyServerOnline), boolToInt(cfg.NotifyTrafficThreshold),
+		cfg.NotifyDailyTrafficTime, cfg.NotifyTrafficThresholdPercent)
 	if err != nil {
 		return fmt.Errorf("update system config: %w", err)
 	}
@@ -5073,11 +5168,18 @@ WHERE id = 1
 	if rowsAffected == 0 {
 		const insertStmt = `
 INSERT INTO system_config (id, proxy_groups_source_url, client_compatibility_mode, enable_short_link,
-    speed_collect_interval, traffic_collect_interval, traffic_check_interval, heartbeat_interval, agent_log_enabled)
-VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?)
+    speed_collect_interval, traffic_collect_interval, traffic_check_interval, heartbeat_interval, agent_log_enabled,
+    notify_enabled, telegram_bot_token, telegram_chat_id, notify_login, notify_subscribe_fetch,
+    notify_daily_traffic, notify_server_offline, notify_server_online, notify_traffic_threshold,
+    notify_daily_traffic_time, notify_traffic_threshold_percent)
+VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `
 		if _, err := r.db.ExecContext(ctx, insertStmt, cfg.ProxyGroupsSourceURL, compatibilityMode, enableShortLink,
-			cfg.SpeedCollectInterval, cfg.TrafficCollectInterval, cfg.TrafficCheckInterval, cfg.HeartbeatInterval, agentLogEnabled); err != nil {
+			cfg.SpeedCollectInterval, cfg.TrafficCollectInterval, cfg.TrafficCheckInterval, cfg.HeartbeatInterval, agentLogEnabled,
+			boolToInt(cfg.NotifyEnabled), cfg.TelegramBotToken, cfg.TelegramChatID,
+			boolToInt(cfg.NotifyLogin), boolToInt(cfg.NotifySubscribeFetch), boolToInt(cfg.NotifyDailyTraffic),
+			boolToInt(cfg.NotifyServerOffline), boolToInt(cfg.NotifyServerOnline), boolToInt(cfg.NotifyTrafficThreshold),
+			cfg.NotifyDailyTrafficTime, cfg.NotifyTrafficThresholdPercent); err != nil {
 			return fmt.Errorf("insert system config: %w", err)
 		}
 	}
@@ -6441,6 +6543,8 @@ type HeartbeatUpdate struct {
 // HeartbeatResult 包含心跳更新的结果，包括重新启动检测。
 type HeartbeatResult struct {
 	ServerID         int64
+	ServerName       string
+	PreviousStatus   string
 	MmwxRestarted    bool
 	XrayRestarted    bool
 	BootCount        int
@@ -6525,9 +6629,11 @@ func (r *TrafficRepository) UpdateRemoteServerHeartbeatWithRestart(ctx context.C
 	}
 
 	result := &HeartbeatResult{
-		ServerID:      server.ID,
-		BootCount:     server.BootCount,
-		XrayBootCount: server.XrayBootCount,
+		ServerID:       server.ID,
+		ServerName:     server.Name,
+		PreviousStatus: server.Status,
+		BootCount:      server.BootCount,
+		XrayBootCount:  server.XrayBootCount,
 	}
 
 	// 检测mmwx重启
@@ -7118,35 +7224,43 @@ func (r *TrafficRepository) DeleteRemoteServer(ctx context.Context, id int64) er
 	return nil
 }
 
+type OfflineServerInfo struct {
+	ID   int64
+	Name string
+	IP   string
+}
+
 // 如果服务器在给定时间内未发送心跳，MarkOfflineRemoteServers 会将服务器标记为离线。
-func (r *TrafficRepository) MarkOfflineRemoteServers(ctx context.Context, timeout time.Duration) error {
+func (r *TrafficRepository) MarkOfflineRemoteServers(ctx context.Context, timeout time.Duration) ([]OfflineServerInfo, error) {
 	if r == nil || r.db == nil {
-		return errors.New("traffic repository not initialized")
+		return nil, errors.New("traffic repository not initialized")
 	}
 
 	// 使用 UTC 时间进行比较，因为 SQLite CURRENT_TIMESTAMP 存储的是 UTC 时间
 	cutoff := time.Now().UTC().Add(-timeout)
 
 	// 首先，查询哪些服务器将被标记为离线以进行日志记录
-	queryStmt := `SELECT id, name, last_heartbeat FROM remote_servers WHERE status = ? AND last_heartbeat < ?`
+	queryStmt := `SELECT id, name, COALESCE(ip_address, ''), last_heartbeat FROM remote_servers WHERE status = ? AND last_heartbeat < ?`
 	rows, err := r.db.QueryContext(ctx, queryStmt, RemoteServerStatusConnected, cutoff)
 	if err != nil {
-		return fmt.Errorf("query servers to mark offline: %w", err)
+		return nil, fmt.Errorf("query servers to mark offline: %w", err)
 	}
 	defer rows.Close()
 
 	var serversToMarkOffline []struct {
 		ID            int64
 		Name          string
+		IP            string
 		LastHeartbeat time.Time
 	}
 	for rows.Next() {
 		var s struct {
 			ID            int64
 			Name          string
+			IP            string
 			LastHeartbeat time.Time
 		}
-		if err := rows.Scan(&s.ID, &s.Name, &s.LastHeartbeat); err != nil {
+		if err := rows.Scan(&s.ID, &s.Name, &s.IP, &s.LastHeartbeat); err != nil {
 			continue
 		}
 		serversToMarkOffline = append(serversToMarkOffline, s)
@@ -7165,14 +7279,18 @@ func (r *TrafficRepository) MarkOfflineRemoteServers(ctx context.Context, timeou
 
 	result, err := r.db.ExecContext(ctx, stmt, RemoteServerStatusOffline, RemoteServerStatusConnected, cutoff)
 	if err != nil {
-		return fmt.Errorf("mark offline remote servers: %w", err)
+		return nil, fmt.Errorf("mark offline remote servers: %w", err)
 	}
 
+	var offlineServers []OfflineServerInfo
 	if affected, _ := result.RowsAffected(); affected > 0 {
 		log.Printf("[Offline Detection] Marked %d server(s) as offline", affected)
+		for _, s := range serversToMarkOffline {
+			offlineServers = append(offlineServers, OfflineServerInfo{ID: s.ID, Name: s.Name, IP: s.IP})
+		}
 	}
 
-	return nil
+	return offlineServers, nil
 }
 
 // ==================== 节点流量 CRUD ====================
@@ -8334,4 +8452,23 @@ func (r *TrafficRepository) GetUserTrafficSnapshots(ctx context.Context, date st
 		result = append(result, s)
 	}
 	return result, rows.Err()
+}
+
+func (r *TrafficRepository) IsTrafficThresholdNotified(ctx context.Context, serverID int64) (bool, error) {
+	var count int
+	err := r.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM traffic_threshold_notified WHERE server_id = ?`, serverID).Scan(&count)
+	if err != nil {
+		return false, err
+	}
+	return count > 0, nil
+}
+
+func (r *TrafficRepository) MarkTrafficThresholdNotified(ctx context.Context, serverID int64) error {
+	_, err := r.db.ExecContext(ctx, `INSERT OR REPLACE INTO traffic_threshold_notified (server_id, notified_at) VALUES (?, CURRENT_TIMESTAMP)`, serverID)
+	return err
+}
+
+func (r *TrafficRepository) ClearTrafficThresholdNotified(ctx context.Context, serverID int64) error {
+	_, err := r.db.ExecContext(ctx, `DELETE FROM traffic_threshold_notified WHERE server_id = ?`, serverID)
+	return err
 }

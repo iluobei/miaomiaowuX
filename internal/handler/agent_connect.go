@@ -251,6 +251,10 @@ func (h *XrayServerHandler) RemoteHeartbeat(w http.ResponseWriter, r *http.Reque
 		log.Printf("[RemoteHeartbeat] Detected Xray restart for token %s... (xray boot count: %d)", token[:8], result.XrayBootCount)
 	}
 
+	if result.PreviousStatus != "connected" {
+		SendServerOnlineNotification(ctx, result.ServerName, clientIP)
+	}
+
 	// 重置成功心跳时的推送失败计数（连接正常）
 	if result.ServerID > 0 {
 		if err := h.repo.ResetRemoteServerPushFailCount(ctx, result.ServerID); err != nil {

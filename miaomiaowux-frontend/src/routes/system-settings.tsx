@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { createFileRoute, redirect } from '@tanstack/react-router'
 import { toast } from 'sonner'
-import { Copy, Eye, EyeOff, Link, RefreshCw, Timer } from 'lucide-react'
+import { Bell, Copy, Eye, EyeOff, Link, RefreshCw, Timer } from 'lucide-react'
 import { Topbar } from '@/components/layout/topbar'
 import {
   Card,
@@ -181,6 +181,80 @@ function SystemSettingsPage() {
   const [enableProxyProvider, setEnableProxyProvider] = useState(false)
   const [proxyGroupsSourceUrl, setProxyGroupsSourceUrl] = useState('')
   const [clientCompatibilityMode, setClientCompatibilityMode] = useState(false)
+
+  // 通知配置
+  interface NotifyConfig {
+    notify_enabled: boolean
+    telegram_bot_token: string
+    telegram_chat_id: string
+    notify_login: boolean
+    notify_subscribe_fetch: boolean
+    notify_daily_traffic: boolean
+    notify_server_offline: boolean
+    notify_server_online: boolean
+    notify_traffic_threshold: boolean
+    notify_daily_traffic_time: string
+    notify_traffic_threshold_percent: number
+  }
+  const [notifyConfig, setNotifyConfig] = useState<NotifyConfig>({
+    notify_enabled: false,
+    telegram_bot_token: '',
+    telegram_chat_id: '',
+    notify_login: false,
+    notify_subscribe_fetch: false,
+    notify_daily_traffic: false,
+    notify_server_offline: false,
+    notify_server_online: false,
+    notify_traffic_threshold: false,
+    notify_daily_traffic_time: '08:00',
+    notify_traffic_threshold_percent: 80,
+  })
+  const [showBotToken, setShowBotToken] = useState(false)
+  const [editingBotToken, setEditingBotToken] = useState('')
+
+  const { data: notifyData } = useQuery({
+    queryKey: ['notify-config'],
+    queryFn: async () => {
+      const response = await api.get('/api/admin/notify-config')
+      return response.data as NotifyConfig
+    },
+    enabled: Boolean(auth.accessToken),
+    staleTime: 5 * 60 * 1000,
+  })
+
+  useEffect(() => {
+    if (notifyData) {
+      setNotifyConfig(notifyData)
+      setEditingBotToken(notifyData.telegram_bot_token)
+    }
+  }, [notifyData])
+
+  const updateNotifyMutation = useMutation({
+    mutationFn: async (data: NotifyConfig) => {
+      await api.put('/api/admin/notify-config', data)
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['notify-config'] })
+      toast.success('通知配置已更新')
+    },
+    onError: handleServerError,
+  })
+
+  const testNotifyMutation = useMutation({
+    mutationFn: async () => {
+      await api.post('/api/admin/notify-config/test')
+    },
+    onSuccess: () => {
+      toast.success('测试通知已发送')
+    },
+    onError: handleServerError,
+  })
+
+  const saveNotifyConfig = (updates: Partial<NotifyConfig>) => {
+    const newConfig = { ...notifyConfig, ...updates }
+    setNotifyConfig(newConfig)
+    updateNotifyMutation.mutate(newConfig)
+  }
 
   const { data: userConfig, isLoading: _loadingConfig } = useQuery({
     queryKey: ['user-config'],
@@ -455,6 +529,173 @@ function SystemSettingsPage() {
                 <p className='text-xs text-muted-foreground'>
                   格式：协议 + 域名或 IP（含端口），例如 https://panel.example.com 或 http://1.2.3.4:12889。留空则自动使用当前访问地址。
                 </p>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Telegram 通知 */}
+          <Card>
+            <CardHeader className='pb-4'>
+              <CardTitle className='flex items-center gap-2'>
+                <Bell className='h-5 w-5' />
+                Telegram 通知
+              </CardTitle>
+              <CardDescription>配置 Telegram Bot 推送系统事件通知</CardDescription>
+            </CardHeader>
+            <CardContent className='space-y-4'>
+              <div className='flex items-center justify-between'>
+                <Label htmlFor='notify-enabled'>启用通知</Label>
+                <Switch
+                  id='notify-enabled'
+                  checked={notifyConfig.notify_enabled}
+                  onCheckedChange={(checked) => saveNotifyConfig({ notify_enabled: checked })}
+                  disabled={updateNotifyMutation.isPending}
+                />
+              </div>
+
+              <div className='space-y-2'>
+                <Label htmlFor='bot-token'>Bot Token</Label>
+                <div className='flex items-center gap-2'>
+                  <div className='flex-1 relative'>
+                    <Input
+                      id='bot-token'
+                      type={showBotToken ? 'text' : 'password'}
+                      placeholder='输入 Telegram Bot Token'
+                      value={editingBotToken}
+                      onChange={(e) => setEditingBotToken(e.target.value)}
+                      onBlur={() => {
+                        if (editingBotToken !== notifyConfig.telegram_bot_token) {
+                          saveNotifyConfig({ telegram_bot_token: editingBotToken })
+                        }
+                      }}
+                      className='pr-10 font-mono text-sm'
+                    />
+                    <Button
+                      type='button'
+                      variant='ghost'
+                      size='sm'
+                      className='absolute right-0 top-0 h-full px-3 hover:bg-transparent'
+                      onClick={() => setShowBotToken(!showBotToken)}
+                    >
+                      {showBotToken ? (
+                        <EyeOff className='h-4 w-4 text-muted-foreground' />
+                      ) : (
+                        <Eye className='h-4 w-4 text-muted-foreground' />
+                      )}
+                    </Button>
+                  </div>
+                </div>
+              </div>
+
+              <div className='space-y-2'>
+                <Label htmlFor='chat-id'>Chat ID</Label>
+                <Input
+                  id='chat-id'
+                  placeholder='输入 Telegram Chat ID'
+                  value={notifyConfig.telegram_chat_id}
+                  onChange={(e) => setNotifyConfig({ ...notifyConfig, telegram_chat_id: e.target.value })}
+                  onBlur={() => {
+                    if (notifyConfig.telegram_chat_id !== notifyData?.telegram_chat_id) {
+                      saveNotifyConfig({ telegram_chat_id: notifyConfig.telegram_chat_id })
+                    }
+                  }}
+                  className='font-mono text-sm'
+                />
+              </div>
+
+              <Button
+                variant='outline'
+                size='sm'
+                onClick={() => testNotifyMutation.mutate()}
+                disabled={testNotifyMutation.isPending || !notifyConfig.notify_enabled}
+              >
+                {testNotifyMutation.isPending ? '发送中...' : '发送测试通知'}
+              </Button>
+
+              <div className='border-t pt-4 space-y-3'>
+                <p className='text-sm font-medium text-muted-foreground'>通知事件</p>
+                <div className='flex items-center justify-between'>
+                  <Label htmlFor='notify-login'>用户登录</Label>
+                  <Switch
+                    id='notify-login'
+                    checked={notifyConfig.notify_login}
+                    onCheckedChange={(checked) => saveNotifyConfig({ notify_login: checked })}
+                    disabled={updateNotifyMutation.isPending}
+                  />
+                </div>
+                <div className='flex items-center justify-between'>
+                  <Label htmlFor='notify-subscribe'>订阅获取</Label>
+                  <Switch
+                    id='notify-subscribe'
+                    checked={notifyConfig.notify_subscribe_fetch}
+                    onCheckedChange={(checked) => saveNotifyConfig({ notify_subscribe_fetch: checked })}
+                    disabled={updateNotifyMutation.isPending}
+                  />
+                </div>
+                <div className='flex items-center justify-between'>
+                  <Label htmlFor='notify-online'>服务器上线</Label>
+                  <Switch
+                    id='notify-online'
+                    checked={notifyConfig.notify_server_online}
+                    onCheckedChange={(checked) => saveNotifyConfig({ notify_server_online: checked })}
+                    disabled={updateNotifyMutation.isPending}
+                  />
+                </div>
+                <div className='flex items-center justify-between'>
+                  <Label htmlFor='notify-offline'>服务器离线</Label>
+                  <Switch
+                    id='notify-offline'
+                    checked={notifyConfig.notify_server_offline}
+                    onCheckedChange={(checked) => saveNotifyConfig({ notify_server_offline: checked })}
+                    disabled={updateNotifyMutation.isPending}
+                  />
+                </div>
+                <div className='flex items-center justify-between'>
+                  <Label htmlFor='notify-daily'>每日流量统计</Label>
+                  <Switch
+                    id='notify-daily'
+                    checked={notifyConfig.notify_daily_traffic}
+                    onCheckedChange={(checked) => saveNotifyConfig({ notify_daily_traffic: checked })}
+                    disabled={updateNotifyMutation.isPending}
+                  />
+                </div>
+                {notifyConfig.notify_daily_traffic && (
+                  <div className='ml-4 space-y-2'>
+                    <Label htmlFor='daily-time'>统计时间</Label>
+                    <Input
+                      id='daily-time'
+                      type='time'
+                      value={notifyConfig.notify_daily_traffic_time}
+                      onChange={(e) => setNotifyConfig({ ...notifyConfig, notify_daily_traffic_time: e.target.value })}
+                      onBlur={() => saveNotifyConfig({ notify_daily_traffic_time: notifyConfig.notify_daily_traffic_time })}
+                      className='w-32'
+                    />
+                  </div>
+                )}
+                <div className='flex items-center justify-between'>
+                  <Label htmlFor='notify-threshold'>流量超限告警</Label>
+                  <Switch
+                    id='notify-threshold'
+                    checked={notifyConfig.notify_traffic_threshold}
+                    onCheckedChange={(checked) => saveNotifyConfig({ notify_traffic_threshold: checked })}
+                    disabled={updateNotifyMutation.isPending}
+                  />
+                </div>
+                {notifyConfig.notify_traffic_threshold && (
+                  <div className='ml-4 space-y-2'>
+                    <Label htmlFor='threshold-pct'>告警阈值（%）</Label>
+                    <Input
+                      id='threshold-pct'
+                      type='number'
+                      min={1}
+                      max={100}
+                      value={notifyConfig.notify_traffic_threshold_percent}
+                      onChange={(e) => setNotifyConfig({ ...notifyConfig, notify_traffic_threshold_percent: Number(e.target.value) })}
+                      onBlur={() => saveNotifyConfig({ notify_traffic_threshold_percent: notifyConfig.notify_traffic_threshold_percent })}
+                      className='w-32'
+                    />
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>

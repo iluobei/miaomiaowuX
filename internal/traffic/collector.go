@@ -68,6 +68,8 @@ type Collector struct {
 	defaultMetricsPort int
 	defaultMetricsHost string
 
+	OnServerOffline func(ctx context.Context, serverName, ip string)
+
 	// 本地服务器的速度跟踪
 	speedMu      sync.RWMutex
 	serverSpeeds map[int64]*ServerSpeed           // serverID -> 速度数据
@@ -125,8 +127,14 @@ func (c *Collector) Start(ctx context.Context) {
 // 收集所有活动服务器的流量
 func (c *Collector) collectAll(ctx context.Context) {
 	// 首先，检查并标记离线远程服务器（60秒无心跳）
-	if err := c.repo.MarkOfflineRemoteServers(ctx, 60*time.Second); err != nil {
+	offlineServers, err := c.repo.MarkOfflineRemoteServers(ctx, 60*time.Second)
+	if err != nil {
 		log.Printf("[Traffic Collector] Failed to mark offline servers: %v", err)
+	}
+	if c.OnServerOffline != nil {
+		for _, s := range offlineServers {
+			c.OnServerOffline(ctx, s.Name, s.IP)
+		}
 	}
 
 	// 从需要拉模式（显式拉模式或回退模式）的远程服务器收集

@@ -153,6 +153,8 @@ func NewLoginHandler(manager *auth.Manager, tokens *auth.TokenStore, repo *stora
 			"remember_me", payload.RememberMe,
 			"expires_at", expiry.Format("2006-01-02 15:04:05"))
 
+		SendLoginNotification(r.Context(), username, clientIP)
+
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 		_ = json.NewEncoder(w).Encode(loginResponse{
