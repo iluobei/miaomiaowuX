@@ -194,7 +194,10 @@ func main() {
 	mux.Handle("/api/setup/verify-domain", handler.NewVerifyDomainHandler())
 	mux.Handle("/api/setup/restore-backup", handler.NewSetupRestoreBackupHandler(repo))
 	loginRateLimiter := handler.NewLoginRateLimiter()
-	mux.Handle("/api/login", handler.NewLoginHandler(authManager, tokenStore, repo, loginRateLimiter))
+	twoFactorStore := auth.NewTwoFactorPendingStore(5 * time.Minute)
+	mux.Handle("/api/login", handler.NewLoginHandler(authManager, tokenStore, repo, loginRateLimiter, twoFactorStore))
+	mux.Handle("/api/login/2fa", handler.NewTwoFactorLoginHandler(tokenStore, repo, twoFactorStore))
+	mux.Handle("/api/login/recovery", handler.NewRecoveryLoginHandler(tokenStore, repo, twoFactorStore))
 
 	// 仅限管理端点
 	mux.Handle("/api/admin/credentials", auth.RequireAdmin(tokenStore, userRepo, handler.NewCredentialsHandler(authManager, tokenStore)))
@@ -244,6 +247,10 @@ func main() {
 
 	// 用户端点（所有经过身份验证的用户）
 	mux.Handle("/api/proxy-groups", auth.RequireToken(tokenStore, userRepo, handler.NewProxyGroupsHandler(proxyGroupsStore)))
+	mux.Handle("/api/user/2fa/status", auth.RequireToken(tokenStore, userRepo, handler.NewTwoFactorStatusHandler(repo)))
+	mux.Handle("/api/user/2fa/setup", auth.RequireToken(tokenStore, userRepo, handler.NewTwoFactorSetupHandler(authManager, repo)))
+	mux.Handle("/api/user/2fa/verify-setup", auth.RequireToken(tokenStore, userRepo, handler.NewTwoFactorVerifySetupHandler(repo)))
+	mux.Handle("/api/user/2fa/disable", auth.RequireToken(tokenStore, userRepo, handler.NewTwoFactorDisableHandler(authManager, repo)))
 	mux.Handle("/api/user/password", auth.RequireToken(tokenStore, userRepo, handler.NewPasswordHandler(authManager)))
 	mux.Handle("/api/user/profile", auth.RequireToken(tokenStore, userRepo, handler.NewProfileHandler(repo)))
 	mux.Handle("/api/user/settings", auth.RequireToken(tokenStore, userRepo, handler.NewUserSettingsHandler(repo, tokenStore)))

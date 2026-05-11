@@ -57,7 +57,7 @@ func GetClientIP(r *http.Request) string {
 	return ip
 }
 
-func NewLoginHandler(manager *auth.Manager, tokens *auth.TokenStore, repo *storage.TrafficRepository, rateLimiter *LoginRateLimiter) http.Handler {
+func NewLoginHandler(manager *auth.Manager, tokens *auth.TokenStore, repo *storage.TrafficRepository, rateLimiter *LoginRateLimiter, twoFactorStore *auth.TwoFactorPendingStore) http.Handler {
 	if manager == nil || tokens == nil {
 		panic("login handler requires manager and token store")
 	}
@@ -117,6 +117,21 @@ func NewLoginHandler(manager *auth.Manager, tokens *auth.TokenStore, repo *stora
 			return
 		}
 
+		if user.TOTPEnabled && twoFactorStore != nil {
+			tfToken, err := twoFactorStore.Issue(username, payload.RememberMe)
+			if err != nil {
+				writeError(w, http.StatusInternalServerError, err)
+				return
+			}
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusOK)
+			_ = json.NewEncoder(w).Encode(map[string]any{
+				"requires_2fa":     true,
+				"two_factor_token": tfToken,
+			})
+			return
+		}
+
 		if repo != nil {
 			if _, err := repo.GetOrCreateUserToken(r.Context(), username); err != nil {
 				writeError(w, http.StatusInternalServerError, err)
@@ -124,49 +139,7 @@ func NewLoginHandler(manager *auth.Manager, tokens *auth.TokenStore, repo *stora
 			}
 		}
 
-		// 根据 Remember_me 标志确定令牌 TTL
-		var ttl time.Duration
-		if payload.RememberMe {
-			ttl = 30 * 24 * time.Hour // 1个月
-		} else {
-			ttl = 24 * time.Hour // 1 天（默认）
-		}
-
-		token, expiry, err := tokens.IssueWithTTL(username, ttl)
-		if err != nil {
-			writeError(w, http.StatusInternalServerError, err)
-			return
-		}
-
-		// 如果存储库可用，则将会话保留到数据库
-		if repo != nil {
-			if err := repo.CreateSession(r.Context(), token, username, expiry); err != nil {
-				logger.Warn("[认证] 会话持久化失败", "username", username, "error", err)
-				// 不要登录失败，只记录错误
-			}
-		}
-
-		// 记录登录成功
-		logger.Info("[认证] 登录成功",
-			"username", username,
-			"client_ip", clientIP,
-			"remember_me", payload.RememberMe,
-			"expires_at", expiry.Format("2006-01-02 15:04:05"))
-
-		SendLoginNotification(r.Context(), username, clientIP)
-
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		_ = json.NewEncoder(w).Encode(loginResponse{
-			Token:     token,
-			ExpiresAt: expiry,
-			Username:  user.Username,
-			Email:     user.Email,
-			Nickname:  user.Nickname,
-			Avatar:    user.AvatarURL,
-			Role:      user.Role,
-			IsAdmin:   user.Role == storage.RoleAdmin,
-		})
+		issueLoginSession(w, r, tokens, repo, user, payload.RememberMe)
 	})
 }
 

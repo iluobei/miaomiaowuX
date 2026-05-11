@@ -688,6 +688,15 @@ CREATE TABLE IF NOT EXISTS users (
 	if err := r.ensureUserColumn("is_over_limit", "INTEGER NOT NULL DEFAULT 0"); err != nil {
 		return err
 	}
+	if err := r.ensureUserColumn("totp_secret", "TEXT NOT NULL DEFAULT ''"); err != nil {
+		return err
+	}
+	if err := r.ensureUserColumn("totp_enabled", "INTEGER NOT NULL DEFAULT 0"); err != nil {
+		return err
+	}
+	if err := r.ensureUserColumn("recovery_codes", "TEXT NOT NULL DEFAULT '[]'"); err != nil {
+		return err
+	}
 
 	const historySchema = `
 CREATE TABLE IF NOT EXISTS rule_versions (
@@ -3125,6 +3134,9 @@ type User struct {
 	IsReset        bool
 	ResetDay       int
 	PackageEndDate *time.Time
+	TOTPSecret    string
+	TOTPEnabled   bool
+	RecoveryCodes string
 	CreatedAt      time.Time
 	UpdatedAt      time.Time
 }
@@ -3210,10 +3222,10 @@ func (r *TrafficRepository) GetUser(ctx context.Context, username string) (User,
 		return user, errors.New("username is required")
 	}
 
-	row := r.db.QueryRowContext(ctx, `SELECT username, password_hash, COALESCE(email, ''), COALESCE(nickname, ''), COALESCE(avatar_url, ''), COALESCE(role, ''), is_active, COALESCE(package_id, 0), COALESCE(is_reset, 0), COALESCE(reset_day, 1), package_end_date, created_at, updated_at FROM users WHERE username = ? LIMIT 1`, username)
-	var active, isReset int
+	row := r.db.QueryRowContext(ctx, `SELECT username, password_hash, COALESCE(email, ''), COALESCE(nickname, ''), COALESCE(avatar_url, ''), COALESCE(role, ''), is_active, COALESCE(package_id, 0), COALESCE(is_reset, 0), COALESCE(reset_day, 1), package_end_date, COALESCE(totp_secret, ''), COALESCE(totp_enabled, 0), COALESCE(recovery_codes, '[]'), created_at, updated_at FROM users WHERE username = ? LIMIT 1`, username)
+	var active, isReset, totpEnabled int
 	var endDate sql.NullTime
-	if err := row.Scan(&user.Username, &user.PasswordHash, &user.Email, &user.Nickname, &user.AvatarURL, &user.Role, &active, &user.PackageID, &isReset, &user.ResetDay, &endDate, &user.CreatedAt, &user.UpdatedAt); err != nil {
+	if err := row.Scan(&user.Username, &user.PasswordHash, &user.Email, &user.Nickname, &user.AvatarURL, &user.Role, &active, &user.PackageID, &isReset, &user.ResetDay, &endDate, &user.TOTPSecret, &totpEnabled, &user.RecoveryCodes, &user.CreatedAt, &user.UpdatedAt); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return user, ErrUserNotFound
 		}
@@ -3227,6 +3239,7 @@ func (r *TrafficRepository) GetUser(ctx context.Context, username string) (User,
 	}
 	user.IsActive = active != 0
 	user.IsReset = isReset != 0
+	user.TOTPEnabled = totpEnabled != 0
 	if endDate.Valid {
 		user.PackageEndDate = &endDate.Time
 	}
@@ -8470,5 +8483,20 @@ func (r *TrafficRepository) MarkTrafficThresholdNotified(ctx context.Context, se
 
 func (r *TrafficRepository) ClearTrafficThresholdNotified(ctx context.Context, serverID int64) error {
 	_, err := r.db.ExecContext(ctx, `DELETE FROM traffic_threshold_notified WHERE server_id = ?`, serverID)
+	return err
+}
+
+func (r *TrafficRepository) SetUserTOTPSecret(ctx context.Context, username, secret string) error {
+	_, err := r.db.ExecContext(ctx, `UPDATE users SET totp_secret = ?, updated_at = CURRENT_TIMESTAMP WHERE username = ?`, secret, username)
+	return err
+}
+
+func (r *TrafficRepository) EnableUserTOTP(ctx context.Context, username, recoveryCodes string) error {
+	_, err := r.db.ExecContext(ctx, `UPDATE users SET totp_enabled = 1, recovery_codes = ?, updated_at = CURRENT_TIMESTAMP WHERE username = ?`, recoveryCodes, username)
+	return err
+}
+
+func (r *TrafficRepository) DisableUserTOTP(ctx context.Context, username string) error {
+	_, err := r.db.ExecContext(ctx, `UPDATE users SET totp_enabled = 0, totp_secret = '', recovery_codes = '[]', updated_at = CURRENT_TIMESTAMP WHERE username = ?`, username)
 	return err
 }

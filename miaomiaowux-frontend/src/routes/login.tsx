@@ -4,7 +4,7 @@ import { useForm } from 'react-hook-form'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { createFileRoute, redirect, useNavigate } from '@tanstack/react-router'
 import { toast } from 'sonner'
-import { Upload, AlertTriangle, CheckCircle, XCircle, Loader2 } from 'lucide-react'
+import { Upload, AlertTriangle, ArrowLeft, CheckCircle, XCircle, Loader2 } from 'lucide-react'
 import { api } from '@/lib/api'
 import { useAuthStore } from '@/stores/auth-store'
 import {
@@ -18,6 +18,11 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
+import {
+  InputOTP,
+  InputOTPGroup,
+  InputOTPSlot,
+} from '@/components/ui/input-otp'
 import { handleServerError } from '@/lib/handle-server-error'
 
 export const Route = createFileRoute('/login')({
@@ -34,6 +39,16 @@ type LoginFormValues = {
   username: string
   password: string
   remember_me: boolean
+}
+
+type LoginResponse = {
+  token: string
+  expires_at: string
+  username: string
+  email: string
+  nickname: string
+  role: string
+  is_admin: boolean
 }
 
 type SetupFormValues = {
@@ -57,7 +72,7 @@ function LoginPage() {
 
   if (isCheckingSetup) {
     return (
-      <div className='flex min-h-svh items-center justify-center bg-background'>
+      <div className='login-pixel-bg flex min-h-svh items-center justify-center'>
         <Card className='w-full max-w-sm'>
           <CardHeader className='space-y-2 text-center'>
             <CardTitle>加载中...</CardTitle>
@@ -75,10 +90,30 @@ function LoginPage() {
   return <LoginView />
 }
 
+function handleLoginSuccess(
+  payload: LoginResponse,
+  auth: ReturnType<typeof useAuthStore>['auth'],
+  queryClient: ReturnType<typeof useQueryClient>,
+  navigate: ReturnType<typeof useNavigate>,
+) {
+  auth.setAccessToken(payload.token)
+  queryClient.invalidateQueries({ queryKey: ['traffic-summary'] })
+  queryClient.setQueryData(['profile'], {
+    username: payload.username,
+    email: payload.email,
+    nickname: payload.nickname,
+    role: payload.role,
+    is_admin: payload.is_admin,
+  })
+  toast.success('登录成功')
+  navigate({ to: '/' })
+}
+
 function LoginView() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const { auth } = useAuthStore()
+  const [twoFactorToken, setTwoFactorToken] = useState<string | null>(null)
   const form = useForm<LoginFormValues>({
     defaultValues: {
       username: '',
@@ -90,29 +125,15 @@ function LoginView() {
   const login = useMutation({
     mutationFn: async (values: LoginFormValues) => {
       const response = await api.post('/api/login', values)
-      return response.data as {
-        token: string
-        expires_at: string
-        username: string
-        email: string
-        nickname: string
-        role: string
-        is_admin: boolean
-      }
+      return response.data as LoginResponse & { requires_2fa?: boolean; two_factor_token?: string }
     },
     onSuccess: (payload) => {
-      auth.setAccessToken(payload.token)
-      queryClient.invalidateQueries({ queryKey: ['traffic-summary'] })
-      queryClient.setQueryData(['profile'], {
-        username: payload.username,
-        email: payload.email,
-        nickname: payload.nickname,
-        role: payload.role,
-        is_admin: payload.is_admin,
-      })
-      toast.success('登录成功')
+      if (payload.requires_2fa && payload.two_factor_token) {
+        setTwoFactorToken(payload.two_factor_token)
+        return
+      }
+      handleLoginSuccess(payload, auth, queryClient, navigate)
       form.reset()
-      navigate({ to: '/' })
     },
     onError: (error) => {
       handleServerError(error)
@@ -124,8 +145,18 @@ function LoginView() {
     login.mutate(values)
   })
 
+  if (twoFactorToken) {
+    return (
+      <TwoFactorStep
+        twoFactorToken={twoFactorToken}
+        onBack={() => setTwoFactorToken(null)}
+        onSuccess={(payload) => handleLoginSuccess(payload, auth, queryClient, navigate)}
+      />
+    )
+  }
+
   return (
-    <div className='flex min-h-svh items-center justify-center bg-[radial-gradient(circle_at_top,_var(--tw-gradient-stops))] from-background via-muted/40 to-muted/60 px-4 py-12'>
+    <div className='flex min-h-svh items-center justify-center login-pixel-bg px-4 py-12'>
       <Card className='w-full max-w-sm shadow-lg'>
         <CardHeader className='space-y-2 text-center'>
           <CardTitle className='text-2xl font-semibold'>登录妙妙屋</CardTitle>
@@ -171,6 +202,142 @@ function LoginView() {
               {login.isPending ? '登录中...' : '登录'}
             </Button>
           </form>
+        </CardContent>
+      </Card>
+    </div>
+  )
+}
+
+function TwoFactorStep({
+  twoFactorToken,
+  onBack,
+  onSuccess,
+}: {
+  twoFactorToken: string
+  onBack: () => void
+  onSuccess: (payload: LoginResponse) => void
+}) {
+  const [otpCode, setOtpCode] = useState('')
+  const [useRecovery, setUseRecovery] = useState(false)
+  const [recoveryCode, setRecoveryCode] = useState('')
+
+  const verify2FA = useMutation({
+    mutationFn: async (code: string) => {
+      const response = await api.post('/api/login/2fa', {
+        two_factor_token: twoFactorToken,
+        code,
+      })
+      return response.data as LoginResponse
+    },
+    onSuccess: (payload) => onSuccess(payload),
+    onError: (error) => {
+      handleServerError(error)
+      toast.error('验证码无效')
+      setOtpCode('')
+    },
+  })
+
+  const verifyRecovery = useMutation({
+    mutationFn: async (code: string) => {
+      const response = await api.post('/api/login/recovery', {
+        two_factor_token: twoFactorToken,
+        recovery_code: code,
+      })
+      return response.data as LoginResponse
+    },
+    onSuccess: (payload) => {
+      toast.success('恢复码验证成功，两步验证已重设')
+      onSuccess(payload)
+    },
+    onError: (error) => {
+      handleServerError(error)
+      toast.error('恢复码无效')
+    },
+  })
+
+  return (
+    <div className='login-pixel-bg flex min-h-svh items-center justify-center px-4 py-12'>
+      <Card className='w-full max-w-sm shadow-lg'>
+        <CardHeader className='space-y-2 text-center'>
+          <CardTitle className='text-2xl font-semibold'>两步验证</CardTitle>
+          <CardDescription>
+            {useRecovery ? '请输入恢复码' : '请输入验证器应用中的 6 位验证码'}
+          </CardDescription>
+        </CardHeader>
+        <CardContent className='space-y-6'>
+          {useRecovery ? (
+            <div className='space-y-4'>
+              <Input
+                value={recoveryCode}
+                onChange={(e) => setRecoveryCode(e.target.value)}
+                placeholder='输入 8 位恢复码'
+                autoFocus
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && recoveryCode.trim()) {
+                    verifyRecovery.mutate(recoveryCode.trim())
+                  }
+                }}
+              />
+              <Button
+                className='w-full'
+                onClick={() => verifyRecovery.mutate(recoveryCode.trim())}
+                disabled={!recoveryCode.trim() || verifyRecovery.isPending}
+              >
+                {verifyRecovery.isPending ? '验证中...' : '使用恢复码登录'}
+              </Button>
+            </div>
+          ) : (
+            <div className='space-y-4'>
+              <div className='flex justify-center'>
+                <InputOTP
+                  maxLength={6}
+                  value={otpCode}
+                  onChange={setOtpCode}
+                  onComplete={(code) => verify2FA.mutate(code)}
+                  autoFocus
+                >
+                  <InputOTPGroup>
+                    <InputOTPSlot index={0} />
+                    <InputOTPSlot index={1} />
+                    <InputOTPSlot index={2} />
+                  </InputOTPGroup>
+                  <InputOTPGroup>
+                    <InputOTPSlot index={3} />
+                    <InputOTPSlot index={4} />
+                    <InputOTPSlot index={5} />
+                  </InputOTPGroup>
+                </InputOTP>
+              </div>
+              <Button
+                className='w-full'
+                onClick={() => verify2FA.mutate(otpCode)}
+                disabled={otpCode.length !== 6 || verify2FA.isPending}
+              >
+                {verify2FA.isPending ? '验证中...' : '验证'}
+              </Button>
+            </div>
+          )}
+          <div className='flex items-center justify-between text-sm'>
+            <button
+              type='button'
+              className='text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1'
+              onClick={onBack}
+            >
+              <ArrowLeft className='size-3' />
+              返回
+            </button>
+            <button
+              type='button'
+              className='text-muted-foreground hover:text-foreground transition-colors'
+              onClick={() => {
+                setUseRecovery(!useRecovery)
+                setOtpCode('')
+                setRecoveryCode('')
+              }}
+            >
+              {useRecovery ? '使用验证码' : '使用恢复码'}
+            </button>
+          </div>
         </CardContent>
       </Card>
     </div>
@@ -275,7 +442,7 @@ function InitialSetupView() {
   const submitDisabled = setup.isPending || (domainHasValue && !domainVerified)
 
   return (
-    <div className='flex min-h-svh items-center justify-center bg-[radial-gradient(circle_at_top,_var(--tw-gradient-stops))] from-background via-muted/40 to-muted/60 px-4 py-12'>
+    <div className='flex min-h-svh items-center justify-center login-pixel-bg px-4 py-12'>
       <Card className='w-full max-w-md shadow-lg'>
         <CardHeader className='space-y-2 text-center'>
           <CardTitle className='text-2xl font-semibold'>欢迎使用妙妙屋</CardTitle>

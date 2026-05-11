@@ -1,8 +1,10 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { createFileRoute, redirect, useNavigate } from '@tanstack/react-router'
 import { toast } from 'sonner'
+import { QRCodeSVG } from 'qrcode.react'
+import { Download } from 'lucide-react'
 import { Topbar } from '@/components/layout/topbar'
 import { Button } from '@/components/ui/button'
 import {
@@ -12,9 +14,21 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import {
+  InputOTP,
+  InputOTPGroup,
+  InputOTPSlot,
+} from '@/components/ui/input-otp'
 import { api } from '@/lib/api'
 import { handleServerError } from '@/lib/handle-server-error'
 import { profileQueryFn } from '@/lib/profile'
@@ -386,9 +400,265 @@ function SettingsPage() {
                 </div>
               </CardContent>
             </Card>
+
+            <TwoFactorCard />
           </div>
         </div>
       </main>
     </div>
+  )
+}
+
+function TwoFactorCard() {
+  const queryClient = useQueryClient()
+  const { data: profile } = useQuery({ queryKey: ['profile'], queryFn: profileQueryFn, staleTime: 5 * 60 * 1000 })
+  const [setupOpen, setSetupOpen] = useState(false)
+  const [disableOpen, setDisableOpen] = useState(false)
+  const [setupStep, setSetupStep] = useState<'password' | 'qr' | 'verify' | 'recovery'>('password')
+  const [setupPassword, setSetupPassword] = useState('')
+  const [totpUrl, setTotpUrl] = useState('')
+  const [totpSecret, setTotpSecret] = useState('')
+  const [verifyCode, setVerifyCode] = useState('')
+  const [recoveryCodes, setRecoveryCodes] = useState<string[]>([])
+  const [disableCode, setDisableCode] = useState('')
+
+  const { data: tfStatus } = useQuery({
+    queryKey: ['2fa-status'],
+    queryFn: async () => {
+      const res = await api.get('/api/user/2fa/status')
+      return res.data as { enabled: boolean }
+    },
+    staleTime: 30_000,
+  })
+
+  const setupMutation = useMutation({
+    mutationFn: async (password: string) => {
+      const res = await api.post('/api/user/2fa/setup', { password })
+      return res.data as { secret: string; url: string }
+    },
+    onSuccess: (data) => {
+      setTotpSecret(data.secret)
+      setTotpUrl(data.url)
+      setSetupStep('qr')
+    },
+    onError: (error) => {
+      handleServerError(error)
+      toast.error('密码验证失败')
+    },
+  })
+
+  const verifySetupMutation = useMutation({
+    mutationFn: async (code: string) => {
+      const res = await api.post('/api/user/2fa/verify-setup', { code })
+      return res.data as { recovery_codes: string[] }
+    },
+    onSuccess: (data) => {
+      setRecoveryCodes(data.recovery_codes)
+      setSetupStep('recovery')
+      queryClient.invalidateQueries({ queryKey: ['2fa-status'] })
+    },
+    onError: (error) => {
+      handleServerError(error)
+      toast.error('验证码无效')
+      setVerifyCode('')
+    },
+  })
+
+  const disableMutation = useMutation({
+    mutationFn: async (code: string) => {
+      await api.post('/api/user/2fa/disable', { code })
+    },
+    onSuccess: () => {
+      toast.success('两步验证已禁用')
+      setDisableOpen(false)
+      setDisableCode('')
+      queryClient.invalidateQueries({ queryKey: ['2fa-status'] })
+    },
+    onError: (error) => {
+      handleServerError(error)
+      toast.error('验证码无效')
+      setDisableCode('')
+    },
+  })
+
+  const resetSetup = () => {
+    setSetupStep('password')
+    setSetupPassword('')
+    setTotpUrl('')
+    setTotpSecret('')
+    setVerifyCode('')
+    setRecoveryCodes([])
+  }
+
+  return (
+    <>
+      <Card>
+        <CardHeader>
+          <CardTitle>两步验证</CardTitle>
+          <CardDescription>
+            {tfStatus?.enabled
+              ? '两步验证已启用，每次登录需要输入验证码。'
+              : '启用后每次登录需要输入验证器应用中的验证码。'}
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {tfStatus?.enabled ? (
+            <Button variant='destructive' className='w-full' onClick={() => setDisableOpen(true)}>
+              禁用两步验证
+            </Button>
+          ) : (
+            <Button className='w-full' onClick={() => { resetSetup(); setSetupOpen(true) }}>
+              启用两步验证
+            </Button>
+          )}
+        </CardContent>
+      </Card>
+
+      <Dialog open={setupOpen} onOpenChange={(open) => { if (!open && setupStep !== 'recovery') { setSetupOpen(false); resetSetup() } }}>
+        <DialogContent className='sm:max-w-md' onInteractOutside={(e) => { if (setupStep === 'recovery') e.preventDefault() }}>
+          <DialogHeader>
+            <DialogTitle>
+              {setupStep === 'password' && '验证密码'}
+              {setupStep === 'qr' && '扫描二维码'}
+              {setupStep === 'verify' && '验证设置'}
+              {setupStep === 'recovery' && '保存恢复码'}
+            </DialogTitle>
+            <DialogDescription>
+              {setupStep === 'password' && '请输入当前密码以开始设置两步验证。'}
+              {setupStep === 'qr' && '使用验证器应用扫描下方二维码。'}
+              {setupStep === 'verify' && '输入验证器应用显示的 6 位验证码。'}
+              {setupStep === 'recovery' && '请妥善保存以下恢复码，用于在无法访问验证器时登录。'}
+            </DialogDescription>
+          </DialogHeader>
+
+          {setupStep === 'password' && (
+            <div className='space-y-4'>
+              <Input
+                type='password'
+                placeholder='输入当前密码'
+                value={setupPassword}
+                onChange={(e) => setSetupPassword(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter' && setupPassword) setupMutation.mutate(setupPassword) }}
+                autoFocus
+              />
+              <Button className='w-full' disabled={!setupPassword || setupMutation.isPending} onClick={() => setupMutation.mutate(setupPassword)}>
+                {setupMutation.isPending ? '验证中...' : '下一步'}
+              </Button>
+            </div>
+          )}
+
+          {setupStep === 'qr' && (
+            <div className='space-y-4'>
+              <div className='flex justify-center rounded-lg border bg-white p-4'>
+                <QRCodeSVG value={totpUrl} size={200} />
+              </div>
+              <div className='space-y-1'>
+                <Label className='text-xs text-muted-foreground'>手动输入密钥</Label>
+                <div className='font-mono text-xs break-all rounded-md border bg-muted/40 p-2 select-all'>
+                  {totpSecret}
+                </div>
+              </div>
+              <Button className='w-full' onClick={() => setSetupStep('verify')}>
+                下一步
+              </Button>
+            </div>
+          )}
+
+          {setupStep === 'verify' && (
+            <div className='space-y-4'>
+              <div className='flex justify-center'>
+                <InputOTP maxLength={6} value={verifyCode} onChange={setVerifyCode} onComplete={(code) => verifySetupMutation.mutate(code)} autoFocus>
+                  <InputOTPGroup>
+                    <InputOTPSlot index={0} />
+                    <InputOTPSlot index={1} />
+                    <InputOTPSlot index={2} />
+                  </InputOTPGroup>
+                  <InputOTPGroup>
+                    <InputOTPSlot index={3} />
+                    <InputOTPSlot index={4} />
+                    <InputOTPSlot index={5} />
+                  </InputOTPGroup>
+                </InputOTP>
+              </div>
+              <Button className='w-full' disabled={verifyCode.length !== 6 || verifySetupMutation.isPending} onClick={() => verifySetupMutation.mutate(verifyCode)}>
+                {verifySetupMutation.isPending ? '验证中...' : '验证并启用'}
+              </Button>
+            </div>
+          )}
+
+          {setupStep === 'recovery' && (
+            <div className='space-y-4'>
+              <div className='grid grid-cols-2 gap-2 rounded-lg border bg-muted/40 p-3'>
+                {recoveryCodes.map((code) => (
+                  <div key={code} className='font-mono text-sm text-center'>{code}</div>
+                ))}
+              </div>
+              <div className='grid grid-cols-2 gap-2'>
+                <Button
+                  variant='outline'
+                  onClick={async () => {
+                    try {
+                      await navigator.clipboard.writeText(recoveryCodes.join('\n'))
+                      toast.success('恢复码已复制')
+                    } catch {
+                      toast.error('复制失败，请手动复制')
+                    }
+                  }}
+                >
+                  复制恢复码
+                </Button>
+                <Button
+                  variant='outline'
+                  onClick={() => {
+                    const text = recoveryCodes.join('\n')
+                    const blob = new Blob([text], { type: 'text/plain' })
+                    const url = URL.createObjectURL(blob)
+                    const a = document.createElement('a')
+                    a.href = url
+                    a.download = `妙妙屋X-${profile?.username || 'user'}.txt`
+                    a.click()
+                    URL.revokeObjectURL(url)
+                  }}
+                >
+                  <Download className='size-4 mr-1' />
+                  下载恢复码
+                </Button>
+              </div>
+              <Button className='w-full' onClick={() => { setSetupOpen(false); resetSetup() }}>
+                我已保存恢复码
+              </Button>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={disableOpen} onOpenChange={(open) => { if (!open) { setDisableOpen(false); setDisableCode('') } }}>
+        <DialogContent className='sm:max-w-md'>
+          <DialogHeader>
+            <DialogTitle>禁用两步验证</DialogTitle>
+            <DialogDescription>请输入验证器应用中的 6 位验证码以禁用两步验证。</DialogDescription>
+          </DialogHeader>
+          <div className='space-y-4'>
+            <div className='flex justify-center'>
+              <InputOTP maxLength={6} value={disableCode} onChange={setDisableCode} onComplete={(code) => disableMutation.mutate(code)} autoFocus>
+                <InputOTPGroup>
+                  <InputOTPSlot index={0} />
+                  <InputOTPSlot index={1} />
+                  <InputOTPSlot index={2} />
+                </InputOTPGroup>
+                <InputOTPGroup>
+                  <InputOTPSlot index={3} />
+                  <InputOTPSlot index={4} />
+                  <InputOTPSlot index={5} />
+                </InputOTPGroup>
+              </InputOTP>
+            </div>
+            <Button variant='destructive' className='w-full' disabled={disableCode.length !== 6 || disableMutation.isPending} onClick={() => disableMutation.mutate(disableCode)}>
+              {disableMutation.isPending ? '禁用中...' : '确认禁用'}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
   )
 }

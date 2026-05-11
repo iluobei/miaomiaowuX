@@ -240,6 +240,39 @@
     border-color: rgba(241, 140, 110, 0.75);
   }
 
+  .login-pixel-bg {
+    background-color: var(--background);
+    background-image:
+      repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 3px,
+        rgba(217, 119, 87, 0.02) 3px,
+        rgba(217, 119, 87, 0.02) 4px
+      ),
+      url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16'><rect width='2' height='2' fill='%23d97757' fill-opacity='.12'/></svg>"),
+      url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='64' height='64'><rect x='30' y='26' width='4' height='12' fill='%23d97757' fill-opacity='.08'/><rect x='26' y='30' width='12' height='4' fill='%23d97757' fill-opacity='.08'/></svg>"),
+      url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='96' height='96'><rect x='46' y='42' width='4' height='4' fill='%23d97757' fill-opacity='.06'/><rect x='42' y='46' width='4' height='4' fill='%23d97757' fill-opacity='.06'/><rect x='50' y='46' width='4' height='4' fill='%23d97757' fill-opacity='.06'/><rect x='46' y='50' width='4' height='4' fill='%23d97757' fill-opacity='.06'/><rect x='46' y='46' width='4' height='4' fill='%23d97757' fill-opacity='.1'/></svg>"),
+      radial-gradient(ellipse at top, rgba(217, 119, 87, 0.1) 0%, transparent 50%),
+      radial-gradient(ellipse at 80% 90%, rgba(96, 165, 250, 0.06) 0%, transparent 40%);
+  }
+
+  .dark .login-pixel-bg {
+    background-image:
+      repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 3px,
+        rgba(241, 140, 110, 0.015) 3px,
+        rgba(241, 140, 110, 0.015) 4px
+      ),
+      url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16'><rect width='2' height='2' fill='%23f18c6e' fill-opacity='.08'/></svg>"),
+      url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='64' height='64'><rect x='30' y='26' width='4' height='12' fill='%23f18c6e' fill-opacity='.06'/><rect x='26' y='30' width='12' height='4' fill='%23f18c6e' fill-opacity='.06'/></svg>"),
+      url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='96' height='96'><rect x='46' y='42' width='4' height='4' fill='%23f18c6e' fill-opacity='.04'/><rect x='42' y='46' width='4' height='4' fill='%23f18c6e' fill-opacity='.04'/><rect x='50' y='46' width='4' height='4' fill='%23f18c6e' fill-opacity='.04'/><rect x='46' y='50' width='4' height='4' fill='%23f18c6e' fill-opacity='.04'/><rect x='46' y='46' width='4' height='4' fill='%23f18c6e' fill-opacity='.07'/></svg>"),
+      radial-gradient(ellipse at top, rgba(241, 140, 110, 0.08) 0%, transparent 50%),
+      radial-gradient(ellipse at 80% 90%, rgba(56, 189, 248, 0.04) 0%, transparent 40%);
+  }
+
   .grid-pattern {
     position: relative;
     isolation: isolate;

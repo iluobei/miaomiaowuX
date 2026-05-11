@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"sort"
 	"strings"
 	"time"
 
@@ -54,28 +55,66 @@ func sendDailyTrafficNotification(ctx context.Context, repo *storage.TrafficRepo
 		return
 	}
 
-	if len(servers) == 0 {
-		return
+	type serverTraffic struct {
+		name  string
+		used  int64
+		limit int64
 	}
+	var serverList []serverTraffic
+	var totalUsed int64
+
+	for _, s := range servers {
+		used, _ := repo.GetServerTrafficUsed(ctx, s.ID)
+		totalUsed += used
+		serverList = append(serverList, serverTraffic{name: s.Name, used: used, limit: s.TrafficLimit})
+	}
+
+	sort.Slice(serverList, func(i, j int) bool { return serverList[i].used > serverList[j].used })
 
 	var lines []string
-	for _, s := range servers {
-		if s.Status != "connected" {
-			continue
-		}
-		used, _ := repo.GetServerTrafficUsed(ctx, s.ID)
-		if s.TrafficLimit > 0 {
-			usedGB := float64(used) / (1024 * 1024 * 1024)
-			limitGB := float64(s.TrafficLimit) / (1024 * 1024 * 1024)
-			pct := float64(used) / float64(s.TrafficLimit) * 100
-			lines = append(lines, fmt.Sprintf("• %s: %.1fGB/%.0fGB (%.0f%%)", s.Name, usedGB, limitGB, pct))
-		} else {
-			usedGB := float64(used) / (1024 * 1024 * 1024)
-			lines = append(lines, fmt.Sprintf("• %s: %.1fGB (不限)", s.Name, usedGB))
+	lines = append(lines, fmt.Sprintf("*总流量:* %.2fGB", float64(totalUsed)/(1024*1024*1024)))
+
+	if len(serverList) > 0 {
+		lines = append(lines, "\n*服务器流量:*")
+		for _, s := range serverList {
+			usedGB := float64(s.used) / (1024 * 1024 * 1024)
+			if s.limit > 0 {
+				limitGB := float64(s.limit) / (1024 * 1024 * 1024)
+				pct := float64(s.used) / float64(s.limit) * 100
+				lines = append(lines, fmt.Sprintf("• %s: %.1fGB/%.0fGB (%.0f%%)", s.name, usedGB, limitGB, pct))
+			} else {
+				lines = append(lines, fmt.Sprintf("• %s: %.1fGB", s.name, usedGB))
+			}
 		}
 	}
 
-	if len(lines) == 0 {
+	allUserTraffic, err := repo.GetAllUserTraffic(ctx)
+	if err == nil && len(allUserTraffic) > 0 {
+		userTotals := make(map[string]int64)
+		for _, ut := range allUserTraffic {
+			userTotals[ut.Username] += ut.Uplink + ut.Downlink
+		}
+		type userUsage struct {
+			name string
+			used int64
+		}
+		var users []userUsage
+		for name, used := range userTotals {
+			users = append(users, userUsage{name: name, used: used})
+		}
+		sort.Slice(users, func(i, j int) bool { return users[i].used > users[j].used })
+
+		lines = append(lines, "\n*用户流量:*")
+		for _, u := range users {
+			if u.used == 0 {
+				continue
+			}
+			usedGB := float64(u.used) / (1024 * 1024 * 1024)
+			lines = append(lines, fmt.Sprintf("• %s: %.2fGB", u.name, usedGB))
+		}
+	}
+
+	if len(lines) <= 1 {
 		return
 	}
 
