@@ -155,6 +155,11 @@ connection_mode: "auto"   # auto | websocket | http | pull
 - 使用本程序需遵守当地法律法规
 - 作者不对使用者的任何行为承担责任
 
+<details>
+<summary>更新日志</summary>
+
+</details>
+
 ## Star History
 
 [![Star History Chart](https://api.star-history.com/svg?repos=iluobei/miaomiaowuX&type=date&legend=top-left)](https://www.star-history.com/#iluobei/miaomiaowuX&type=date&legend=top-left)
