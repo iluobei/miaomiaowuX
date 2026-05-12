@@ -371,6 +371,40 @@ func (r *TrafficRepository) DeleteNode(ctx context.Context, id int64, username s
 	return nil
 }
 
+// DeleteNodeForSync 删除节点但不触发外部订阅清理。
+// 用于同步流程中安全地清理过滤节点。
+func (r *TrafficRepository) DeleteNodeForSync(ctx context.Context, id int64, username string) error {
+	if r == nil || r.db == nil {
+		return errors.New("traffic repository not initialized")
+	}
+
+	if id <= 0 {
+		return errors.New("node id is required")
+	}
+
+	username = strings.TrimSpace(username)
+	if username == "" {
+		return errors.New("username is required")
+	}
+
+	res, err := r.db.ExecContext(ctx, `DELETE FROM nodes WHERE id = ? AND username = ?`, id, username)
+	if err != nil {
+		return fmt.Errorf("delete node for sync: %w", err)
+	}
+
+	affected, err := res.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("node delete for sync rows affected: %w", err)
+	}
+	if affected == 0 {
+		return ErrNodeNotFound
+	}
+
+	_, _ = r.db.ExecContext(ctx, `UPDATE nodes SET chain_proxy_node_id = NULL WHERE chain_proxy_node_id = ? AND username = ?`, id, username)
+
+	return nil
+}
+
 // DeleteNodeByID 仅按 ID 删除代理节点（供管理员使用）。
 // 该功能不检查用户名，允许管理员删除任何节点。
 func (r *TrafficRepository) DeleteNodeByID(ctx context.Context, id int64) error {

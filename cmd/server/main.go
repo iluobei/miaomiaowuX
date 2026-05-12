@@ -177,13 +177,6 @@ func main() {
 
 	syncSubscribeFilesToDatabase(repo, subscribeDir)
 
-	// 启动时初始化代理集合缓存
-	go handler.InitProxyProviderCacheOnStartup(repo)
-
-	// 启动代理集合定时同步器
-	proxySyncCtx, stopProxySync := context.WithCancel(context.Background())
-	go handler.StartProxyProviderCacheSync(proxySyncCtx, repo)
-
 	trafficHandler := handler.NewTrafficSummaryHandler(repo)
 	packageSubscribeHandler := handler.NewPackageSubscribeHandler(repo)
 	userRepo := auth.NewRepositoryAdapter(repo)
@@ -259,12 +252,6 @@ func main() {
 	mux.Handle("/api/user/external-subscriptions", auth.RequireToken(tokenStore, userRepo, handler.NewExternalSubscriptionsHandler(repo)))
 	mux.Handle("/api/user/external-subscriptions/nodes", auth.RequireToken(tokenStore, userRepo, handler.NewExternalSubscriptionNodesHandler(repo)))
 	mux.Handle("/api/user/external-subscriptions/check-filter", auth.RequireToken(tokenStore, userRepo, handler.NewExternalSubscriptionCheckFilterHandler(repo)))
-	mux.Handle("/api/user/proxy-provider-configs", auth.RequireToken(tokenStore, userRepo, handler.NewProxyProviderConfigsHandler(repo)))
-	mux.Handle("/api/user/proxy-provider-cache/refresh", auth.RequireToken(tokenStore, userRepo, handler.NewProxyProviderCacheRefreshHandler(repo)))
-	mux.Handle("/api/user/proxy-provider-cache/status", auth.RequireToken(tokenStore, userRepo, handler.NewProxyProviderCacheStatusHandler(repo)))
-	mux.Handle("/api/user/proxy-provider-nodes", auth.RequireToken(tokenStore, userRepo, handler.NewProxyProviderNodesHandler(repo)))
-	mux.Handle("/api/proxy-provider/", handler.NewProxyProviderServeHandler(repo))
-
 	// Debug日志相关endpoint
 	mux.Handle("/api/user/debug/", auth.RequireToken(tokenStore, userRepo, handler.NewDebugHandler(repo)))
 
@@ -697,7 +684,7 @@ func main() {
 		}
 	}()
 
-	waitForShutdown(srv, stopCollector, stopProxySync)
+	waitForShutdown(srv, stopCollector)
 }
 
 func getAddr(config *ServerConfig) string {

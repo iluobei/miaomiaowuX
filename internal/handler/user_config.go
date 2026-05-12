@@ -19,6 +19,7 @@ type userConfigRequest struct {
 	KeepNodeName            bool    `json:"keep_node_name"`
 	CacheExpireMinutes      int     `json:"cache_expire_minutes"`
 	SyncTraffic             bool    `json:"sync_traffic"`
+	NodeNameFilter          string  `json:"node_name_filter"`
 	CustomRulesEnabled      bool    `json:"custom_rules_enabled"`
 	EnableShortLink         bool    `json:"enable_short_link"`
 	UseNewTemplateSystem    *bool   `json:"use_new_template_system"` // nil表示不提供，默认true
@@ -35,6 +36,7 @@ type userConfigResponse struct {
 	KeepNodeName            bool    `json:"keep_node_name"`
 	CacheExpireMinutes      int     `json:"cache_expire_minutes"`
 	SyncTraffic             bool    `json:"sync_traffic"`
+	NodeNameFilter          string  `json:"node_name_filter"`
 	CustomRulesEnabled      bool    `json:"custom_rules_enabled"`
 	EnableShortLink         bool    `json:"enable_short_link"`
 	UseNewTemplateSystem    bool    `json:"use_new_template_system"`
@@ -86,6 +88,7 @@ func handleGetUserConfig(w http.ResponseWriter, r *http.Request, repo *storage.T
 				KeepNodeName:            true,
 				CacheExpireMinutes:      0,
 				SyncTraffic:             false,
+				NodeNameFilter:          "剩余|流量|到期|订阅|时间|重置",
 				CustomRulesEnabled:      true, // 自定义规则始终启用
 				EnableShortLink:         false,
 				UseNewTemplateSystem:    true, // 默认使用新模板系统
@@ -110,6 +113,7 @@ func handleGetUserConfig(w http.ResponseWriter, r *http.Request, repo *storage.T
 		KeepNodeName:            settings.KeepNodeName,
 		CacheExpireMinutes:      settings.CacheExpireMinutes,
 		SyncTraffic:             settings.SyncTraffic,
+		NodeNameFilter:          settings.NodeNameFilter,
 		CustomRulesEnabled:      true, // 自定义规则始终启用
 		EnableShortLink:         settings.EnableShortLink,
 		UseNewTemplateSystem:    settings.UseNewTemplateSystem,
@@ -178,6 +182,7 @@ func handleUpdateUserConfig(w http.ResponseWriter, r *http.Request, repo *storag
 		KeepNodeName:         payload.KeepNodeName,
 		CacheExpireMinutes:   cacheExpireMinutes,
 		SyncTraffic:          payload.SyncTraffic,
+		NodeNameFilter:       payload.NodeNameFilter,
 		CustomRulesEnabled:   true, // 自定义规则始终启用
 		EnableShortLink:      payload.EnableShortLink,
 		UseNewTemplateSystem: useNewTemplateSystem,
@@ -207,6 +212,7 @@ func handleUpdateUserConfig(w http.ResponseWriter, r *http.Request, repo *storag
 		KeepNodeName:            settings.KeepNodeName,
 		CacheExpireMinutes:      settings.CacheExpireMinutes,
 		SyncTraffic:             settings.SyncTraffic,
+		NodeNameFilter:          settings.NodeNameFilter,
 		CustomRulesEnabled:      true, // 自定义规则始终启用
 		EnableShortLink:         settings.EnableShortLink,
 		UseNewTemplateSystem:    settings.UseNewTemplateSystem,

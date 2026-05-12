@@ -57,6 +57,29 @@
     "usageHint": "Use this Token in the MM-Authorization header to access APIs",
     "warning": "• This Token grants full access to all backend APIs without login\n• Keep this Token secure — leaks may cause data security issues\n• The Token is printed in logs on server startup\n• Click refresh to regenerate — the old Token is immediately invalidated"
   },
+  "sync": {
+    "title": "External Subscription Sync",
+    "description": "Configure external subscription sync behavior",
+    "syncTraffic": "Sync External Subscription Traffic",
+    "syncTrafficHint": "When enabled, traffic data will include traffic info from external subscriptions",
+    "nodeNameFilter": "Node Name Filter",
+    "nodeNameFilterHint": "Use regex to filter node names. Matching nodes will be excluded. Leave empty to skip filtering.",
+    "nodeNameFilterDesc": "Regex pattern — matching nodes will be filtered out during sync",
+    "forceSyncExternal": "External Subscription Sync",
+    "forceSyncExternalHint": "When enabled, fetching subscriptions will re-fetch the latest nodes from external subscription links",
+    "matchRule": "Match Rule",
+    "matchRuleNodeName": "Node Name",
+    "matchRuleServerPort": "Server:Port",
+    "matchRuleTypeServerPort": "Type:Server:Port",
+    "syncScope": "Sync Scope",
+    "syncScopeSavedOnly": "Saved Nodes Only",
+    "syncScopeAll": "All Nodes",
+    "keepNodeName": "Keep Current Node Names",
+    "keepNodeNameHint": "When enabled, node names in the database are preserved during sync instead of using names from external subscriptions",
+    "cacheExpireMinutes": "Cache Expiry (minutes)",
+    "cacheExpireMinutesHint": "Set to 0 to re-fetch on every subscription request. When greater than 0, re-fetch only after the specified minutes",
+    "cacheExpireWarning": "Note: Fetching every time will affect subscription API response speed"
+  },
   "configUpdated": "Settings updated",
   "configUpdateFailed": "Failed to update settings"
 }

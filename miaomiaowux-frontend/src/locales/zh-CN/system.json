@@ -57,6 +57,29 @@
     "usageHint": "使用此 Token 在请求头 MM-Authorization 中访问 API",
     "warning": "• 携带此 Token 可以不需要登录直接访问所有后台 API\n• 请妥善保管此 Token，泄露可能导致数据安全问题\n• 服务启动时会在日志中打印此 Token\n• 点击刷新按钮可重新生成 Token，旧 Token 立即失效"
   },
+  "sync": {
+    "title": "外部订阅同步设置",
+    "description": "配置外部订阅的同步行为",
+    "syncTraffic": "同步外部订阅流量信息",
+    "syncTrafficHint": "开启后，流量信息数据包含外部订阅的流量信息",
+    "nodeNameFilter": "节点名称过滤",
+    "nodeNameFilterHint": "使用正则表达式过滤节点名称，匹配的节点将被排除。留空则不过滤。",
+    "nodeNameFilterDesc": "正则表达式，匹配的节点将在同步时被过滤掉",
+    "forceSyncExternal": "外部订阅同步设置",
+    "forceSyncExternalHint": "开启后，从订阅链接获取订阅时将重新获取外部订阅链接的最新节点",
+    "matchRule": "匹配规则",
+    "matchRuleNodeName": "节点名称",
+    "matchRuleServerPort": "服务器:端口",
+    "matchRuleTypeServerPort": "类型:服务器:端口",
+    "syncScope": "同步范围",
+    "syncScopeSavedOnly": "仅同步已保存节点",
+    "syncScopeAll": "同步所有节点",
+    "keepNodeName": "保留当前节点名称",
+    "keepNodeNameHint": "开启后，同步时保留数据库中的节点名称，不使用外部订阅的节点名称",
+    "cacheExpireMinutes": "缓存过期时间（分钟）",
+    "cacheExpireMinutesHint": "设置为0表示每次获取订阅时都重新拉取。大于0时，只有超过设置的分钟数才会重新拉取",
+    "cacheExpireWarning": "注意：每次都更新订阅会影响获取订阅接口的响应速度"
+  },
   "configUpdated": "设置已更新",
   "configUpdateFailed": "更新设置失败"
 }

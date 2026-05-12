@@ -313,20 +313,6 @@ func (h *SubscriptionHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 	}
 	logger.Info("[⏱️ 耗时监测] 文件读取完成", "step", "file_read", "duration_ms", time.Since(stepStart).Milliseconds(), "bytes", len(data))
 
-	// MMW 同步
-	stepStart = time.Now()
-	// 同步 MMW 模式代理集合的节点到订阅文件
-	// 这样可以确保获取订阅时包含最新的代理集合节点
-	if h.repo != nil {
-		SyncMMWProxyProvidersToFile(h.repo, h.baseDir, cleanedName)
-		// 重新读取更新后的文件
-		updatedData, err := os.ReadFile(resolvedPath)
-		if err == nil {
-			data = updatedData
-		}
-	}
-	logger.Info("[⏱️ 耗时监测] MMW 同步完成", "step", "mmw_sync", "duration_ms", time.Since(stepStart).Milliseconds())
-
 	// 外部订阅同步
 	stepStart = time.Now()
 	// 检查是否启用强制同步外部订阅并仅同步引用的订阅
@@ -929,8 +915,10 @@ func syncReferencedExternalSubscriptions(ctx context.Context, repo *storage.Traf
 	// 获取用户设置以检查匹配规则
 	userSettings, err := repo.GetUserSettings(ctx, username)
 	if err != nil {
-		// 如果未找到设置，则使用默认匹配规则
 		userSettings.MatchRule = "node_name"
+		userSettings.SyncScope = "saved_only"
+		userSettings.KeepNodeName = true
+		userSettings.NodeNameFilter = defaultNodeNameFilterPattern
 	}
 
 	logger.Info("[Subscription] 用户需要同步的外部订阅", "user", username, "count", len(subsToSync), "match_rule", userSettings.MatchRule)
@@ -980,26 +968,6 @@ func syncReferencedExternalSubscriptions(ctx context.Context, repo *storage.Traf
 	for url := range syncedSubURLs {
 		InvalidateSubscriptionContentCache(url)
 		logger.Info("[Subscription] 失效外部订阅内容缓存", "url", url)
-	}
-
-	// 获取所有代理集合配置，失效引用了这些外部订阅的代理集合缓存
-	configs, err := repo.ListProxyProviderConfigs(ctx, username)
-	if err == nil {
-		cache := GetProxyProviderCache()
-		invalidatedCount := 0
-		for _, config := range configs {
-			// 检查是否引用了刚刚同步的外部订阅
-			if syncedSubIDs[config.ExternalSubscriptionID] {
-				cache.Delete(config.ID)
-				invalidatedCount++
-				logger.Info("[Subscription] 失效代理集合缓存", "config_name", config.Name, "config_id", config.ID)
-			}
-		}
-		if invalidatedCount > 0 {
-			logger.Info("[Subscription] 代理集合缓存失效完成", "count", invalidatedCount)
-		}
-	} else {
-		logger.Info("[Subscription] 获取代理集合配置失败，无法失效缓存", "error", err)
 	}
 
 	return nil

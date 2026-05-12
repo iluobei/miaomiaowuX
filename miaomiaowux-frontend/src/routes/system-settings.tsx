@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { createFileRoute, redirect } from '@tanstack/react-router'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
-import { Bell, Copy, Eye, EyeOff, Link, RefreshCw, Timer } from 'lucide-react'
+import { Bell, CircleHelp, Copy, Eye, EyeOff, Link, RefreshCw, Timer } from 'lucide-react'
 import { Topbar } from '@/components/layout/topbar'
 import {
   Card,
@@ -16,6 +16,8 @@ import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import { Switch } from '@/components/ui/switch'
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { api } from '@/lib/api'
 import { handleServerError } from '@/lib/handle-server-error'
 import { useAuthStore } from '@/stores/auth-store'
@@ -40,7 +42,7 @@ function SystemSettingsPage() {
   const [keepNodeName, setKeepNodeName] = useState(true)
   const [cacheExpireMinutes, setCacheExpireMinutes] = useState(0)
   const [syncTraffic, setSyncTraffic] = useState(false)
-  const [_customRulesEnabled, _setCustomRulesEnabled] = useState(false)
+  const [nodeNameFilter, setNodeNameFilter] = useState('剩余|流量|到期|订阅|时间|重置')
   const [showApiToken, setShowApiToken] = useState(false)
   const [masterUrl, setMasterUrl] = useState('')
 
@@ -269,6 +271,7 @@ function SystemSettingsPage() {
         keep_node_name: boolean
         cache_expire_minutes: number
         sync_traffic: boolean
+        node_name_filter: string
         enable_short_link: boolean
         use_new_template_system: boolean
         enable_proxy_provider: boolean
@@ -288,6 +291,7 @@ function SystemSettingsPage() {
       setKeepNodeName(userConfig.keep_node_name !== false) // 默认为 true
       setCacheExpireMinutes(userConfig.cache_expire_minutes)
       setSyncTraffic(userConfig.sync_traffic)
+      setNodeNameFilter(userConfig.node_name_filter || '剩余|流量|到期|订阅|时间|重置')
       setEnableShortLink(userConfig.enable_short_link || false)
       setUseNewTemplateSystem(userConfig.use_new_template_system !== false) // 默认为 true
       setEnableProxyProvider(userConfig.enable_proxy_provider || false)
@@ -304,6 +308,7 @@ function SystemSettingsPage() {
       keep_node_name: boolean
       cache_expire_minutes: number
       sync_traffic: boolean
+      node_name_filter: string
       enable_short_link: boolean
       use_new_template_system: boolean
       enable_proxy_provider: boolean
@@ -324,6 +329,7 @@ function SystemSettingsPage() {
       setKeepNodeName(variables.keep_node_name)
       setCacheExpireMinutes(variables.cache_expire_minutes)
       setSyncTraffic(variables.sync_traffic)
+      setNodeNameFilter(variables.node_name_filter)
       setEnableShortLink(variables.enable_short_link)
       setUseNewTemplateSystem(variables.use_new_template_system)
       setEnableProxyProvider(variables.enable_proxy_provider)
@@ -337,8 +343,6 @@ function SystemSettingsPage() {
     },
   })
 
-  // 通用的更新配置方法
-  // @ts-ignore - temporarily unused while cards are commented out
   const updateConfig = (updates: Partial<{
     force_sync_external: boolean
     match_rule: string
@@ -346,6 +350,7 @@ function SystemSettingsPage() {
     keep_node_name: boolean
     cache_expire_minutes: number
     sync_traffic: boolean
+    node_name_filter: string
     enable_short_link: boolean
     use_new_template_system: boolean
     enable_proxy_provider: boolean
@@ -359,6 +364,7 @@ function SystemSettingsPage() {
       keep_node_name: keepNodeName,
       cache_expire_minutes: cacheExpireMinutes,
       sync_traffic: syncTraffic,
+      node_name_filter: nodeNameFilter,
       enable_short_link: enableShortLink,
       use_new_template_system: useNewTemplateSystem,
       enable_proxy_provider: enableProxyProvider,
@@ -378,41 +384,194 @@ function SystemSettingsPage() {
         </section>
 
         <div className='mt-8 space-y-6'>
-          {/* 外部订阅同步设置 - 暂时隐藏
+          {/* 外部订阅同步设置 */}
           <Card>
             <CardHeader className='pb-4'>
-              <CardTitle>外部订阅同步设置</CardTitle>
-              <CardDescription>配置外部订阅的同步行为</CardDescription>
+              <CardTitle>{t('sync.title')}</CardTitle>
+              <CardDescription>{t('sync.description')}</CardDescription>
             </CardHeader>
             <CardContent className='space-y-4'>
-              ...
-            </CardContent>
-          </Card>
-          */}
+              <div className='flex items-center justify-between'>
+                <div className='flex items-center gap-2'>
+                  <Label htmlFor='sync-traffic' className='cursor-pointer'>
+                    {t('sync.syncTraffic')}
+                  </Label>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <CircleHelp className='h-4 w-4 text-muted-foreground cursor-help' />
+                    </TooltipTrigger>
+                    <TooltipContent side='right' className='max-w-xs'>
+                      <p>{t('sync.syncTrafficHint')}</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </div>
+                <Switch
+                  id='sync-traffic'
+                  checked={syncTraffic}
+                  onCheckedChange={(checked) => updateConfig({ sync_traffic: checked })}
+                  disabled={updateConfigMutation.isPending}
+                />
+              </div>
 
-          {/* 功能开关 - 暂时隐藏
-          <Card>
-            <CardHeader className='pb-4'>
-              <CardTitle>功能开关</CardTitle>
-              <CardDescription>管理系统功能的启用状态</CardDescription>
-            </CardHeader>
-            <CardContent className='space-y-0'>
-              ...
-            </CardContent>
-          </Card>
-          */}
+              <div className='space-y-2 pt-3 border-t'>
+                <div className='flex items-center gap-2'>
+                  <Label htmlFor='node-name-filter'>{t('sync.nodeNameFilter')}</Label>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <CircleHelp className='h-4 w-4 text-muted-foreground cursor-help' />
+                    </TooltipTrigger>
+                    <TooltipContent side='right' className='max-w-xs'>
+                      <p>{t('sync.nodeNameFilterHint')}</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </div>
+                <Input
+                  id='node-name-filter'
+                  value={nodeNameFilter}
+                  onChange={(e) => setNodeNameFilter(e.target.value)}
+                  onBlur={() => updateConfig({ node_name_filter: nodeNameFilter })}
+                  disabled={updateConfigMutation.isPending}
+                  placeholder='剩余|流量|到期|订阅|时间|重置'
+                />
+                <p className='text-xs text-muted-foreground'>{t('sync.nodeNameFilterDesc')}</p>
+              </div>
 
-          {/* 代理组配置同步 - 暂时隐藏
-          <Card>
-            <CardHeader className='pb-4'>
-              <CardTitle>代理组配置同步</CardTitle>
-              <CardDescription>从远程同步最新的预设代理组配置</CardDescription>
-            </CardHeader>
-            <CardContent className='space-y-4'>
-              ...
+              <div className='flex items-center justify-between pt-3 border-t'>
+                <div className='flex items-center gap-2'>
+                  <Label htmlFor='force-sync-external' className='cursor-pointer'>
+                    {t('sync.forceSyncExternal')}
+                  </Label>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <CircleHelp className='h-4 w-4 text-muted-foreground cursor-help' />
+                    </TooltipTrigger>
+                    <TooltipContent side='right' className='max-w-xs'>
+                      <p>{t('sync.forceSyncExternalHint')}</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </div>
+                <Switch
+                  id='force-sync-external'
+                  checked={forceSyncExternal}
+                  onCheckedChange={(checked) => updateConfig({ force_sync_external: checked })}
+                  disabled={updateConfigMutation.isPending}
+                />
+              </div>
+
+              {forceSyncExternal && (
+                <div className='space-y-4 pt-3 border-t bg-muted/30 -mx-6 px-6 py-4 rounded-b-lg'>
+                  <div className='space-y-2'>
+                    <Label>{t('sync.matchRule')}</Label>
+                    <RadioGroup
+                      value={matchRule}
+                      onValueChange={(value: 'node_name' | 'server_port' | 'type_server_port') => {
+                        setMatchRule(value)
+                        updateConfig({ match_rule: value })
+                      }}
+                      disabled={updateConfigMutation.isPending}
+                      className='flex flex-wrap gap-4'
+                    >
+                      <div className='flex items-center space-x-2'>
+                        <RadioGroupItem value='node_name' id='match-node-name' />
+                        <Label htmlFor='match-node-name' className='font-normal cursor-pointer'>
+                          {t('sync.matchRuleNodeName')}
+                        </Label>
+                      </div>
+                      <div className='flex items-center space-x-2'>
+                        <RadioGroupItem value='server_port' id='match-server-port' />
+                        <Label htmlFor='match-server-port' className='font-normal cursor-pointer'>
+                          {t('sync.matchRuleServerPort')}
+                        </Label>
+                      </div>
+                      <div className='flex items-center space-x-2'>
+                        <RadioGroupItem value='type_server_port' id='match-type-server-port' />
+                        <Label htmlFor='match-type-server-port' className='font-normal cursor-pointer'>
+                          {t('sync.matchRuleTypeServerPort')}
+                        </Label>
+                      </div>
+                    </RadioGroup>
+                  </div>
+
+                  <div className='space-y-2 pt-3 border-t border-border/50'>
+                    <Label>{t('sync.syncScope')}</Label>
+                    <RadioGroup
+                      value={syncScope}
+                      onValueChange={(value: 'saved_only' | 'all') => {
+                        setSyncScope(value)
+                        updateConfig({ sync_scope: value })
+                      }}
+                      disabled={updateConfigMutation.isPending}
+                      className='flex flex-wrap gap-4'
+                    >
+                      <div className='flex items-center space-x-2'>
+                        <RadioGroupItem value='saved_only' id='sync-saved-only' />
+                        <Label htmlFor='sync-saved-only' className='font-normal cursor-pointer'>
+                          {t('sync.syncScopeSavedOnly')}
+                        </Label>
+                      </div>
+                      <div className='flex items-center space-x-2'>
+                        <RadioGroupItem value='all' id='sync-all' />
+                        <Label htmlFor='sync-all' className='font-normal cursor-pointer'>
+                          {t('sync.syncScopeAll')}
+                        </Label>
+                      </div>
+                    </RadioGroup>
+                  </div>
+
+                  <div className='flex items-center justify-between pt-3 border-t border-border/50'>
+                    <div className='flex items-center gap-2'>
+                      <Label htmlFor='keep-node-name' className='cursor-pointer'>
+                        {t('sync.keepNodeName')}
+                      </Label>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <CircleHelp className='h-4 w-4 text-muted-foreground cursor-help' />
+                        </TooltipTrigger>
+                        <TooltipContent side='right' className='max-w-xs'>
+                          <p>{t('sync.keepNodeNameHint')}</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </div>
+                    <Switch
+                      id='keep-node-name'
+                      checked={keepNodeName}
+                      onCheckedChange={(checked) => {
+                        setKeepNodeName(checked)
+                        updateConfig({ keep_node_name: checked })
+                      }}
+                      disabled={updateConfigMutation.isPending}
+                    />
+                  </div>
+
+                  <div className='space-y-2 pt-3 border-t border-border/50'>
+                    <div className='flex items-center gap-2'>
+                      <Label htmlFor='cache-expire-minutes'>{t('sync.cacheExpireMinutes')}</Label>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <CircleHelp className='h-4 w-4 text-muted-foreground cursor-help' />
+                        </TooltipTrigger>
+                        <TooltipContent side='right' className='max-w-xs'>
+                          <p>{t('sync.cacheExpireMinutesHint')}</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </div>
+                    <Input
+                      id='cache-expire-minutes'
+                      type='number'
+                      min='0'
+                      value={cacheExpireMinutes}
+                      onChange={(e) => setCacheExpireMinutes(parseInt(e.target.value) || 0)}
+                      onBlur={() => updateConfig({ cache_expire_minutes: cacheExpireMinutes })}
+                      disabled={updateConfigMutation.isPending}
+                      placeholder='0'
+                      className='w-32'
+                    />
+                    <p className='text-xs text-destructive'>{t('sync.cacheExpireWarning')}</p>
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
-          */}
 
           {/* 短链接全局开关 */}
           <Card>

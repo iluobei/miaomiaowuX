@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -9,16 +8,42 @@ import (
 	"miaomiaowux/internal/logger"
 	"net/http"
 	"os"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
 
 	"miaomiaowux/internal/auth"
 	"miaomiaowux/internal/storage"
-	"miaomiaowux/internal/util"
 
 	"gopkg.in/yaml.v3"
 )
+
+const defaultNodeNameFilterPattern = "剩余|流量|到期|订阅|时间|重置"
+
+func applyNodeNameFilterToProxies(proxies []any, filterRegex *regexp.Regexp, filterPattern string) ([]any, int) {
+	if filterRegex == nil || len(proxies) == 0 {
+		return proxies, 0
+	}
+
+	filteredProxies := make([]any, 0, len(proxies))
+	filteredCount := 0
+
+	for _, proxy := range proxies {
+		if proxyMap, ok := proxy.(map[string]any); ok {
+			if proxyName, ok := proxyMap["name"].(string); ok {
+				if filterRegex.MatchString(proxyName) {
+					filteredCount++
+					logger.Info("[外部订阅同步] 过滤节点", "name", proxyName, "pattern", filterPattern)
+					continue
+				}
+			}
+		}
+		filteredProxies = append(filteredProxies, proxy)
+	}
+
+	return filteredProxies, filteredCount
+}
 
 // 用于由用户触发的手动同步 - 同步所有外部订阅，无论 ForceSyncExternal 设置如何
 func syncExternalSubscriptionsManual(ctx context.Context, repo *storage.TrafficRepository, subscribeDir, username string) error {
@@ -35,6 +60,7 @@ func syncExternalSubscriptionsManual(ctx context.Context, repo *storage.TrafficR
 		userSettings.MatchRule = "node_name"
 		userSettings.SyncScope = "saved_only"
 		userSettings.KeepNodeName = true
+		userSettings.NodeNameFilter = defaultNodeNameFilterPattern
 	}
 
 	matchRuleDesc := map[string]string{
@@ -116,6 +142,7 @@ func syncExternalSubscriptions(ctx context.Context, repo *storage.TrafficReposit
 		userSettings.SyncScope = "saved_only"
 		userSettings.KeepNodeName = true
 		userSettings.ForceSyncExternal = false
+		userSettings.NodeNameFilter = defaultNodeNameFilterPattern
 	}
 
 	matchRuleDesc := map[string]string{
@@ -298,9 +325,30 @@ func syncSingleExternalSubscription(ctx context.Context, client *http.Client, re
 
 	// 如果启用了sync_traffic，则解析订阅用户信息标头
 	if settings.SyncTraffic {
-		if userInfo := resp.Header.Get("subscription-userinfo"); userInfo != "" {
+		userInfo := resp.Header.Get("subscription-userinfo")
+		if userInfo != "" {
 			logger.Info("[外部订阅同步] 发现流量信息头，开始解析...")
 			parseAndUpdateTrafficInfo(ctx, repo, &sub, userInfo)
+		} else if !strings.Contains(strings.ToLower(userAgent), "clash") {
+			logger.Info("[外部订阅同步] 未获取到流量信息，尝试使用 clash-meta UA 获取", "name", sub.Name)
+			clashMetaUA := "clash-meta/2.4.0"
+			trafficReq, reqErr := http.NewRequestWithContext(ctx, http.MethodGet, sub.URL, nil)
+			if reqErr == nil {
+				trafficReq.Header.Set("User-Agent", clashMetaUA)
+				trafficResp, doErr := client.Do(trafficReq)
+				if doErr == nil {
+					defer trafficResp.Body.Close()
+					if trafficResp.StatusCode == http.StatusOK {
+						trafficUserInfo := trafficResp.Header.Get("subscription-userinfo")
+						if trafficUserInfo != "" {
+							logger.Info("[外部订阅同步] clash-meta UA 获取流量信息成功", "name", sub.Name)
+							parseAndUpdateTrafficInfo(ctx, repo, &sub, trafficUserInfo)
+						}
+					}
+				} else {
+					logger.Info("[外部订阅同步] clash-meta UA 请求失败", "error", doErr)
+				}
+			}
 		}
 	}
 
@@ -312,21 +360,46 @@ func syncSingleExternalSubscription(ctx context.Context, client *http.Client, re
 
 	logger.Info("[外部订阅同步] 成功获取订阅内容", "size", len(body))
 
-	// 解析 YAML 内容
-	var yamlContent map[string]any
-	if err := yaml.Unmarshal(body, &yamlContent); err != nil {
-		logger.Info("[外部订阅同步] 解析YAML内容失败", "error", err)
-		return 0, sub, fmt.Errorf("parse yaml: %w", err)
+	var proxies []any
+
+	// 预处理：处理 base64/v2ray 格式
+	processedBody, preprocessErr := preprocessSubscriptionContent(body)
+	if preprocessErr != nil {
+		logger.Info("[外部订阅同步] 预处理订阅内容失败，使用原始内容", "error", preprocessErr)
+		processedBody = body
 	}
 
-	// 提取代理
-	proxies, ok := yamlContent["proxies"].([]any)
-	if !ok || len(proxies) == 0 {
+	// 解析 YAML 内容
+	var yamlContent map[string]any
+	if yamlErr := yaml.Unmarshal(processedBody, &yamlContent); yamlErr == nil {
+		if p, ok := yamlContent["proxies"].([]any); ok && len(p) > 0 {
+			proxies = p
+			logger.Info("[外部订阅同步] 解析为 Clash YAML 格式", "name", sub.Name, "count", len(proxies))
+		}
+	}
+
+	if len(proxies) == 0 {
 		logger.Info("[外部订阅同步] 订阅中未找到节点(proxies)数据")
 		return 0, sub, fmt.Errorf("no proxies found in subscription")
 	}
 
 	logger.Info("[外部订阅同步] 解析到节点", "name", sub.Name, "count", len(proxies))
+
+	// 应用节点名称过滤
+	nodeNameFilter := strings.TrimSpace(settings.NodeNameFilter)
+	var filterRegex *regexp.Regexp
+	if nodeNameFilter != "" {
+		filterRegex, err = regexp.Compile(nodeNameFilter)
+		if err != nil {
+			logger.Info("[外部订阅同步] 节点名称过滤正则表达式无效，跳过过滤", "pattern", nodeNameFilter, "error", err)
+		} else {
+			filteredProxies, filteredCount := applyNodeNameFilterToProxies(proxies, filterRegex, nodeNameFilter)
+			if filteredCount > 0 {
+				logger.Info("[外部订阅同步] 节点过滤完成", "filtered_count", filteredCount, "remaining_count", len(filteredProxies))
+			}
+			proxies = filteredProxies
+		}
+	}
 
 	// 转换为storage.Node格式
 	nodesToUpdate := make([]storage.Node, 0, len(proxies))
@@ -366,6 +439,7 @@ func syncSingleExternalSubscription(ctx context.Context, client *http.Client, re
 			ClashConfig:  string(clashConfigBytes),
 			Enabled:      true,
 			Tag:          sub.Name, // 使用外部订阅名称作为标签
+			Tags:         []string{sub.Name},
 		}
 
 		nodesToUpdate = append(nodesToUpdate, node)
@@ -386,6 +460,31 @@ func syncSingleExternalSubscription(ctx context.Context, client *http.Client, re
 	}
 
 	logger.Info("[外部订阅同步] 数据库中已有节点", "count", len(existingNodes))
+
+	// 清理此订阅中匹配当前过滤规则的历史节点
+	if filterRegex != nil {
+		remainingNodes := make([]storage.Node, 0, len(existingNodes))
+		removedByFilterCount := 0
+
+		for _, existing := range existingNodes {
+			if existing.RawURL == sub.URL && filterRegex.MatchString(existing.NodeName) {
+				if delErr := repo.DeleteNodeForSync(ctx, existing.ID, username); delErr != nil {
+					logger.Info("[外部订阅同步] 删除已过滤历史节点失败", "node_name", existing.NodeName, "id", existing.ID, "error", delErr)
+					remainingNodes = append(remainingNodes, existing)
+					continue
+				}
+				removedByFilterCount++
+				logger.Info("[外部订阅同步] 删除已过滤历史节点", "node_name", existing.NodeName, "id", existing.ID)
+				continue
+			}
+			remainingNodes = append(remainingNodes, existing)
+		}
+
+		if removedByFilterCount > 0 {
+			logger.Info("[外部订阅同步] 清理历史过滤节点完成", "removed_count", removedByFilterCount)
+		}
+		existingNodes = remainingNodes
+	}
 
 	// 将节点同步到数据库（根据匹配规则替换节点）
 	syncedCount := 0
@@ -409,17 +508,18 @@ func syncSingleExternalSubscription(ctx context.Context, client *http.Client, re
 		// 根据规则进行匹配
 		switch matchRule {
 		case "type_server_port":
-			// 按类型匹配：服务器：端口
 			matchKey := fmt.Sprintf("%s:%s:%v", newType, newServer, newPort)
 			if newServer != "" && newPort != nil && newType != "" {
 				for i := range existingNodes {
 					var existingClashConfig map[string]any
 					if err := json.Unmarshal([]byte(existingNodes[i].ClashConfig), &existingClashConfig); err == nil {
 						existingServer, _ := existingClashConfig["server"].(string)
+						if existingNodes[i].OriginalServer != "" {
+							existingServer = existingNodes[i].OriginalServer
+						}
 						existingPort := existingClashConfig["port"]
 						existingType, _ := existingClashConfig["type"].(string)
 
-						// 比较类型：服务器：端口
 						if existingType == newType && existingServer == newServer && fmt.Sprintf("%v", existingPort) == fmt.Sprintf("%v", newPort) {
 							existingNode = &existingNodes[i]
 							logger.Info("[外部订阅同步] 节点 按 type:server:port 匹配成功 -> 已有节点", "node_name", node.NodeName, "param", matchKey, "node_name", existingNode.NodeName)
@@ -432,16 +532,17 @@ func syncSingleExternalSubscription(ctx context.Context, client *http.Client, re
 				}
 			}
 		case "server_port":
-			// 按服务器匹配：端口
 			matchKey := fmt.Sprintf("%s:%v", newServer, newPort)
 			if newServer != "" && newPort != nil {
 				for i := range existingNodes {
 					var existingClashConfig map[string]any
 					if err := json.Unmarshal([]byte(existingNodes[i].ClashConfig), &existingClashConfig); err == nil {
 						existingServer, _ := existingClashConfig["server"].(string)
+						if existingNodes[i].OriginalServer != "" {
+							existingServer = existingNodes[i].OriginalServer
+						}
 						existingPort := existingClashConfig["port"]
 
-						// 比较服务器:端口
 						if existingServer == newServer && fmt.Sprintf("%v", existingPort) == fmt.Sprintf("%v", newPort) {
 							existingNode = &existingNodes[i]
 							logger.Info("[外部订阅同步] 节点 按 server:port 匹配成功 -> 已有节点", "node_name", node.NodeName, "param", matchKey, "node_name", existingNode.NodeName)
@@ -542,12 +643,6 @@ func syncSingleExternalSubscription(ctx context.Context, client *http.Client, re
 
 	logger.Info("[外部订阅同步] 订阅同步完成", "name", sub.Name, "synced_count", syncedCount, "total_count", len(nodesToUpdate), "updated", updatedCount, "created", createdCount, "skipped", skippedCount)
 
-	// 同步代理集合节点到 YAML（仅处理 mmw 模式）
-	if err := syncProxyProviderNodesToYAML(ctx, repo, subscribeDir, username, sub); err != nil {
-		logger.Info("[外部订阅同步] 同步代理集合节点到YAML失败", "error", err)
-		// 不影响主流程，仅记录日志
-	}
-
 	return syncedCount, sub, nil
 }
 
@@ -581,7 +676,7 @@ func ParseTrafficInfoHeader(userInfo string) (upload, download, total int64, exp
 				total = v
 			}
 		case "expire":
-			if v, err := strconv.ParseInt(value, 10, 64); err == nil {
+			if v, err := strconv.ParseInt(value, 10, 64); err == nil && v > 0 {
 				expireTime := time.Unix(v, 0)
 				expire = &expireTime
 			}
@@ -646,17 +741,14 @@ func parseAndUpdateTrafficInfo(ctx context.Context, repo *storage.TrafficReposit
 				logger.Info("[外部订阅同步] 解析总流量失败", "value", value, "error", err)
 			}
 		case "expire":
-			if v, err := strconv.ParseInt(value, 10, 64); err == nil {
+			if v, err := strconv.ParseInt(value, 10, 64); err == nil && v > 0 {
 				expireTime := time.Unix(v, 0)
 				sub.Expire = &expireTime
 				logger.Info("[外部订阅同步] 解析过期时间", "expire", expireTime.Format("2006-01-02 15:04:05"))
-			} else if f, err := strconv.ParseFloat(value, 64); err == nil {
-				// 支持带小数点的值，取整
+			} else if f, err := strconv.ParseFloat(value, 64); err == nil && int64(f) > 0 {
 				expireTime := time.Unix(int64(f), 0)
 				sub.Expire = &expireTime
 				logger.Info("[外部订阅同步] 解析过期时间(浮点)", "expire", expireTime.Format("2006-01-02 15:04:05"))
-			} else {
-				logger.Info("[外部订阅同步] 解析过期时间失败", "value", value, "error", err)
 			}
 		}
 	}
@@ -747,6 +839,7 @@ func (h *SyncSingleExternalSubscriptionHandler) ServeHTTP(w http.ResponseWriter,
 		userSettings.MatchRule = "node_name"
 		userSettings.SyncScope = "saved_only"
 		userSettings.KeepNodeName = true
+		userSettings.NodeNameFilter = defaultNodeNameFilterPattern
 	}
 
 	// 获取特定订阅
@@ -847,478 +940,3 @@ func (h *SyncExternalSubscriptionsHandler) ServeHTTP(w http.ResponseWriter, r *h
 	})
 }
 
-// syncProxyProviderNodesToYAML 将代理集合的节点直接同步到订阅 YAML 文件
-// 仅处理 process_mode='mmw' 的代理集合配置
-// 这样用户获取订阅时不需要再请求妙妙屋接口，节点直接在 proxies 中
-func syncProxyProviderNodesToYAML(ctx context.Context, repo *storage.TrafficRepository, subscribeDir, username string, sub storage.ExternalSubscription) error {
-	if repo == nil || subscribeDir == "" {
-		return nil
-	}
-
-	// 获取此外部订阅对应的代理集合配置
-	configs, err := repo.ListProxyProviderConfigsBySubscription(ctx, sub.ID)
-	if err != nil {
-		return fmt.Errorf("list proxy provider configs: %w", err)
-	}
-
-	// 筛选 process_mode='mmw' 的配置
-	var mmwConfigs []storage.ProxyProviderConfig
-	for _, cfg := range configs {
-		if cfg.ProcessMode == "mmw" {
-			mmwConfigs = append(mmwConfigs, cfg)
-		}
-	}
-
-	if len(mmwConfigs) == 0 {
-		logger.Info("[代理集合同步] 外部订阅 没有妙妙屋处理模式的代理集合配置", "name", sub.Name)
-		return nil
-	}
-
-	logger.Info("[代理集合同步] 外部订阅有妙妙屋处理模式的代理集合配置", "name", sub.Name, "count", len(mmwConfigs))
-
-	// 获取所有订阅文件
-	files, err := repo.ListSubscribeFiles(ctx)
-	if err != nil {
-		return fmt.Errorf("list subscribe files: %w", err)
-	}
-
-	// 处理每个代理集合配置
-	cache := GetProxyProviderCache()
-	for _, config := range mmwConfigs {
-		logger.Info("[代理集合同步] 处理代理集合", "name", config.Name)
-
-		var proxiesRaw []any
-
-		// 优先使用缓存
-		if entry, ok := cache.Get(config.ID); ok && !cache.IsExpired(entry) {
-			logger.Info("[代理集合同步] 使用缓存 ID=, 节点数", "id", config.ID, "node_count", entry.NodeCount)
-			proxiesRaw = entry.Nodes
-		} else {
-			// 缓存未命中或过期，刷新缓存
-			entry, err := RefreshProxyProviderCache(&sub, &config)
-			if err != nil {
-				logger.Info("[代理集合同步] 获取代理集合 的节点失败", "name", config.Name, "error", err)
-				continue
-			}
-			proxiesRaw = entry.Nodes
-		}
-
-		if len(proxiesRaw) == 0 {
-			logger.Info("[代理集合同步] 代理集合 没有节点", "name", config.Name)
-			continue
-		}
-
-		logger.Info("[代理集合同步] 代理集合获取到节点", "name", config.Name, "count", len(proxiesRaw))
-
-		// 为节点添加前缀（只使用名称前缀，即第一个 - 之前的部分）
-		namePrefix := config.Name
-		if idx := strings.Index(config.Name, "-"); idx > 0 {
-			namePrefix = config.Name[:idx]
-		}
-		prefix := fmt.Sprintf("〖%s〗", namePrefix)
-
-		// 复制节点数据并添加前缀（避免污染缓存中的原始数据）
-		proxiesCopy := make([]any, len(proxiesRaw))
-		nodeNames := make([]string, 0, len(proxiesRaw))
-		for i, proxy := range proxiesRaw {
-			if proxyMap, ok := proxy.(map[string]any); ok {
-				nodeCopy := copyMapForSync(proxyMap)
-				if originalName, ok := nodeCopy["name"].(string); ok {
-					newName := prefix + originalName
-					nodeCopy["name"] = newName
-					nodeNames = append(nodeNames, newName)
-				}
-				proxiesCopy[i] = nodeCopy
-			}
-		}
-		proxiesRaw = proxiesCopy
-
-		// 更新每个订阅文件
-		for _, file := range files {
-			if err := updateYAMLFileWithProxyProviderNodes(subscribeDir, file.Filename, config.Name, prefix, proxiesRaw, nodeNames); err != nil {
-				logger.Info("[代理集合同步] 更新文件 失败", "filename", file.Filename, "error", err)
-				continue
-			}
-		}
-	}
-
-	return nil
-}
-
-// updateYAMLFileWithProxyProviderNodes 更新单个 YAML 文件，将代理集合节点添加到 proxies 和 proxy-groups
-// 使用 yaml.Node 保持字段顺序，使用 RemoveUnicodeEscapeQuotes 处理 emoji 编码
-func updateYAMLFileWithProxyProviderNodes(subscribeDir, filename, providerName, prefix string, proxies []any, nodeNames []string) error {
-	filePath := fmt.Sprintf("%s/%s", subscribeDir, filename)
-
-	// 读取 YAML 文件
-	content, err := os.ReadFile(filePath)
-	if err != nil {
-		return fmt.Errorf("read file: %w", err)
-	}
-
-	// 使用 yaml.Node 解析以保持字段顺序
-	var rootNode yaml.Node
-	if err := yaml.Unmarshal(content, &rootNode); err != nil {
-		return fmt.Errorf("parse yaml: %w", err)
-	}
-
-	// 获取文档节点
-	if rootNode.Kind != yaml.DocumentNode || len(rootNode.Content) == 0 {
-		return nil
-	}
-	docContent := rootNode.Content[0]
-	if docContent.Kind != yaml.MappingNode {
-		return nil
-	}
-
-	modified := false
-
-	// 查找 proxy-groups 节点
-	var proxyGroupsNode *yaml.Node
-	var proxiesNode *yaml.Node
-	var proxyProvidersNode *yaml.Node
-	var proxyProvidersKeyIndex int = -1
-
-	for i := 0; i < len(docContent.Content)-1; i += 2 {
-		keyNode := docContent.Content[i]
-		valueNode := docContent.Content[i+1]
-		if keyNode.Kind == yaml.ScalarNode {
-			switch keyNode.Value {
-			case "proxy-groups":
-				proxyGroupsNode = valueNode
-			case "proxies":
-				proxiesNode = valueNode
-			case "proxy-providers":
-				proxyProvidersNode = valueNode
-				proxyProvidersKeyIndex = i
-			}
-		}
-	}
-
-	if proxyGroupsNode == nil || proxyGroupsNode.Kind != yaml.SequenceNode {
-		return nil // 没有 proxy-groups，跳过
-	}
-
-	// 遍历 proxy-groups，检查是否使用了此代理集合
-	// 记录是否需要创建新代理组
-	needCreateNewGroup := false
-
-	for _, groupNode := range proxyGroupsNode.Content {
-		if groupNode.Kind != yaml.MappingNode {
-			continue
-		}
-
-		// 查找 use 和 proxies 字段
-		var useNode *yaml.Node
-		var useKeyIndex int = -1
-		var groupProxiesNode *yaml.Node
-		var groupName string
-
-		for i := 0; i < len(groupNode.Content)-1; i += 2 {
-			keyNode := groupNode.Content[i]
-			valueNode := groupNode.Content[i+1]
-			if keyNode.Kind == yaml.ScalarNode {
-				switch keyNode.Value {
-				case "use":
-					useNode = valueNode
-					useKeyIndex = i
-				case "proxies":
-					groupProxiesNode = valueNode
-				case "name":
-					if valueNode.Kind == yaml.ScalarNode {
-						groupName = valueNode.Value
-					}
-				}
-			}
-		}
-
-		if useNode == nil || useNode.Kind != yaml.SequenceNode {
-			continue
-		}
-
-		// 检查是否包含此代理集合
-		foundProvider := false
-		newUseContent := make([]*yaml.Node, 0)
-		for _, useItem := range useNode.Content {
-			if useItem.Kind == yaml.ScalarNode && useItem.Value == providerName {
-				foundProvider = true
-			} else {
-				newUseContent = append(newUseContent, useItem)
-			}
-		}
-
-		if !foundProvider {
-			continue
-		}
-
-		modified = true
-		needCreateNewGroup = true
-		logger.Info("[代理集合同步] 在文件 的代理组 中找到代理集合 的引用", "value", filename, "param", groupName, "arg", providerName)
-
-		// 确保 proxies 节点存在
-		if groupProxiesNode == nil {
-			groupProxiesNode = &yaml.Node{Kind: yaml.SequenceNode, Content: make([]*yaml.Node, 0)}
-			groupNode.Content = append(groupNode.Content,
-				&yaml.Node{Kind: yaml.ScalarNode, Value: "proxies"},
-				groupProxiesNode,
-			)
-		}
-
-		// 移除此代理集合的旧节点（以 prefix 开头的）和旧的代理组名称
-		newProxiesContent := make([]*yaml.Node, 0)
-		for _, p := range groupProxiesNode.Content {
-			if p.Kind == yaml.ScalarNode {
-				// 移除以 prefix 开头的节点名称
-				if strings.HasPrefix(p.Value, prefix) {
-					continue
-				}
-				// 移除同名的旧代理组（如果存在）
-				if p.Value == providerName {
-					continue
-				}
-			}
-			newProxiesContent = append(newProxiesContent, p)
-		}
-
-		// 只添加新代理组名称到原代理组（而不是所有节点名称）
-		newProxiesContent = append(newProxiesContent, &yaml.Node{Kind: yaml.ScalarNode, Value: providerName})
-		groupProxiesNode.Content = newProxiesContent
-
-		// 更新 use 字段（移除此代理集合）
-		if len(newUseContent) == 0 && useKeyIndex >= 0 {
-			// 删除 use 字段
-			groupNode.Content = append(groupNode.Content[:useKeyIndex], groupNode.Content[useKeyIndex+2:]...)
-		} else {
-			useNode.Content = newUseContent
-		}
-
-		logger.Info("[代理集合同步] 代理组 更新完成: 添加了代理组 的引用", "value", groupName, "param", providerName)
-	}
-
-	// 妙妙屋模式：检查是否存在与代理集合同名的 proxy-group
-	// 如果存在，直接更新它（不需要 use 字段）
-	if !needCreateNewGroup {
-		for _, groupNode := range proxyGroupsNode.Content {
-			if groupNode.Kind != yaml.MappingNode {
-				continue
-			}
-			name := util.GetNodeFieldValue(groupNode, "name")
-			if name == providerName {
-				// 找到同名的 proxy-group，这是妙妙屋模式
-				needCreateNewGroup = true
-				modified = true
-				logger.Info("[代理集合同步] 妙妙屋模式：找到同名代理组", "name", providerName)
-				break
-			}
-		}
-	}
-
-	// 用于存储当前代理组中的旧节点名称（处理节点减少时删除顶层 proxies 中的旧配置）
-	var oldNodeNamesInGroup map[string]bool
-
-	// 创建或更新以代理集合名称命名的新代理组
-	if needCreateNewGroup {
-		// 检查是否已存在同名代理组
-		existingGroupNode := (*yaml.Node)(nil)
-		for _, groupNode := range proxyGroupsNode.Content {
-			if groupNode.Kind == yaml.MappingNode {
-				name := util.GetNodeFieldValue(groupNode, "name")
-				if name == providerName {
-					existingGroupNode = groupNode
-					break
-				}
-			}
-		}
-
-		if existingGroupNode != nil {
-			// 更新已存在的代理组的 proxies
-			var existingProxiesNode *yaml.Node
-			for i := 0; i < len(existingGroupNode.Content)-1; i += 2 {
-				keyNode := existingGroupNode.Content[i]
-				valueNode := existingGroupNode.Content[i+1]
-				if keyNode.Kind == yaml.ScalarNode && keyNode.Value == "proxies" {
-					existingProxiesNode = valueNode
-					break
-				}
-			}
-
-			// 先收集旧节点名称，用于后续删除顶层 proxies 中的旧配置
-			oldNodeNamesInGroup = make(map[string]bool)
-			if existingProxiesNode != nil && existingProxiesNode.Kind == yaml.SequenceNode {
-				for _, p := range existingProxiesNode.Content {
-					if p.Kind == yaml.ScalarNode && strings.HasPrefix(p.Value, prefix) {
-						oldNodeNamesInGroup[p.Value] = true
-					}
-				}
-			}
-			oldCount := len(oldNodeNamesInGroup)
-
-			if existingProxiesNode == nil {
-				existingProxiesNode = &yaml.Node{Kind: yaml.SequenceNode, Content: make([]*yaml.Node, 0)}
-				existingGroupNode.Content = append(existingGroupNode.Content,
-					&yaml.Node{Kind: yaml.ScalarNode, Value: "proxies"},
-					existingProxiesNode,
-				)
-			}
-
-			// 移除旧节点（以 prefix 开头的），添加新节点
-			newContent := make([]*yaml.Node, 0)
-			for _, p := range existingProxiesNode.Content {
-				if p.Kind == yaml.ScalarNode && strings.HasPrefix(p.Value, prefix) {
-					continue
-				}
-				newContent = append(newContent, p)
-			}
-			for _, nodeName := range nodeNames {
-				newContent = append(newContent, &yaml.Node{Kind: yaml.ScalarNode, Value: nodeName})
-			}
-			existingProxiesNode.Content = newContent
-			logger.Info("[代理集合同步] 更新已存在的代理组", "name", providerName, "old_count", oldCount, "new_count", len(nodeNames))
-		} else {
-			// 创建新代理组（类型为 url-test）
-			newGroupNode := &yaml.Node{Kind: yaml.MappingNode}
-			newGroupNode.Content = append(newGroupNode.Content,
-				&yaml.Node{Kind: yaml.ScalarNode, Value: "name"},
-				&yaml.Node{Kind: yaml.ScalarNode, Value: providerName},
-				&yaml.Node{Kind: yaml.ScalarNode, Value: "type"},
-				&yaml.Node{Kind: yaml.ScalarNode, Value: "url-test"},
-				&yaml.Node{Kind: yaml.ScalarNode, Value: "url"},
-				&yaml.Node{Kind: yaml.ScalarNode, Value: "http://www.gstatic.com/generate_204"},
-				&yaml.Node{Kind: yaml.ScalarNode, Value: "interval"},
-				&yaml.Node{Kind: yaml.ScalarNode, Tag: "!!int", Value: "300"},
-				&yaml.Node{Kind: yaml.ScalarNode, Value: "tolerance"},
-				&yaml.Node{Kind: yaml.ScalarNode, Tag: "!!int", Value: "50"},
-			)
-
-			// 添加 proxies 字段，包含所有节点名称
-			newGroupProxies := &yaml.Node{Kind: yaml.SequenceNode}
-			for _, nodeName := range nodeNames {
-				newGroupProxies.Content = append(newGroupProxies.Content,
-					&yaml.Node{Kind: yaml.ScalarNode, Value: nodeName})
-			}
-			newGroupNode.Content = append(newGroupNode.Content,
-				&yaml.Node{Kind: yaml.ScalarNode, Value: "proxies"},
-				newGroupProxies,
-			)
-
-			// 添加新代理组到 proxy-groups
-			proxyGroupsNode.Content = append(proxyGroupsNode.Content, newGroupNode)
-			logger.Info("[代理集合同步] 创建新代理组", "name", providerName, "node_count", len(nodeNames))
-		}
-	}
-
-	if !modified {
-		return nil // 没有修改，不需要保存
-	}
-
-	// 确保 proxies 节点存在
-	if proxiesNode == nil {
-		proxiesNode = &yaml.Node{Kind: yaml.SequenceNode, Content: make([]*yaml.Node, 0)}
-		// 在文档开头添加 proxies
-		docContent.Content = append([]*yaml.Node{
-			{Kind: yaml.ScalarNode, Value: "proxies"},
-			proxiesNode,
-		}, docContent.Content...)
-	}
-
-	// 构建新节点名称集合，用于精确匹配删除
-	newNodeNameSet := make(map[string]bool)
-	for _, name := range nodeNames {
-		newNodeNameSet[name] = true
-	}
-
-	// 移除属于当前代理集合的旧节点配置
-	// 使用代理组中收集的旧节点名称列表
-	// 同时也删除新节点名称，以便后面重新添加最新配置
-	newProxiesContent := make([]*yaml.Node, 0)
-	for _, p := range proxiesNode.Content {
-		if p.Kind == yaml.MappingNode {
-			name := util.GetNodeFieldValue(p, "name")
-			// 如果节点名称在旧节点列表中，则删除（处理节点减少的情况）
-			if oldNodeNamesInGroup != nil && oldNodeNamesInGroup[name] {
-				continue
-			}
-			// 如果节点名称在新节点列表中，也删除（后面会重新添加最新配置）
-			if newNodeNameSet[name] {
-				continue
-			}
-		}
-		newProxiesContent = append(newProxiesContent, p)
-	}
-
-	// 添加新节点（使用 util.ReorderProxyFieldsToNode 保持字段顺序）
-	for _, proxy := range proxies {
-		if proxyMap, ok := proxy.(map[string]any); ok {
-			proxyNode := util.ReorderProxyFieldsToNode(proxyMap)
-			newProxiesContent = append(newProxiesContent, proxyNode)
-		}
-	}
-	proxiesNode.Content = newProxiesContent
-
-	// 清理 proxy-providers（如果不再被使用）
-	if proxyProvidersNode != nil && proxyProvidersNode.Kind == yaml.MappingNode && proxyProvidersKeyIndex >= 0 {
-		// 查找并删除对应的 provider
-		newProvidersContent := make([]*yaml.Node, 0)
-		for i := 0; i < len(proxyProvidersNode.Content)-1; i += 2 {
-			keyNode := proxyProvidersNode.Content[i]
-			valueNode := proxyProvidersNode.Content[i+1]
-			if keyNode.Kind == yaml.ScalarNode && keyNode.Value == providerName {
-				continue // 跳过此 provider
-			}
-			newProvidersContent = append(newProvidersContent, keyNode, valueNode)
-		}
-
-		if len(newProvidersContent) == 0 {
-			// 删除整个 proxy-providers
-			docContent.Content = append(docContent.Content[:proxyProvidersKeyIndex], docContent.Content[proxyProvidersKeyIndex+2:]...)
-		} else {
-			proxyProvidersNode.Content = newProvidersContent
-		}
-	}
-
-	// 编码 YAML，使用 2 空格缩进
-	// 在编码之前清理显式字符串标签以防止 !!str 出现在输出中
-	sanitizeExplicitStringTags(&rootNode)
-
-	var buf bytes.Buffer
-	encoder := yaml.NewEncoder(&buf)
-	encoder.SetIndent(2)
-	if err := encoder.Encode(&rootNode); err != nil {
-		return fmt.Errorf("encode yaml: %w", err)
-	}
-	encoder.Close()
-
-	// 处理 unicode 转义和数字引号
-	result := RemoveUnicodeEscapeQuotes(buf.String())
-
-	if err := os.WriteFile(filePath, []byte(result), 0644); err != nil {
-		return fmt.Errorf("write file: %w", err)
-	}
-
-	logger.Info("[代理集合同步] 文件 更新完成", "value", filename)
-	return nil
-}
-
-// 深拷贝 map（用于代理节点同步，避免污染缓存）
-func copyMapForSync(m map[string]any) map[string]any {
-	result := make(map[string]any)
-	for k, v := range m {
-		switch vv := v.(type) {
-		case map[string]any:
-			result[k] = copyMapForSync(vv)
-		case []any:
-			copied := make([]any, len(vv))
-			for i, item := range vv {
-				if itemMap, ok := item.(map[string]any); ok {
-					copied[i] = copyMapForSync(itemMap)
-				} else {
-					copied[i] = item
-				}
-			}
-			result[k] = copied
-		default:
-			result[k] = v
-		}
-	}
-	return result
-}
