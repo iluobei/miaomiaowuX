@@ -1,0 +1,62 @@
+{
+  "title": "系统设置",
+  "description": "管理订阅同步和功能开关",
+  "shortLink": {
+    "title": "短链接",
+    "description": "开启后，订阅链接将使用短码格式，隐藏 token 信息",
+    "enableLabel": "启用短链接",
+    "updated": "短链接设置已更新"
+  },
+  "intervals": {
+    "title": "定时配置",
+    "description": "配置各项定时任务的执行间隔，修改后需重启服务生效",
+    "speedCollect": "网速采集间隔（秒）",
+    "trafficCollect": "流量采集间隔（秒）",
+    "trafficCheck": "流量限额检查间隔（秒）",
+    "heartbeat": "心跳间隔（秒）",
+    "updated": "定时配置已更新，重启服务后生效"
+  },
+  "masterUrl": {
+    "title": "主服务器地址",
+    "description": "设置后，添加远程服务器时生成的安装命令将使用此地址",
+    "label": "服务器地址",
+    "placeholder": "https://example.com 或 http://1.2.3.4:12889",
+    "hint": "格式：协议 + 域名或 IP（含端口），例如 https://panel.example.com 或 http://1.2.3.4:12889。留空则自动使用当前访问地址。",
+    "updated": "主服务器地址已更新"
+  },
+  "telegram": {
+    "title": "Telegram 通知",
+    "description": "配置 Telegram Bot 推送系统事件通知",
+    "enableLabel": "启用通知",
+    "botToken": "Bot Token",
+    "botTokenPlaceholder": "输入 Telegram Bot Token",
+    "chatId": "Chat ID",
+    "chatIdPlaceholder": "输入 Telegram Chat ID",
+    "sendTest": "发送测试通知",
+    "testSent": "测试通知已发送",
+    "configUpdated": "通知配置已更新",
+    "events": {
+      "title": "通知事件",
+      "login": "用户登录",
+      "subscribe": "订阅获取",
+      "serverOnline": "服务器上线",
+      "serverOffline": "服务器离线",
+      "dailyTraffic": "每日流量统计",
+      "dailyTrafficTime": "统计时间",
+      "trafficThreshold": "流量超限告警",
+      "thresholdPercent": "告警阈值（%）"
+    }
+  },
+  "apiToken": {
+    "title": "API Token",
+    "description": "用于无需登录直接访问所有后台 API 接口",
+    "currentLabel": "当前 API Token",
+    "regenerateConfirm": "确定要重新生成 API Token 吗？旧的 Token 将失效。",
+    "regenerated": "API Token 已重新生成",
+    "copied": "API Token 已复制到剪贴板",
+    "usageHint": "使用此 Token 在请求头 MM-Authorization 中访问 API",
+    "warning": "• 携带此 Token 可以不需要登录直接访问所有后台 API\n• 请妥善保管此 Token，泄露可能导致数据安全问题\n• 服务启动时会在日志中打印此 Token\n• 点击刷新按钮可重新生成 Token，旧 Token 立即失效"
+  },
+  "configUpdated": "设置已更新",
+  "configUpdateFailed": "更新设置失败"
+}

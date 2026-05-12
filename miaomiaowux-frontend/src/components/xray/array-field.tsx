@@ -1,5 +1,6 @@
 // @ts-nocheck
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Plus, Trash2, UserPlus } from 'lucide-react'
@@ -14,7 +15,7 @@ interface ArrayFieldProps {
   onChange: (values: any[]) => void
   addButtonText?: string
   required?: boolean
-  showUserSelect?: boolean // 是否显示选择用户按钮
+  showUserSelect?: boolean
   ss2022Method?: string // For Shadowsocks 2022 key generation
 }
 
@@ -37,11 +38,12 @@ export function ArrayField({
   fields,
   values = [],
   onChange,
-  addButtonText = '添加',
+  addButtonText,
   required = false,
   showUserSelect = false,
   ss2022Method,
 }: ArrayFieldProps) {
+  const { t } = useTranslation('xray')
   const [showSelectDialog, setShowSelectDialog] = useState(false)
 
   const handleAdd = () => {
@@ -76,8 +78,6 @@ export function ArrayField({
     const newValues = [...values]
     newValues[index] = { ...newValues[index], [fieldName]: value }
 
-    // 如果修改的是用户名或ID字段，且email为空，则自动填充email
-    // 注意：对于只有password字段的协议（如Trojan），不会触发此逻辑
     if ((fieldName === 'user' || fieldName === 'id') && value) {
       const hasEmailField = fields.some(f => f.name === 'email')
       if (hasEmailField && !newValues[index].email) {
@@ -99,19 +99,19 @@ export function ArrayField({
           {showUserSelect && (
             <Button type="button" size="sm" onClick={() => setShowSelectDialog(true)} variant="outline">
               <UserPlus className="h-4 w-4 mr-1" />
-              选择用户
+              {t('arrayField.selectUser')}
             </Button>
           )}
           <Button type="button" size="sm" onClick={handleAdd} variant="outline">
             <Plus className="h-4 w-4 mr-1" />
-            {addButtonText}
+            {addButtonText || t('arrayField.add')}
           </Button>
         </div>
       </div>
 
       <div className="space-y-3">
         {values.length === 0 && (
-          <p className="text-sm text-muted-foreground">暂无{label}，点击上方按钮添加</p>
+          <p className="text-sm text-muted-foreground">{t('arrayField.empty', { label })}</p>
         )}
 
         {values.map((item, index) => (

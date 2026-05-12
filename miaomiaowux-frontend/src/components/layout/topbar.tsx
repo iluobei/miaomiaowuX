@@ -1,6 +1,7 @@
 import { Link } from '@tanstack/react-router'
 import { useQuery } from '@tanstack/react-query'
 import { Activity, Users, LayoutTemplate, Menu, Network, Package, Settings, PanelLeft, ChevronLeft, ChevronRight, MoreHorizontal, Shield, Server } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { ThemeSwitch } from '@/components/theme-switch'
 import { UserMenu } from './user-menu'
 import { useAuthStore } from '@/stores/auth-store'
@@ -17,67 +18,21 @@ import { AnimatedX } from '@/components/animated-x'
 import { useState, useRef, useEffect, useCallback } from 'react'
 
 const baseNavLinks = [
-  {
-    title: '流量信息',
-    to: '/',
-    icon: Activity,
-  },
+  { titleKey: 'nav.trafficInfo' as const, to: '/', icon: Activity },
 ]
 
 const adminNavLinks = [
-  // {
-  //   title: '生成订阅',
-  //   to: '/generator',
-  //   icon: Zap,
-  // },
-  {
-    title: '节点管理',
-    to: '/nodes',
-    icon: Network,
-  },
-  // {
-  //   title: '订阅管理',
-  //   to: '/subscribe-files',
-  //   icon: Database,
-  // },
-  // {
-  //   title: '规则管理',
-  //   to: '/custom-rules',
-  //   icon: FileCode,
-  // },
-  {
-    title: '服务管理',
-    to: '/xray-servers',
-    icon: Server,
-  },
-  {
-    title: '用户管理',
-    to: '/users',
-    icon: Users,
-  },
-  {
-    title: '套餐管理',
-    to: '/packages',
-    icon: Package,
-  },
-  {
-    title: '证书管理',
-    to: '/certificates',
-    icon: Shield,
-  },
-  {
-    title: '模板管理',
-    to: '/templates',
-    icon: LayoutTemplate,
-  },
-  {
-    title: '系统设置',
-    to: '/system-settings',
-    icon: Settings,
-  },
+  { titleKey: 'nav.nodeManagement' as const, to: '/nodes', icon: Network },
+  { titleKey: 'nav.serviceManagement' as const, to: '/xray-servers', icon: Server },
+  { titleKey: 'nav.userManagement' as const, to: '/users', icon: Users },
+  { titleKey: 'nav.packageManagement' as const, to: '/packages', icon: Package },
+  { titleKey: 'nav.certificateManagement' as const, to: '/certificates', icon: Shield },
+  { titleKey: 'nav.templateManagement' as const, to: '/templates', icon: LayoutTemplate },
+  { titleKey: 'nav.systemSettings' as const, to: '/system-settings', icon: Settings },
 ]
 
 export function Topbar() {
+  const { t } = useTranslation()
   const { auth } = useAuthStore()
   const { layoutMode, setLayoutMode, sidebarCollapsed, toggleSidebar } = useLayoutStore()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
@@ -193,15 +148,15 @@ export function Topbar() {
           >
             <img
               src='/images/mmwx_light.webp'
-              alt='妙妙屋X Logo'
+              alt={`${t('brand')} Logo`}
               className='h-10 w-10 border-2 border-[color:rgba(241,140,110,0.4)] shadow-[4px_4px_0_rgba(0,0,0,0.2)] shrink-0 dark:hidden'
             />
             <img
               src='/images/logo.webp'
-              alt='妙妙屋X Logo'
+              alt={`${t('brand')} Logo`}
               className='h-10 w-10 border-2 border-[color:rgba(241,140,110,0.4)] shadow-[4px_4px_0_rgba(0,0,0,0.2)] shrink-0 hidden dark:block'
             />
-            {!hideLogoText && <span className='hidden md:inline pixel-text text-primary text-base whitespace-nowrap'>妙妙屋<AnimatedX size="sm" /></span>}
+            {!hideLogoText && <span className='hidden md:inline pixel-text text-primary text-base whitespace-nowrap'>{t('brand').replace('X', '')}<AnimatedX size="sm" /></span>}
           </Link>
 
           {/* Sidebar Toggle Button - Only show in sidebar mode */}
@@ -211,7 +166,7 @@ export function Topbar() {
               size="icon"
               onClick={toggleSidebar}
               className="hidden md:inline-flex h-9 w-9 pixel-button bg-background/75 border-[color:rgba(137,110,96,0.45)] hover:bg-accent/35 dark:bg-input/30 dark:border-[color:rgba(255,255,255,0.18)] dark:hover:bg-accent/45"
-              title={sidebarCollapsed ? '展开侧边栏' : '收起侧边栏'}
+              title={sidebarCollapsed ? t('sidebar.expand') : t('sidebar.collapse')}
             >
               {sidebarCollapsed ? (
                 <ChevronRight className="h-4 w-4" />
@@ -224,16 +179,16 @@ export function Topbar() {
           {/* Desktop Navigation - Base links + Admin links (only show in top mode) */}
           {layoutMode === 'top' && (
             <nav ref={navRef} className='hidden md:flex items-center gap-2 md:gap-3 overflow-hidden'>
-            {allNavLinks.slice(0, totalLinks - overflowCount).map(({ title, to, icon: Icon }, index) => {
-              // 从后往前计算，index >= totalLinks - iconOnlyCount 的按钮只显示图标
+            {allNavLinks.slice(0, totalLinks - overflowCount).map(({ titleKey, to, icon: Icon }, index) => {
+              const label = t(titleKey)
               const showIconOnly = index >= totalLinks - overflowCount - iconOnlyCount
 
               return (
                 <Link
                   key={to}
                   to={to}
-                  aria-label={title}
-                  title={title}
+                  aria-label={label}
+                  title={label}
                   className={`pixel-button inline-flex items-center gap-2 py-2 h-9 text-sm font-semibold uppercase tracking-widest bg-background/75 text-foreground border-[color:rgba(137,110,96,0.45)] hover:bg-accent/35 hover:text-accent-foreground dark:bg-input/30 dark:border-[color:rgba(255,255,255,0.18)] dark:hover:bg-accent/45 dark:hover:text-accent-foreground transition-all whitespace-nowrap ${
                     showIconOnly ? 'justify-center px-2 w-9' : 'justify-start px-3'
                   }`}
@@ -242,7 +197,7 @@ export function Topbar() {
                   }}
                 >
                   <Icon className='size-[18px] shrink-0' />
-                  {!showIconOnly && <span>{title}</span>}
+                  {!showIconOnly && <span>{label}</span>}
                 </Link>
               )
             })}
@@ -256,11 +211,11 @@ export function Topbar() {
                     className='pixel-button h-9 w-9 bg-background/75 border-[color:rgba(137,110,96,0.45)] hover:bg-accent/35 dark:bg-input/30 dark:border-[color:rgba(255,255,255,0.18)] dark:hover:bg-accent/45'
                   >
                     <MoreHorizontal className='h-5 w-5' />
-                    <span className='sr-only'>更多菜单</span>
+                    <span className='sr-only'>{t('sidebar.moreMenu')}</span>
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align='end' className='w-48 pixel-border'>
-                  {allNavLinks.slice(totalLinks - overflowCount).map(({ title, to, icon: Icon }) => (
+                  {allNavLinks.slice(totalLinks - overflowCount).map(({ titleKey, to, icon: Icon }) => (
                     <DropdownMenuItem key={to} asChild>
                       <Link
                         to={to}
@@ -268,7 +223,7 @@ export function Topbar() {
                         onClick={() => setOverflowMenuOpen(false)}
                       >
                         <Icon className='size-[18px] shrink-0' />
-                        <span>{title}</span>
+                        <span>{t(titleKey)}</span>
                       </Link>
                     </DropdownMenuItem>
                   ))}
@@ -280,11 +235,11 @@ export function Topbar() {
 
           {/* Mobile Base Navigation - Only show on mobile */}
           <nav className='md:hidden flex items-center gap-2'>
-            {baseNavLinks.map(({ title, to, icon: Icon }) => (
+            {baseNavLinks.map(({ titleKey, to, icon: Icon }) => (
               <Link
                 key={to}
                 to={to}
-                aria-label={title}
+                aria-label={t(titleKey)}
                 className='pixel-button inline-flex items-center justify-center gap-2 px-2 py-2 h-9 text-sm font-semibold uppercase tracking-widest bg-background/75 text-foreground border-[color:rgba(137,110,96,0.45)] hover:bg-accent/35 hover:text-accent-foreground dark:bg-input/30 dark:border-[color:rgba(255,255,255,0.18)] dark:hover:bg-accent/45 dark:hover:text-accent-foreground transition-all'
                 activeProps={{
                   className: 'bg-primary/20 text-primary border-[color:rgba(217,119,87,0.55)] dark:bg-primary/20 dark:border-[color:rgba(217,119,87,0.55)]'
@@ -305,11 +260,11 @@ export function Topbar() {
                   className='md:hidden pixel-button h-9 w-9 bg-background/75 border-[color:rgba(137,110,96,0.45)] hover:bg-accent/35 dark:bg-input/30 dark:border-[color:rgba(255,255,255,0.18)] dark:hover:bg-accent/45'
                 >
                   <Menu className='h-5 w-5' />
-                  <span className='sr-only'>打开菜单</span>
+                  <span className='sr-only'>{t('sidebar.openMenu')}</span>
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align='start' className='w-48 pixel-border'>
-                {adminNavLinks.map(({ title, to, icon: Icon }) => (
+                {adminNavLinks.map(({ titleKey, to, icon: Icon }) => (
                   <DropdownMenuItem key={to} asChild>
                     <Link
                       to={to}
@@ -317,7 +272,7 @@ export function Topbar() {
                       onClick={() => setMobileMenuOpen(false)}
                     >
                       <Icon className='size-[18px] shrink-0' />
-                      <span>{title}</span>
+                      <span>{t(titleKey)}</span>
                     </Link>
                   </DropdownMenuItem>
                 ))}
@@ -333,7 +288,7 @@ export function Topbar() {
             size="icon"
             onClick={() => setLayoutMode(layoutMode === 'top' ? 'sidebar' : 'top')}
             className="hidden md:inline-flex h-9 w-9 pixel-button bg-background/75 border-[color:rgba(137,110,96,0.45)] hover:bg-accent/35 dark:bg-input/30 dark:border-[color:rgba(255,255,255,0.18)] dark:hover:bg-accent/45"
-            title={layoutMode === 'top' ? '切换到侧边栏' : '切换到顶部菜单'}
+            title={layoutMode === 'top' ? t('sidebar.switchToSidebar') : t('sidebar.switchToTopMenu')}
           >
             <PanelLeft className="h-4 w-4" />
           </Button>

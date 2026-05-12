@@ -1,0 +1,46 @@
+{
+  "page": {
+    "title": "Package Template Management",
+    "description": "Manage traffic package templates, assign packages to users in user management"
+  },
+  "buttons": {
+    "createTemplate": "Create Template"
+  },
+  "empty": {
+    "title": "No Package Templates",
+    "createFirst": "Create First Template"
+  },
+  "card": {
+    "trafficQuota": "Traffic Quota",
+    "cycleDays": "Billing Cycle",
+    "cycleDaysValue": "{{days}} days"
+  },
+  "dialog": {
+    "createTitle": "Create Package Template",
+    "editTitle": "Edit Package Template",
+    "createDesc": "Create a new traffic package template",
+    "editDesc": "Modify package template configuration",
+    "name": "Package Name *",
+    "namePlaceholder": "e.g. Basic Plan",
+    "description": "Description",
+    "descriptionPlaceholder": "Package description (optional)",
+    "trafficLimit": "Traffic Quota (GB) *",
+    "cycleDays": "Billing Cycle (Days) *",
+    "relatedNodes": "Related Nodes",
+    "noNodes": "No available nodes",
+    "nodeInternal": "Internal",
+    "nodeExternal": "External",
+    "nodesHint": "Select nodes this package can use (none selected means all nodes)",
+    "saving": "Saving...",
+    "confirmDelete": "Are you sure you want to delete package template \"{{name}}\"?"
+  },
+  "toast": {
+    "createSuccess": "Package template created",
+    "updateSuccess": "Package template updated",
+    "deleteSuccess": "Package template deleted",
+    "nameRequired": "Please enter a package name",
+    "trafficPositive": "Traffic quota must be greater than 0",
+    "cyclePositive": "Billing cycle must be greater than 0",
+    "externalNodeWarning": "Note: External node traffic is not counted in package traffic!"
+  }
+}

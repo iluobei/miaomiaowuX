@@ -1,5 +1,6 @@
 // @ts-nocheck
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
@@ -14,6 +15,7 @@ interface VlessDecryptionFieldProps {
 }
 
 export function VlessDecryptionField({ value, onChange, onEncryptionGenerated }: VlessDecryptionFieldProps) {
+  const { t } = useTranslation('xray')
   const [mode, setMode] = useState<'none' | 'mlkem768x25519plus'>(
     value && value !== 'none' ? 'mlkem768x25519plus' : 'none',
   )
@@ -40,23 +42,21 @@ export function VlessDecryptionField({ value, onChange, onEncryptionGenerated }:
         padding,
       })
 
-      // Format: mlkem768x25519plus.[appearance].[ticket-lifetime].[padding]...[keys]
       const config = response.data.decryptionConfig
       const encryption = response.data.encryption
 
       onChange(config)
 
-      // Call callback to pass encryption to parent
       if (onEncryptionGenerated) {
         onEncryptionGenerated(encryption)
       }
 
-      toast.success('密钥生成成功', {
-        description: '已自动填入配置字符串',
+      toast.success(t('vlessDecryption.genSuccess'), {
+        description: t('vlessDecryption.genSuccessDesc'),
       })
     } catch (error) {
-      toast.error('生成失败', {
-        description: error.response?.data || error.message || '无法生成密钥，请确保服务器已安装 Xray',
+      toast.error(t('vlessDecryption.genFailed'), {
+        description: error.response?.data || error.message || t('vlessDecryption.genFailedDesc'),
       })
     } finally {
       setIsGenerating(false)
@@ -73,7 +73,7 @@ export function VlessDecryptionField({ value, onChange, onEncryptionGenerated }:
   return (
     <div className="space-y-4">
       <div className="space-y-2">
-        <Label>解密方式</Label>
+        <Label>{t('vlessDecryption.decryptionMode')}</Label>
         <div className="flex flex-wrap gap-2 md:gap-3">
           <Button
             type="button"
@@ -81,7 +81,7 @@ export function VlessDecryptionField({ value, onChange, onEncryptionGenerated }:
             onClick={() => handleModeChange('none')}
             className="flex-1 min-w-[120px]"
           >
-            none (无加密)
+            {t('vlessDecryption.noneMode')}
           </Button>
           <Button
             type="button"
@@ -89,16 +89,16 @@ export function VlessDecryptionField({ value, onChange, onEncryptionGenerated }:
             onClick={() => handleModeChange('mlkem768x25519plus')}
             className="flex-1 min-w-[120px]"
           >
-            加密
+            {t('vlessDecryption.encryptedMode')}
           </Button>
         </div>
-        <p className="text-xs text-muted-foreground">VLESS解密方式，支持后量子加密</p>
+        <p className="text-xs text-muted-foreground">{t('vlessDecryption.supportPostQuantum')}</p>
       </div>
 
       {mode === 'mlkem768x25519plus' && (
         <>
           <div className="space-y-2">
-            <Label>加密类型</Label>
+            <Label>{t('vlessDecryption.encryptionType')}</Label>
             <div className="flex gap-3">
               <Button
                 type="button"
@@ -118,13 +118,13 @@ export function VlessDecryptionField({ value, onChange, onEncryptionGenerated }:
               </Button>
             </div>
             <p className="text-xs text-muted-foreground">
-              {encryptionType === 'x25519' && 'Authentication: X25519, not Post-Quantum (传统加密)'}
-              {encryptionType === 'mlkem768' && 'Authentication: ML-KEM-768, Post-Quantum (后量子安全) ✅'}
+              {encryptionType === 'x25519' && t('vlessDecryption.x25519Desc')}
+              {encryptionType === 'mlkem768' && t('vlessDecryption.mlkemDesc')}
             </p>
           </div>
 
           <div className="space-y-2">
-            <Label>流量外观 (Appearance)</Label>
+            <Label>{t('vlessDecryption.appearance')}</Label>
             <div className="flex flex-wrap gap-2 md:gap-3">
               <Button
                 type="button"
@@ -152,14 +152,14 @@ export function VlessDecryptionField({ value, onChange, onEncryptionGenerated }:
               </Button>
             </div>
             <p className="text-xs text-muted-foreground">
-              {appearance === 'native' && '公钥特征在头部可见，TLSv1.3 AEAD模式可识别'}
-              {appearance === 'xorpub' && 'XOR混淆公钥特征'}
-              {appearance === 'random' && '完全随机化流量外观 (6/10,000开销)'}
+              {appearance === 'native' && t('vlessDecryption.nativeDesc')}
+              {appearance === 'xorpub' && t('vlessDecryption.xorpubDesc')}
+              {appearance === 'random' && t('vlessDecryption.randomDesc')}
             </p>
           </div>
 
           <div className="space-y-2">
-            <Label>Ticket生命周期</Label>
+            <Label>{t('vlessDecryption.ticketLifetime')}</Label>
             <div className="flex flex-wrap gap-2 md:gap-3">
               <Button
                 type="button"
@@ -186,18 +186,18 @@ export function VlessDecryptionField({ value, onChange, onEncryptionGenerated }:
                 600s
               </Button>
             </div>
-            <p className="text-xs text-muted-foreground">0-RTT ticket重用时间设置</p>
+            <p className="text-xs text-muted-foreground">{t('vlessDecryption.ticketLifetimeDesc')}</p>
           </div>
 
           <div className="space-y-2">
-            <Label>填充配置 (Padding)</Label>
+            <Label>{t('vlessDecryption.padding')}</Label>
             <Input
               value={padding}
               onChange={(e) => setPadding(e.target.value)}
               placeholder="100-111-1111.75-0-111.50-0-3333"
             />
             <p className="text-xs text-muted-foreground">
-              防指纹填充配置，格式: 概率-长度-间隔序列
+              {t('vlessDecryption.paddingDesc')}
             </p>
           </div>
 
@@ -205,12 +205,12 @@ export function VlessDecryptionField({ value, onChange, onEncryptionGenerated }:
             {isGenerating ? (
               <>
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                正在生成密钥...
+                {t('vlessDecryption.generating')}
               </>
             ) : (
               <>
                 <Wand2 className="h-4 w-4 mr-2" />
-                生成解密配置
+                {t('vlessDecryption.generateConfig')}
               </>
             )}
           </Button>
@@ -218,12 +218,12 @@ export function VlessDecryptionField({ value, onChange, onEncryptionGenerated }:
       )}
 
       <div className="space-y-2">
-        <Label>Decryption 配置值</Label>
+        <Label>{t('vlessDecryption.configValue')}</Label>
         <Input value={value || 'none'} readOnly className="font-mono text-xs" />
         <p className="text-xs text-muted-foreground">
           {mode === 'mlkem768x25519plus'
-            ? '点击生成按钮自动生成后量子加密配置'
-            : '无加密配置'}
+            ? t('vlessDecryption.configValueDescEncrypted')
+            : t('vlessDecryption.configValueDescNone')}
         </p>
       </div>
     </div>

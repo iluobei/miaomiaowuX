@@ -1,4 +1,5 @@
 import { parse } from 'jsonc-parser'
+import i18n from '@/lib/i18n'
 
 export type XrayInbound = {
   tag?: string
@@ -69,7 +70,7 @@ const extractVariantLabel = (folderName: string, protocol: string, transport: st
   }
 
   const pieces = [transportLabel, securityLabel].filter(Boolean)
-  return pieces.length > 0 ? pieces.join(' + ') : '默认'
+  return pieces.length > 0 ? pieces.join(' + ') : i18n.t('xray:presets.defaultLabel')
 }
 
 const toPreset = (entry: [string, string]): XrayPreset | null => {

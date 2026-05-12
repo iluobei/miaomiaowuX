@@ -1,0 +1,165 @@
+{
+  "nav": {
+    "trafficInfo": "流量信息",
+    "nodeManagement": "节点管理",
+    "serviceManagement": "服务管理",
+    "userManagement": "用户管理",
+    "packageManagement": "套餐管理",
+    "certificateManagement": "证书管理",
+    "templateManagement": "模板管理",
+    "systemSettings": "系统设置"
+  },
+  "actions": {
+    "save": "保存",
+    "cancel": "取消",
+    "confirm": "确认",
+    "delete": "删除",
+    "copy": "复制",
+    "reset": "重置",
+    "close": "关闭",
+    "back": "返回",
+    "next": "下一步",
+    "edit": "编辑",
+    "add": "添加",
+    "search": "搜索",
+    "enable": "启用",
+    "disable": "禁用",
+    "refresh": "刷新",
+    "download": "下载",
+    "upload": "上传",
+    "import": "导入",
+    "export": "导出",
+    "view": "查看",
+    "confirmDelete": "确认删除",
+    "loading": "加载中...",
+    "saving": "保存中…",
+    "creating": "创建中...",
+    "verifying": "验证中...",
+    "resetting": "重置中…",
+    "sending": "发送中...",
+    "disabling": "禁用中...",
+    "deleting": "删除中...",
+    "or": "或",
+    "optional": "可选",
+    "required": "必填",
+    "copySuccess": "已复制到剪贴板",
+    "copyFailed": "复制失败(需要https)，请手动复制"
+  },
+  "theme": {
+    "light": "浅色模式",
+    "dark": "深色模式",
+    "system": "跟随系统"
+  },
+  "brand": "妙妙屋X",
+  "signOut": {
+    "title": "退出登录",
+    "description": "确定要退出登录吗？退出后需要重新登录才能访问控制台。",
+    "confirm": "确认退出",
+    "cancel": "取消"
+  },
+  "feedback": {
+    "ariaLabel": "反馈问题",
+    "title": "反馈问题",
+    "telegram": "Telegram 群组",
+    "github": "GitHub Issues"
+  },
+  "error": {
+    "notFoundTitle": "页面不存在",
+    "notFoundDesc": "请检查链接或返回首页。",
+    "errorTitle": "发生错误",
+    "errorDesc": "请稍后重试。"
+  },
+  "sidebar": {
+    "expand": "展开侧边栏",
+    "collapse": "收起侧边栏",
+    "switchToSidebar": "切换到侧边栏",
+    "switchToTopMenu": "切换到顶部菜单",
+    "moreMenu": "更多菜单",
+    "openMenu": "打开菜单"
+  },
+  "backup": {
+    "title": "数据备份",
+    "description": "备份包含数据库和订阅文件，恢复后页面会自动刷新",
+    "downloadLabel": "下载备份",
+    "downloading": "正在生成备份...",
+    "downloadButton": "下载当前数据备份",
+    "downloadSuccess": "备份下载成功",
+    "downloadFailed": "备份下载失败",
+    "restoreLabel": "恢复备份",
+    "restoreButton": "恢复备份",
+    "restoring": "恢复中...",
+    "restoreSuccess": "备份恢复成功，请刷新页面",
+    "restoreFailed": "备份恢复失败",
+    "restoreWarning": "恢复备份将覆盖当前所有数据，请谨慎操作"
+  },
+  "update": {
+    "title": "检查更新",
+    "description": "检查是否有新版本可用",
+    "checking": "正在检查更新...",
+    "newVersion": "发现新版本！",
+    "currentVersion": "当前版本",
+    "latestVersion": "最新版本",
+    "releaseNotes": "更新内容：",
+    "updateNow": "立即更新",
+    "noDownload": "未找到适合当前系统的下载文件",
+    "viewRelease": "查看 GitHub Release",
+    "upToDate": "已是最新版本",
+    "currentVersionLabel": "当前版本：v{{version}}",
+    "forceReinstall": "强制重新安装",
+    "recheck": "重新检查",
+    "preparing": "正在准备更新...",
+    "updateSuccess": "更新成功，页面将在 3 秒后刷新",
+    "updateFailed": "更新失败: {{error}}",
+    "unknownError": "未知错误",
+    "connectionClosed": "连接意外关闭",
+    "cannotReadStream": "无法读取响应流",
+    "steps": {
+      "checking": "检查版本",
+      "downloading": "下载更新",
+      "backingUp": "备份当前版本",
+      "replacing": "替换文件",
+      "restarting": "重启服务"
+    }
+  },
+  "userMenu": {
+    "settings": "个人设置",
+    "debugLog": "Debug 日志",
+    "help": "使用帮助",
+    "backup": "备份数据",
+    "checkUpdate": "检查更新",
+    "version": "版本",
+    "signOut": "退出登录",
+    "notLoggedIn": "未登录",
+    "noEmail": "未填写邮箱",
+    "user": "用户",
+    "themeStyle": "界面风格",
+    "themeMiaomiaowu": "妙妙屋",
+    "themeFlat": "扁平",
+    "language": "语言",
+    "debugEnabled": "Debug日志已开启",
+    "debugDisabled": "Debug日志已关闭",
+    "debugEnableFailed": "开启Debug日志失败",
+    "debugDisableFailed": "关闭Debug日志失败",
+    "logDownloaded": "日志文件已下载",
+    "logDownloadFailed": "下载日志文件失败"
+  },
+  "noData": "暂无数据",
+  "cardView": "卡片视图",
+  "listView": "列表视图",
+  "dataTable": {
+    "noData": "暂无数据"
+  },
+  "viewToggle": {
+    "card": "卡片视图",
+    "list": "列表视图"
+  },
+  "serverSelector": {
+    "selectServer": "选择服务器",
+    "noServers": "无远程服务器",
+    "pending": "待连接",
+    "offline": "离线"
+  },
+  "flagPicker": {
+    "autoDetect": "自动检测地区"
+  }
+}

@@ -1,4 +1,5 @@
 import { type ReactNode } from 'react'
+import { useTranslation } from 'react-i18next'
 import { cn } from '@/lib/utils'
 import {
   Card,
@@ -30,7 +31,7 @@ export function TableCard({
   actions,
   children,
   isLoading = false,
-  loadingText = '加载中...',
+  loadingText,
   isEmpty = false,
   emptyState,
   className,
@@ -38,6 +39,7 @@ export function TableCard({
   contentClassName,
   scrollClassName,
 }: TableCardProps) {
+  const { t } = useTranslation('common')
   const hasHeader = !!title || !!description || !!actions
 
   return (
@@ -60,9 +62,9 @@ export function TableCard({
 
       <CardContent className={cn('p-0', contentClassName)}>
         {isLoading ? (
-          <EmptyState className='py-8' title={loadingText} />
+          <EmptyState className='py-8' title={loadingText ?? t('actions.loading')} />
         ) : isEmpty ? (
-          emptyState || <EmptyState className='py-8' title='暂无数据' />
+          emptyState || <EmptyState className='py-8' title={t('dataTable.noData')} />
         ) : (
           <div className={cn('overflow-x-auto', scrollClassName)}>
             {children}

@@ -1,0 +1,112 @@
+{
+  "title": "自定义规则",
+  "subtitle": "管理 DNS、规则和规则集的自定义配置",
+  "createRule": "新建规则",
+  "ruleList": "规则列表",
+  "ruleCount": "{{count}} 条规则",
+  "filterAll": "全部",
+  "filterDns": "DNS",
+  "filterRules": "规则",
+  "filterRuleProviders": "规则集",
+  "emptyText": "暂无规则",
+  "columns": {
+    "name": "名称",
+    "type": "类型",
+    "mode": "模式",
+    "status": "状态",
+    "createdAt": "创建时间",
+    "actions": "操作"
+  },
+  "mobileLabels": {
+    "mode": "模式:",
+    "status": "状态:",
+    "createdAt": "创建时间:"
+  },
+  "type": {
+    "dns": "DNS",
+    "rules": "规则",
+    "ruleProviders": "规则集"
+  },
+  "mode": {
+    "replace": "替换",
+    "prepend": "添加至头部",
+    "append": "添加至尾部"
+  },
+  "dialog": {
+    "createTitle": "新建规则",
+    "editTitle": "编辑规则",
+    "createDesc": "创建新的自定义规则",
+    "editDesc": "修改自定义规则配置",
+    "enableRule": "启用此规则",
+    "nameLabel": "名称",
+    "namePlaceholder": "规则名称",
+    "typeLabel": "类型",
+    "modeLabel": "模式",
+    "templateLabel": "模板（可选）",
+    "templatePlaceholder": "选择模板或手动输入",
+    "noTemplate": "不使用模板",
+    "contentLabel": "规则内容（YAML 格式）",
+    "contentPlaceholder": "输入 YAML 格式的规则内容...",
+    "contentHint": "请确保内容符合 YAML 格式规范"
+  },
+  "deleteConfirm": {
+    "title": "确认删除",
+    "description": "此操作无法撤销。确定要删除这条规则吗？",
+    "deleting": "删除中...",
+    "confirm": "删除"
+  },
+  "ruleProviderConfirm": {
+    "title": "创建规则配置",
+    "description": "检测到您使用了规则集模板，是否同时创建对应的规则配置？",
+    "descriptionDetail": "规则配置将会追加到现有规则的末尾，系统会自动去除重复的规则（忽略大小写）。",
+    "onlyRuleProvider": "仅创建规则集",
+    "withRuleConfig": "创建规则集和规则配置"
+  },
+  "editor": {
+    "title": "自定义规则",
+    "description": "添加自定义分流规则，支持域名、IP、协议等多种匹配方式",
+    "emptyHint": "还没有自定义规则，点击下方按钮添加",
+    "addRule": "添加规则",
+    "ruleIndex": "规则 #{{index}}",
+    "outboundName": "出站名称",
+    "outboundPlaceholder": "例如: Netflix, OpenAI",
+    "willCreateGroup": "将创建对应的策略组",
+    "geositePlaceholder": "例如: netflix, openai",
+    "multipleCommaSeparated": "多个用逗号分隔",
+    "domainSuffix": "域名后缀",
+    "domainSuffixPlaceholder": "例如: netflix.com, openai.com",
+    "domainKeyword": "域名关键词",
+    "domainKeywordPlaceholder": "例如: google, youtube",
+    "geoipPlaceholder": "例如: us, jp, hk",
+    "ipCidrPlaceholder": "例如: 1.1.1.1/24",
+    "protocol": "协议",
+    "protocolPlaceholder": "例如: http, https, quic",
+    "helpTitle": "规则说明",
+    "helpOutbound": "出站名称：必填，将创建对应的策略组",
+    "helpGeosite": "GeoSite：使用 GeoSite 数据库匹配域名集合",
+    "helpDomainSuffix": "域名后缀：匹配完整域名后缀，如 google.com",
+    "helpDomainKeyword": "域名关键词：匹配域名中包含的关键词",
+    "helpGeoip": "GeoIP：使用 GeoIP 数据库匹配 IP 地址归属国家/地区",
+    "helpIpCidr": "IP-CIDR：匹配 IP 地址段",
+    "helpProtocol": "协议：匹配网络协议类型"
+  },
+  "toast": {
+    "created": "自定义规则已创建",
+    "createdWithGroups": "自定义规则已创建。已新增 {{groups}} 代理组，默认节点：🚀 节点选择、DIRECT，如需修改请编辑订阅",
+    "updated": "自定义规则已更新",
+    "updatedWithGroups": "自定义规则已更新。已新增 {{groups}} 代理组，默认节点：🚀 节点选择、DIRECT，如需修改请编辑订阅",
+    "deleted": "自定义规则已删除",
+    "statusUpdated": "状态已更新",
+    "createError": "创建规则时出错",
+    "updateError": "更新规则时出错",
+    "deleteError": "删除规则时出错",
+    "statusError": "更新状态时出错",
+    "nameRequired": "请输入规则名称",
+    "contentRequired": "请输入规则内容",
+    "ruleNotFound": "规则不存在",
+    "ruleProviderCreated": "规则集和规则配置已创建",
+    "ruleProviderOnlyCreated": "规则集已创建",
+    "ruleProviderError": "创建规则配置时出错，请检查控制台",
+    "routeRuleName": "路由规则 - {{name}}"
+  }
+}

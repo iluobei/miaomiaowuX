@@ -2,6 +2,7 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState, useRef, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import { Plus, RefreshCw, Search, Trash2, Download, Cog, ChevronDown, Terminal, Play, Square, RotateCcw, Copy, Pencil, X, Settings, Wifi, Radio, Eye, ArrowUpCircle, Globe, CheckCircle, XCircle, Loader2, AlertTriangle } from 'lucide-react'
 import { ViewToggle, type ViewMode } from '@/components/ui/view-toggle'
@@ -111,6 +112,8 @@ export const Route = createFileRoute('/xray-servers/')({
 })
 
 function XrayServersPage() {
+  const { t } = useTranslation('xray')
+  const { t: tc } = useTranslation('common')
   const queryClient = useQueryClient()
   const navigate = useNavigate()
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
@@ -236,7 +239,7 @@ function XrayServersPage() {
       const response = await api.post(`/api/admin/remote/xray/config?server_id=${serverId}`, { config })
       return response.data
     },
-    onSuccess: (data) => { data.success ? toast.success('Xray 配置已保存并重启') : toast.error(data.message || '保存失败') },
+    onSuccess: (data) => { data.success ? toast.success(t('servers.xrayConfigSaved')) : toast.error(data.message || t('servers.saveFailed')) },
     onError: handleServerError,
   })
 
@@ -252,11 +255,11 @@ function XrayServersPage() {
         setInstallCommand(data.install_command || '')
         queryClient.invalidateQueries({ queryKey: ['remote-servers'] })
         if (data.is_local) {
-          toast.success('检测到本机服务器，已自动配置 Nginx 反代')
+          toast.success(t('servers.localServerDetected'))
         } else {
-          toast.success('服务器创建成功')
+          toast.success(t('servers.serverCreated'))
         }
-      } else { toast.error(data.message || '创建失败') }
+      } else { toast.error(data.message || t('servers.createFailed')) }
       setIsGeneratingToken(false)
     },
     onError: (error) => { setIsGeneratingToken(false); handleServerError(error) },
@@ -264,7 +267,7 @@ function XrayServersPage() {
 
   const deleteRemoteServerMutation = useMutation({
     mutationFn: async (id: number) => { const response = await api.post('/api/admin/remote-servers/delete', { id }); return response.data },
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['remote-servers'] }); toast.success('服务器已删除') },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['remote-servers'] }); toast.success(t('servers.serverDeleted')) },
     onError: handleServerError,
   })
 
@@ -278,7 +281,7 @@ function XrayServersPage() {
       setIsEditRemoteServerDialogOpen(false)
       setEditingRemoteServer(null)
       setRemoteFormData({ name: '', domain: '', traffic_limit_gb: '', traffic_reset_day: '', steal_mode: 'tunnel' })
-      toast.success('服务器信息已更新')
+      toast.success(t('servers.serverUpdated'))
     },
     onError: handleServerError,
   })
@@ -287,11 +290,11 @@ function XrayServersPage() {
     mutationFn: async (data: { id: number; connection_mode: string }) => {
       const servers = remoteServersData?.servers || []
       const server = servers.find((s: RemoteServer) => s.id === data.id)
-      if (!server) throw new Error('服务器不存在')
+      if (!server) throw new Error(t('servers.serverNotFound'))
       const response = await api.put('/api/admin/remote-servers/update', { id: data.id, name: server.name, traffic_limit: server.traffic_limit || 0, traffic_reset_day: server.traffic_reset_day || 0, connection_mode: data.connection_mode })
       return response.data
     },
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['remote-servers'] }); toast.success('连接模式已更新') },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['remote-servers'] }); toast.success(t('servers.connectionModeUpdated')) },
     onError: handleServerError,
   })
 
@@ -302,8 +305,8 @@ function XrayServersPage() {
     },
     onSuccess: (data, variables) => {
       if (managingRemoteServer) loadRemoteServicesStatus(managingRemoteServer.id)
-      const actionText = variables.action === 'start' ? '启动' : variables.action === 'stop' ? '停止' : '重启'
-      toast.success(`${variables.service === 'xray' ? 'Xray' : 'Nginx'} ${actionText}成功`)
+      const actionText = variables.action === 'start' ? t('servers.actionStart') : variables.action === 'stop' ? t('servers.actionStop') : t('servers.actionRestart')
+      toast.success(t('servers.serviceStarted', { service: variables.service === 'xray' ? 'Xray' : 'Nginx', action: actionText }))
     },
     onError: handleServerError,
   })
@@ -314,8 +317,8 @@ function XrayServersPage() {
       return response.data
     },
     onSuccess: (data) => {
-      if (data.success) { toast.success('远程服务器 Xray 配置已更新，服务已重启'); setIsXrayRawConfigDialogOpen(false); setConfigServer(null) }
-      else { toast.error(data.message || '配置更新失败') }
+      if (data.success) { toast.success(t('servers.remoteXrayConfigUpdated')); setIsXrayRawConfigDialogOpen(false); setConfigServer(null) }
+      else { toast.error(data.message || t('servers.configUpdateFailed')) }
     },
     onError: handleServerError,
   })
@@ -327,17 +330,17 @@ function XrayServersPage() {
     },
     onSuccess: (data) => {
       setIsSyncNodesDialogOpen(false); setSyncingServerId(null); setSyncServerHost(''); setSyncForceOverride(false)
-      if (data.synced_count > 0) { toast.success(data.message || '节点同步成功'); if (data.synced_tags?.length > 0) toast.info(`已同步: ${data.synced_tags.join(', ')}`) }
-      else if (data.skipped_count > 0) { toast.warning(data.message || '没有新节点需要同步') }
-      else { toast.info('没有找到可同步的入站配置') }
-      if (data.errors?.length > 0) { data.errors.slice(0, 3).forEach((err: string) => toast.error(err)); if (data.errors.length > 3) toast.error(`还有 ${data.errors.length - 3} 个错误...`) }
+      if (data.synced_count > 0) { toast.success(data.message || t('servers.nodeSyncSuccess')); if (data.synced_tags?.length > 0) toast.info(t('servers.syncedTags', { tags: data.synced_tags.join(', ') })) }
+      else if (data.skipped_count > 0) { toast.warning(data.message || t('servers.nodeSyncNoNew')) }
+      else { toast.info(t('servers.noSyncableInbound')) }
+      if (data.errors?.length > 0) { data.errors.slice(0, 3).forEach((err: string) => toast.error(err)); if (data.errors.length > 3) toast.error(t('servers.moreErrors', { count: data.errors.length - 3 })) }
     },
     onError: handleServerError,
   })
 
   const deployStealSelfMutation = useMutation({
     mutationFn: async (serverId: number) => { const response = await api.post(`/api/admin/remote/deploy-steal-self?server_id=${serverId}`); return response.data },
-    onSuccess: () => { toast.success('配置下发成功') },
+    onSuccess: () => { toast.success(t('servers.configDeployed')) },
     onError: handleServerError,
   })
 
@@ -349,7 +352,7 @@ function XrayServersPage() {
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['remote-servers'] })
       queryClient.invalidateQueries({ queryKey: ['nodes'] })
-      toast.success(data.message || '模式切换成功')
+      toast.success(data.message || t('servers.modeSwitch'))
     },
     onError: handleServerError,
   })
@@ -360,11 +363,11 @@ function XrayServersPage() {
       queryClient.invalidateQueries({ queryKey: ['remote-servers'] }); queryClient.invalidateQueries({ queryKey: ['nodes'] })
       loadRemoteServerStatusToCache(data.serverId, true)
       if (data.xray_running) {
-        let message = data.message || '扫描完成'
-        if (data.synced_count > 0 && data.synced_tags?.length > 0) message = `扫描完成，同步了 ${data.synced_count} 个入站: ${data.synced_tags.join(', ')}`
-        else if (data.synced_count === 0 && data.skipped_count > 0) message = `扫描完成，跳过 ${data.skipped_count} 个已存在的入站`
+        let message = data.message || t('servers.scanComplete')
+        if (data.synced_count > 0 && data.synced_tags?.length > 0) message = t('servers.scanSynced', { count: data.synced_count, tags: data.synced_tags.join(', ') })
+        else if (data.synced_count === 0 && data.skipped_count > 0) message = t('servers.scanSkipped', { count: data.skipped_count })
         toast.success(message)
-      } else { toast.info(data.message || '扫描完成') }
+      } else { toast.info(data.message || t('servers.scanComplete')) }
     },
     onError: handleServerError,
   })
@@ -394,15 +397,15 @@ function XrayServersPage() {
           } catch { /* incomplete JSON chunk */ }
         }
       }
-    } catch (error: any) { setTerminalRunning(false); setTerminalOutput(prev => prev + '\n❌ 请求失败: ' + (error?.message || '未知错误')); toast.error(title + '失败') }
+    } catch (error: any) { setTerminalRunning(false); setTerminalOutput(prev => prev + '\n❌ ' + t('servers.requestFailed', { error: error?.message || t('servers.unknownError') })); toast.error(t('servers.failedSuffix', { title })) }
   }
 
-  const handleRemoteInstallXray = (serverId: number) => streamRemoteOp(`/api/admin/remote/xray/install-stream?server_id=${serverId}`, '安装远程 Xray', () => { loadRemoteServerStatusToCache(serverId, true); if (managingRemoteServer) loadRemoteServicesStatus(managingRemoteServer.id) })
-  const handleRemoteRemoveXray = (serverId: number) => streamRemoteOp(`/api/admin/remote/xray/remove-stream?server_id=${serverId}`, '卸载远程 Xray', () => { loadRemoteServerStatusToCache(serverId, true); if (managingRemoteServer) loadRemoteServicesStatus(managingRemoteServer.id) })
-  const handleRemoteInstallNginx = (serverId: number) => streamRemoteOp(`/api/admin/remote/nginx/install-stream?server_id=${serverId}`, '安装远程 Nginx', () => { loadRemoteServerStatusToCache(serverId, true); if (managingRemoteServer) loadRemoteServicesStatus(managingRemoteServer.id) })
-  const handleRemoteRemoveNginx = (serverId: number) => streamRemoteOp(`/api/admin/remote/nginx/remove-stream?server_id=${serverId}`, '卸载远程 Nginx', () => { loadRemoteServerStatusToCache(serverId, true); if (managingRemoteServer) loadRemoteServicesStatus(managingRemoteServer.id) })
-  const handleAgentUpgrade = (serverId: number) => streamRemoteOp(`/api/admin/remote/agent/upgrade-stream?server_id=${serverId}`, '升级远程 Agent')
-  const handleAgentUninstall = (serverId: number) => streamRemoteOp(`/api/admin/remote/agent/uninstall-stream?server_id=${serverId}`, '卸载远程 Agent')
+  const handleRemoteInstallXray = (serverId: number) => streamRemoteOp(`/api/admin/remote/xray/install-stream?server_id=${serverId}`, t('servers.installXray'), () => { loadRemoteServerStatusToCache(serverId, true); if (managingRemoteServer) loadRemoteServicesStatus(managingRemoteServer.id) })
+  const handleRemoteRemoveXray = (serverId: number) => streamRemoteOp(`/api/admin/remote/xray/remove-stream?server_id=${serverId}`, t('servers.removeXray'), () => { loadRemoteServerStatusToCache(serverId, true); if (managingRemoteServer) loadRemoteServicesStatus(managingRemoteServer.id) })
+  const handleRemoteInstallNginx = (serverId: number) => streamRemoteOp(`/api/admin/remote/nginx/install-stream?server_id=${serverId}`, t('servers.installNginx'), () => { loadRemoteServerStatusToCache(serverId, true); if (managingRemoteServer) loadRemoteServicesStatus(managingRemoteServer.id) })
+  const handleRemoteRemoveNginx = (serverId: number) => streamRemoteOp(`/api/admin/remote/nginx/remove-stream?server_id=${serverId}`, t('servers.removeNginx'), () => { loadRemoteServerStatusToCache(serverId, true); if (managingRemoteServer) loadRemoteServicesStatus(managingRemoteServer.id) })
+  const handleAgentUpgrade = (serverId: number) => streamRemoteOp(`/api/admin/remote/agent/upgrade-stream?server_id=${serverId}`, t('servers.upgradeAgentAction'))
+  const handleAgentUninstall = (serverId: number) => streamRemoteOp(`/api/admin/remote/agent/uninstall-stream?server_id=${serverId}`, t('servers.uninstallAgentAction'))
 
   const resetAddWebsiteDialog = () => { setAddWebsiteDomain(''); setAddWebsiteSiteType('static'); setAddWebsiteSiteValue(''); setAddWebsiteValidating(false); setAddWebsiteValidResult(null); setAddWebsiteSubmitting(false) }
   const validateWebsite = async () => {
@@ -411,16 +414,16 @@ function XrayServersPage() {
     try {
       const res = await api.post('/api/admin/remote/website/validate', { server_id: addWebsiteServerId, site_type: addWebsiteSiteType, site_value: addWebsiteSiteValue.trim() })
       setAddWebsiteValidResult({ ok: res.data.success, msg: res.data.message })
-    } catch { setAddWebsiteValidResult({ ok: false, msg: '验证请求失败' }) }
+    } catch { setAddWebsiteValidResult({ ok: false, msg: t('servers.validateFailed') }) }
     finally { setAddWebsiteValidating(false) }
   }
   const submitAddWebsite = async () => {
-    if (!addWebsiteServerId || !addWebsiteDomain.trim() || !addWebsiteSiteValue.trim()) { toast.error('请填写完整信息'); return }
+    if (!addWebsiteServerId || !addWebsiteDomain.trim() || !addWebsiteSiteValue.trim()) { toast.error(t('servers.fillComplete')); return }
     setAddWebsiteSubmitting(true)
     try {
       const res = await api.post('/api/admin/remote/website/add', { server_id: addWebsiteServerId, domain: addWebsiteDomain.trim(), site_type: addWebsiteSiteType, site_value: addWebsiteSiteValue.trim() })
-      if (res.data.success) { toast.success('网站添加成功'); setIsAddWebsiteDialogOpen(false); resetAddWebsiteDialog() }
-      else { toast.error(res.data.message || '添加失败') }
+      if (res.data.success) { toast.success(t('servers.websiteAdded')); setIsAddWebsiteDialogOpen(false); resetAddWebsiteDialog() }
+      else { toast.error(res.data.message || t('servers.websiteAddFailed')) }
     } catch (error) { handleServerError(error) }
     finally { setAddWebsiteSubmitting(false) }
   }
@@ -446,9 +449,9 @@ function XrayServersPage() {
       if (!xrayInstalled && !nginxInstalled) { await handleRemoteInstallXray(serverId); await handleRemoteInstallNginx(serverId) }
       else if (xrayInstalled && !nginxInstalled) { await handleRemoteInstallNginx(serverId) }
       else if (!xrayInstalled && nginxInstalled) { await handleRemoteInstallXray(serverId) }
-      else { toast.info('Xray 和 Nginx 均已安装') }
+      else { toast.info(t('servers.bothInstalled')) }
     } else {
-      if (!xrayInstalled) { await handleRemoteInstallXray(serverId) } else { toast.info('Xray 已安装') }
+      if (!xrayInstalled) { await handleRemoteInstallXray(serverId) } else { toast.info(t('servers.xrayInstalled')) }
     }
   }
 
@@ -463,7 +466,7 @@ function XrayServersPage() {
     try {
       const response = await api.get(`/api/admin/remote/xray/config?server_id=${serverId}`)
       if (response.data.success) { try { setXrayRawConfig(JSON.stringify(JSON.parse(response.data.config), null, 2)) } catch { setXrayRawConfig(response.data.config || '') } }
-      else { toast.error(response.data.message || '加载配置失败') }
+      else { toast.error(response.data.message || t('servers.configLoadFailed')) }
     } catch (error) { handleServerError(error) } finally { setXrayRawConfigLoading(false) }
   }
 
@@ -527,8 +530,8 @@ function XrayServersPage() {
   const remoteServers: RemoteServer[] = remoteServersData?.servers || []
 
   const handleGenerateToken = () => {
-    if (!remoteServerName.trim()) { toast.error('请输入服务器名称'); return }
-    if (createUse443 && !createDomain.trim()) { toast.error('使用443端口部署时必须输入域名'); return }
+    if (!remoteServerName.trim()) { toast.error(t('servers.enterServerName')); return }
+    if (createUse443 && !createDomain.trim()) { toast.error(t('servers.use443NeedsDomain')); return }
     const trafficLimitBytes = formData.traffic_limit_gb ? Math.round(parseFloat(formData.traffic_limit_gb) * 1024 * 1024 * 1024) : 0
     const trafficUsedOffsetBytes = formData.traffic_used_gb ? Math.round(parseFloat(formData.traffic_used_gb) * 1024 * 1024 * 1024) : 0
     const trafficResetDay = formData.traffic_reset_day ? parseInt(formData.traffic_reset_day) : 0
@@ -536,7 +539,7 @@ function XrayServersPage() {
     createRemoteServerMutation.mutate({ name: remoteServerName, traffic_limit: trafficLimitBytes, traffic_used_offset: trafficUsedOffsetBytes, traffic_reset_day: trafficResetDay, connection_mode: 'auto', pull_address: pullAddress || undefined, pull_port: pullPort ? parseInt(pullPort) : undefined, pull_token: pullToken || undefined, steal_self: createStealSelf, front_service: createFrontService, domain: createDomain.trim() || undefined, use_443: createUse443 || undefined, steal_mode: createStealSelf ? createStealMode : undefined, site_type: createStealSelf ? createSiteType : undefined, site_value: createStealSelf ? createSiteValue : undefined })
   }
 
-  const copyToClipboard = (text: string, label: string) => { navigator.clipboard.writeText(text).then(() => toast.success(`${label}已复制到剪贴板`)).catch(() => toast.error('复制失败')) }
+  const copyToClipboard = (text: string, label: string) => { navigator.clipboard.writeText(text).then(() => toast.success(t('servers.copied', { label }))).catch(() => toast.error(t('servers.copyFailed'))) }
 
   const resetAddDialog = () => {
     setRemoteServerName(''); setGeneratedToken(''); setInstallCommand(''); setIsGeneratingToken(false)
@@ -550,7 +553,7 @@ function XrayServersPage() {
   // --- END HELPERS ---
 
   const RemoteServerStatusBadge = ({ status }: { status: string }) => {
-    const statusConfig = { pending: { label: '等待连接', variant: 'secondary' as const }, connected: { label: '已连接', variant: 'default' as const }, offline: { label: '离线', variant: 'destructive' as const } }
+    const statusConfig = { pending: { label: t('servers.pending'), variant: 'secondary' as const }, connected: { label: t('servers.online'), variant: 'default' as const }, offline: { label: t('servers.offline'), variant: 'destructive' as const } }
     const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.pending
     return <Badge variant={config.variant}>{config.label}</Badge>
   }
@@ -577,11 +580,11 @@ function XrayServersPage() {
         </PopoverTrigger>
         <PopoverContent className="w-auto p-2" side="top" sideOffset={6} onMouseEnter={handleOpen} onMouseLeave={handleClose} onOpenAutoFocus={(e) => e.preventDefault()}>
           <div className="flex items-center gap-1.5">
-            <Button variant="outline" size="sm" className="h-7 px-2 text-xs" onClick={() => handleControl('restart')} disabled={remoteServiceControlMutation.isPending}><RotateCcw className="w-3 h-3 mr-1" />重启</Button>
+            <Button variant="outline" size="sm" className="h-7 px-2 text-xs" onClick={() => handleControl('restart')} disabled={remoteServiceControlMutation.isPending}><RotateCcw className="w-3 h-3 mr-1" />{t('servers.restartBtn')}</Button>
             {status.running ? (
-              <Button variant="outline" size="sm" className="h-7 px-2 text-xs text-red-600 hover:text-red-700" onClick={() => handleControl('stop')} disabled={remoteServiceControlMutation.isPending}><Square className="w-3 h-3 mr-1" />停止</Button>
+              <Button variant="outline" size="sm" className="h-7 px-2 text-xs text-red-600 hover:text-red-700" onClick={() => handleControl('stop')} disabled={remoteServiceControlMutation.isPending}><Square className="w-3 h-3 mr-1" />{t('servers.stopBtn')}</Button>
             ) : (
-              <Button variant="outline" size="sm" className="h-7 px-2 text-xs text-green-600 hover:text-green-700" onClick={() => handleControl('start')} disabled={remoteServiceControlMutation.isPending}><Play className="w-3 h-3 mr-1" />启动</Button>
+              <Button variant="outline" size="sm" className="h-7 px-2 text-xs text-green-600 hover:text-green-700" onClick={() => handleControl('start')} disabled={remoteServiceControlMutation.isPending}><Play className="w-3 h-3 mr-1" />{t('servers.startBtn')}</Button>
             )}
           </div>
         </PopoverContent>
@@ -598,12 +601,12 @@ function XrayServersPage() {
     const bothInstalled = xrayInstalled && nginxInstalled
     const getInstallDesc = () => {
       if (withNginx === 'yes') {
-        if (!xrayInstalled && !nginxInstalled) return '将安装 Xray + Nginx'
-        if (xrayInstalled && !nginxInstalled) return '将安装 Nginx'
-        if (!xrayInstalled && nginxInstalled) return '将安装 Xray'
-        return '均已安装'
+        if (!xrayInstalled && !nginxInstalled) return t('servers.willInstallBoth')
+        if (xrayInstalled && !nginxInstalled) return t('servers.willInstallNginx')
+        if (!xrayInstalled && nginxInstalled) return t('servers.willInstallXray')
+        return t('servers.bothInstalled')
       }
-      return !xrayInstalled ? '将安装 Xray' : 'Xray 已安装'
+      return !xrayInstalled ? t('servers.willInstallXray') : t('servers.xrayInstalled')
     }
     const canInstall = withNginx === 'yes' ? !bothInstalled : !xrayInstalled
     const canUninstall = xrayInstalled || nginxInstalled
@@ -613,20 +616,20 @@ function XrayServersPage() {
           {compact ? (
             <Button variant="outline" size="sm" className="h-7 px-2"><Download className="h-3.5 w-3.5" /><ChevronDown className="h-3 w-3 ml-1" /></Button>
           ) : (
-            <Button variant="outline" size="sm" className="flex-1 min-w-0"><Download className="mr-1 h-3.5 w-3.5 shrink-0" /><span className="truncate">安装</span><ChevronDown className="ml-1 h-3.5 w-3.5 shrink-0" /></Button>
+            <Button variant="outline" size="sm" className="flex-1 min-w-0"><Download className="mr-1 h-3.5 w-3.5 shrink-0" /><span className="truncate">{t('servers.install')}</span><ChevronDown className="ml-1 h-3.5 w-3.5 shrink-0" /></Button>
           )}
         </PopoverTrigger>
         <PopoverContent className="w-56 p-3" align="start">
           <div className="space-y-3">
-            <div className="text-sm font-medium">安装服务</div>
+            <div className="text-sm font-medium">{t('servers.installService')}</div>
             <RadioGroup value={withNginx} onValueChange={setWithNginx}>
-              <div className="flex items-center gap-2"><RadioGroupItem value="yes" id={`nginx-yes-${serverId}`} /><Label htmlFor={`nginx-yes-${serverId}`} className="text-sm cursor-pointer">我要偷自己</Label></div>
-              <div className="flex items-center gap-2"><RadioGroupItem value="no" id={`nginx-no-${serverId}`} /><Label htmlFor={`nginx-no-${serverId}`} className="text-sm cursor-pointer">仅 Xray</Label></div>
+              <div className="flex items-center gap-2"><RadioGroupItem value="yes" id={`nginx-yes-${serverId}`} /><Label htmlFor={`nginx-yes-${serverId}`} className="text-sm cursor-pointer">{t('servers.iWantStealSelf')}</Label></div>
+              <div className="flex items-center gap-2"><RadioGroupItem value="no" id={`nginx-no-${serverId}`} /><Label htmlFor={`nginx-no-${serverId}`} className="text-sm cursor-pointer">{t('servers.xrayOnly')}</Label></div>
             </RadioGroup>
             <div className="text-xs text-muted-foreground">{getInstallDesc()}</div>
             <div className="flex gap-2">
-              <Button size="sm" className="flex-1 h-7 text-xs" disabled={terminalRunning || !canInstall} onClick={() => { setOpen(false); handleSmartInstall(serverId, withNginx === 'yes') }}><Download className="h-3 w-3 mr-1" />安装</Button>
-              {canUninstall && (<Button variant="outline" size="sm" className="h-7 text-xs text-red-600 hover:text-red-700" disabled={terminalRunning} onClick={() => { setOpen(false); handleSmartUninstall(serverId) }}><Trash2 className="h-3 w-3 mr-1" />卸载</Button>)}
+              <Button size="sm" className="flex-1 h-7 text-xs" disabled={terminalRunning || !canInstall} onClick={() => { setOpen(false); handleSmartInstall(serverId, withNginx === 'yes') }}><Download className="h-3 w-3 mr-1" />{t('servers.install')}</Button>
+              {canUninstall && (<Button variant="outline" size="sm" className="h-7 text-xs text-red-600 hover:text-red-700" disabled={terminalRunning} onClick={() => { setOpen(false); handleSmartUninstall(serverId) }}><Trash2 className="h-3 w-3 mr-1" />{t('servers.uninstall')}</Button>)}
             </div>
           </div>
         </PopoverContent>
@@ -639,99 +642,99 @@ function XrayServersPage() {
   return (
     <div className="container mx-auto py-8 px-4 pt-24">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold mb-2">服务管理</h1>
-        <p className="text-gray-600">管理远程服务器</p>
+        <h1 className="text-3xl font-bold mb-2">{t('servers.title')}</h1>
+        <p className="text-gray-600">{t('servers.desc')}</p>
       </div>
       <div className="flex flex-wrap gap-4 mb-6">
         <ViewToggle view={viewMode} onViewChange={setViewMode} />
         <Dialog open={isAddDialogOpen} onOpenChange={(open) => { setIsAddDialogOpen(open); if (!open) resetAddDialog() }}>
-          <DialogTrigger asChild><Button><Plus className="mr-2 h-4 w-4" />添加服务器</Button></DialogTrigger>
+          <DialogTrigger asChild><Button><Plus className="mr-2 h-4 w-4" />{t('servers.addServer')}</Button></DialogTrigger>
           <DialogContent className="w-[90vw] md:w-[60vw] max-w-none max-h-[85vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>添加远程服务器</DialogTitle>
-              <DialogDescription>添加一个远程 MMWX 服务器进行管理。输入名称后生成 Token，然后在远程服务器上执行安装命令。</DialogDescription>
+              <DialogTitle>{t('servers.addRemoteServer')}</DialogTitle>
+              <DialogDescription>{t('servers.addRemoteServerDesc')}</DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-4">
               <div className="grid gap-2">
-                <Label htmlFor="remote-name">服务器名称</Label>
+                <Label htmlFor="remote-name">{t('servers.serverName')}</Label>
                 <div className="flex gap-2">
-                  <Input id="remote-name" value={remoteServerName} onChange={(e) => setRemoteServerName(e.target.value)} placeholder="例如：美国节点1" disabled={!!generatedToken} />
-                  <Button onClick={handleGenerateToken} disabled={!remoteServerName.trim() || isGeneratingToken || !!generatedToken}>{isGeneratingToken ? '生成中...' : '生成 Token'}</Button>
+                  <Input id="remote-name" value={remoteServerName} onChange={(e) => setRemoteServerName(e.target.value)} placeholder={t('servers.serverNamePlaceholder')} disabled={!!generatedToken} />
+                  <Button onClick={handleGenerateToken} disabled={!remoteServerName.trim() || isGeneratingToken || !!generatedToken}>{isGeneratingToken ? t('servers.generating') : t('servers.generateToken')}</Button>
                 </div>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 bg-muted/50 rounded-lg">
-                <div className="grid gap-2"><Label htmlFor="pull-address">服务器地址</Label><Input id="pull-address" value={pullAddress} onChange={(e) => setPullAddress(e.target.value)} onBlur={(e) => { if (createStealSelf) checkSameIP(e.target.value) }} placeholder="例如：example.com" disabled={!!generatedToken} /></div>
-                <div className="grid gap-2"><Label htmlFor="pull-port">Agent 端口</Label><Input id="pull-port" type="number" value={pullPort} onChange={(e) => setPullPort(e.target.value)} placeholder="23889" disabled={!!generatedToken} /></div>
-                <div className="grid gap-2"><Label htmlFor="pull-token">Agent 认证 Token (可选)</Label><Input id="pull-token" value={pullToken} onChange={(e) => setPullToken(e.target.value)} placeholder="自动生成" disabled={!!generatedToken} readOnly={!!generatedToken} /></div>
-                <div className="grid gap-2"><Label htmlFor="add-traffic-limit">流量限制 (GB)</Label><Input id="add-traffic-limit" type="number" step="0.01" placeholder="留空表示不限制" value={formData.traffic_limit_gb} onChange={(e) => setFormData({ ...formData, traffic_limit_gb: e.target.value })} disabled={!!generatedToken} /></div>
-                <div className="grid gap-2"><Label htmlFor="add-traffic-used">已用流量 (GB)</Label><Input id="add-traffic-used" type="number" step="0.01" placeholder="用于校准" value={formData.traffic_used_gb} onChange={(e) => setFormData({ ...formData, traffic_used_gb: e.target.value })} disabled={!!generatedToken} /></div>
-                <div className="grid gap-2"><Label htmlFor="add-reset-day">重置日期 (每月)</Label><Input id="add-reset-day" type="number" min="1" max="31" placeholder="1-31，留空不重置" value={formData.traffic_reset_day} onChange={(e) => setFormData({ ...formData, traffic_reset_day: e.target.value })} disabled={!!generatedToken} /></div>
+                <div className="grid gap-2"><Label htmlFor="pull-address">{t('servers.serverAddress')}</Label><Input id="pull-address" value={pullAddress} onChange={(e) => setPullAddress(e.target.value)} onBlur={(e) => { if (createStealSelf) checkSameIP(e.target.value) }} placeholder={t('servers.serverAddressPlaceholder')} disabled={!!generatedToken} /></div>
+                <div className="grid gap-2"><Label htmlFor="pull-port">{t('servers.agentPort')}</Label><Input id="pull-port" type="number" value={pullPort} onChange={(e) => setPullPort(e.target.value)} placeholder="23889" disabled={!!generatedToken} /></div>
+                <div className="grid gap-2"><Label htmlFor="pull-token">{t('servers.agentAuthToken')}</Label><Input id="pull-token" value={pullToken} onChange={(e) => setPullToken(e.target.value)} placeholder={t('servers.autoGenerated')} disabled={!!generatedToken} readOnly={!!generatedToken} /></div>
+                <div className="grid gap-2"><Label htmlFor="add-traffic-limit">{t('servers.trafficLimit')}</Label><Input id="add-traffic-limit" type="number" step="0.01" placeholder={t('servers.trafficLimitPlaceholder')} value={formData.traffic_limit_gb} onChange={(e) => setFormData({ ...formData, traffic_limit_gb: e.target.value })} disabled={!!generatedToken} /></div>
+                <div className="grid gap-2"><Label htmlFor="add-traffic-used">{t('servers.usedTraffic')}</Label><Input id="add-traffic-used" type="number" step="0.01" placeholder={t('servers.usedTrafficPlaceholder')} value={formData.traffic_used_gb} onChange={(e) => setFormData({ ...formData, traffic_used_gb: e.target.value })} disabled={!!generatedToken} /></div>
+                <div className="grid gap-2"><Label htmlFor="add-reset-day">{t('servers.resetDay')}</Label><Input id="add-reset-day" type="number" min="1" max="31" placeholder={t('servers.resetDayPlaceholder')} value={formData.traffic_reset_day} onChange={(e) => setFormData({ ...formData, traffic_reset_day: e.target.value })} disabled={!!generatedToken} /></div>
               </div>
               <div className="grid gap-3 p-4 border rounded-lg">
-                <div className="flex items-center justify-between"><Label htmlFor="create-steal-self" className="cursor-pointer">我要偷自己</Label><Switch id="create-steal-self" checked={createStealSelf} onCheckedChange={(checked) => { setCreateStealSelf(checked); if (checked) { setCreateUse443(true); if (pullAddress.trim()) checkSameIP(pullAddress) } }} disabled={!!generatedToken} /></div>
+                <div className="flex items-center justify-between"><Label htmlFor="create-steal-self" className="cursor-pointer">{t('servers.stealSelf')}</Label><Switch id="create-steal-self" checked={createStealSelf} onCheckedChange={(checked) => { setCreateStealSelf(checked); if (checked) { setCreateUse443(true); if (pullAddress.trim()) checkSameIP(pullAddress) } }} disabled={!!generatedToken} /></div>
                 <div className="grid gap-2">
-                  <Label>前置选择</Label>
+                  <Label>{t('servers.frontSelect')}</Label>
                   <RadioGroup value={createFrontService} onValueChange={(value) => setCreateFrontService(value as 'xray' | 'nginx')} className="flex gap-4">
                     <div className="flex items-center gap-2"><RadioGroupItem value="xray" id="create-front-xray" disabled={!!generatedToken || !createStealSelf} /><Label htmlFor="create-front-xray" className="text-sm cursor-pointer">xray</Label></div>
-                    <div className="flex items-center gap-2 opacity-60"><RadioGroupItem value="nginx" id="create-front-nginx" disabled /><Label htmlFor="create-front-nginx" className="text-sm cursor-not-allowed">nginx（暂不支持）</Label></div>
+                    <div className="flex items-center gap-2 opacity-60"><RadioGroupItem value="nginx" id="create-front-nginx" disabled /><Label htmlFor="create-front-nginx" className="text-sm cursor-not-allowed">{t('servers.frontSelectNginxUnavailable')}</Label></div>
                   </RadioGroup>
-                  <p className="text-xs text-muted-foreground">开启"我要偷自己"后，安装 mmw-agent 完成后会自动安装 Xray + Nginx</p>
+                  <p className="text-xs text-muted-foreground">{t('servers.stealSelfDesc')}</p>
                 </div>
                 <div className="grid gap-2">
-                  <Label>部署模式</Label>
+                  <Label>{t('servers.deployMode')}</Label>
                   <RadioGroup value={createStealMode} onValueChange={(value) => setCreateStealMode(value as 'tunnel' | 'fallback')} className="flex gap-4">
-                    <div className="flex items-center gap-2"><RadioGroupItem value="tunnel" id="steal-mode-tunnel" disabled={!!generatedToken || !createStealSelf} /><Label htmlFor="steal-mode-tunnel" className="text-sm cursor-pointer">Tunnel 模式</Label></div>
-                    <div className="flex items-center gap-2"><RadioGroupItem value="fallback" id="steal-mode-fallback" disabled={!!generatedToken || !createStealSelf} /><Label htmlFor="steal-mode-fallback" className="text-sm cursor-pointer">回落模式</Label></div>
+                    <div className="flex items-center gap-2"><RadioGroupItem value="tunnel" id="steal-mode-tunnel" disabled={!!generatedToken || !createStealSelf} /><Label htmlFor="steal-mode-tunnel" className="text-sm cursor-pointer">{t('servers.tunnelMode')}</Label></div>
+                    <div className="flex items-center gap-2"><RadioGroupItem value="fallback" id="steal-mode-fallback" disabled={!!generatedToken || !createStealSelf} /><Label htmlFor="steal-mode-fallback" className="text-sm cursor-pointer">{t('servers.fallbackMode')}</Label></div>
                   </RadioGroup>
-                  <p className="text-xs text-muted-foreground">{createStealMode === 'tunnel' ? 'Xray 监听 443 端口，通过 tunnel 转发到 Nginx' : 'Xray 监听443端口，通过fallback回落到Nginx'}</p>
+                  <p className="text-xs text-muted-foreground">{createStealMode === 'tunnel' ? t('servers.tunnelModeDesc') : t('servers.fallbackModeDesc')}</p>
                 </div>
                 {createStealSelf && (
                   <>
-                    <div className="flex items-center justify-between"><Label htmlFor="create-use-443" className="cursor-pointer">使用443端口部署</Label><Switch id="create-use-443" checked={createUse443} onCheckedChange={(checked) => { setCreateUse443(checked); if (!checked) setCreateDomain('') }} disabled={!!generatedToken || createStealSelf} /></div>
+                    <div className="flex items-center justify-between"><Label htmlFor="create-use-443" className="cursor-pointer">{t('servers.use443')}</Label><Switch id="create-use-443" checked={createUse443} onCheckedChange={(checked) => { setCreateUse443(checked); if (!checked) setCreateDomain('') }} disabled={!!generatedToken || createStealSelf} /></div>
                     {createUse443 && (
                       <div className="grid gap-2">
-                        <Label htmlFor="create-domain">域名 <span className="text-destructive">*</span></Label>
-                        <Input id="create-domain" value={createDomain} onChange={(e) => { setCreateDomain(e.target.value); setDomainAutoFilled(false) }} placeholder="例如：us1.example.com" disabled={!!generatedToken} />
+                        <Label htmlFor="create-domain">{t('servers.domain')} <span className="text-destructive">*</span></Label>
+                        <Input id="create-domain" value={createDomain} onChange={(e) => { setCreateDomain(e.target.value); setDomainAutoFilled(false) }} placeholder="e.g. us1.example.com" disabled={!!generatedToken} />
                         {domainAutoFilled ? (
-                          <p className="text-xs text-blue-600">已自动填充主控域名（服务器 IP 与主控一致）</p>
+                          <p className="text-xs text-blue-600">{t('servers.domainAutoFilled')}</p>
                         ) : (
-                          <p className="text-xs text-muted-foreground">Agent 连接后将自动下发 Nginx + Xray 443端口配置和证书。建议为每个地区增加一个偷自己的服务器。</p>
+                          <p className="text-xs text-muted-foreground">{t('servers.domainDesc')}</p>
                         )}
                       </div>
                     )}
                     <div className="grid gap-2">
-                      <Label>网站类型</Label>
+                      <Label>{t('servers.siteType')}</Label>
                       <div className="flex gap-2">
-                        <Button type="button" size="sm" variant={createSiteType === 'static' ? 'default' : 'outline'} onClick={() => setCreateSiteType('static')} disabled={!!generatedToken} className="flex-1">静态页面</Button>
-                        <Button type="button" size="sm" variant={createSiteType === 'proxy' ? 'default' : 'outline'} onClick={() => setCreateSiteType('proxy')} disabled={!!generatedToken} className="flex-1">反向代理</Button>
+                        <Button type="button" size="sm" variant={createSiteType === 'static' ? 'default' : 'outline'} onClick={() => setCreateSiteType('static')} disabled={!!generatedToken} className="flex-1">{t('servers.staticPage')}</Button>
+                        <Button type="button" size="sm" variant={createSiteType === 'proxy' ? 'default' : 'outline'} onClick={() => setCreateSiteType('proxy')} disabled={!!generatedToken} className="flex-1">{t('servers.reverseProxy')}</Button>
                       </div>
                     </div>
                     <div className="grid gap-2">
-                      <Label htmlFor="create-site-value">{createSiteType === 'static' ? '静态页面路径' : '反向代理地址'}</Label>
-                      <Input id="create-site-value" value={createSiteValue} onChange={(e) => setCreateSiteValue(e.target.value)} placeholder={createSiteType === 'static' ? '例如：/var/www/html' : '例如：http://127.0.0.1:8080'} disabled={!!generatedToken} />
+                      <Label htmlFor="create-site-value">{createSiteType === 'static' ? t('servers.staticPath') : t('servers.reverseProxyAddress')}</Label>
+                      <Input id="create-site-value" value={createSiteValue} onChange={(e) => setCreateSiteValue(e.target.value)} placeholder={createSiteType === 'static' ? t('servers.staticPathPlaceholder') : t('servers.reverseProxyPlaceholder')} disabled={!!generatedToken} />
                     </div>
                   </>
                 )}
               </div>
               {generatedToken && (
                 <>
-                  <div className="grid gap-2"><Label>主服务器 Token</Label><div className="flex gap-2"><Input value={generatedToken} readOnly className="font-mono text-sm" /><Button variant="outline" size="icon" onClick={() => copyToClipboard(generatedToken, '主服务器 Token')}><Copy className="h-4 w-4" /></Button></div></div>
-                  <div className="grid gap-2"><Label>子服务器 Token</Label><div className="flex gap-2"><Input value={pullToken} readOnly className="font-mono text-sm" /><Button variant="outline" size="icon" onClick={() => copyToClipboard(pullToken, '子服务器 Token')}><Copy className="h-4 w-4" /></Button></div></div>
-                  <div className="grid gap-2"><Label htmlFor="install-command">安装命令</Label><div className="flex gap-2"><Textarea id="install-command" value={installCommand} readOnly className="font-mono text-xs h-[80px] resize-none" /><Button variant="outline" size="icon" className="shrink-0" onClick={() => copyToClipboard(installCommand, '安装命令')}><Copy className="h-4 w-4" /></Button></div></div>
-                  <p className="text-xs text-muted-foreground">主服务器 Token 用于 Agent 连接主服务器认证；子服务器 Token 用于主服务器拉取 Agent 数据时认证。当 Agent 无法主动上报时，主服务器将自动切换为拉取模式。</p>
+                  <div className="grid gap-2"><Label>{t('servers.masterToken')}</Label><div className="flex gap-2"><Input value={generatedToken} readOnly className="font-mono text-sm" /><Button variant="outline" size="icon" onClick={() => copyToClipboard(generatedToken, t('servers.masterToken'))}><Copy className="h-4 w-4" /></Button></div></div>
+                  <div className="grid gap-2"><Label>{t('servers.childToken')}</Label><div className="flex gap-2"><Input value={pullToken} readOnly className="font-mono text-sm" /><Button variant="outline" size="icon" onClick={() => copyToClipboard(pullToken, t('servers.childToken'))}><Copy className="h-4 w-4" /></Button></div></div>
+                  <div className="grid gap-2"><Label htmlFor="install-command">{t('servers.installCommand')}</Label><div className="flex gap-2"><Textarea id="install-command" value={installCommand} readOnly className="font-mono text-xs h-[80px] resize-none" /><Button variant="outline" size="icon" className="shrink-0" onClick={() => copyToClipboard(installCommand, t('servers.installCommand'))}><Copy className="h-4 w-4" /></Button></div></div>
+                  <p className="text-xs text-muted-foreground">{t('servers.tokenDesc')}</p>
                 </>
               )}
             </div>
-            <DialogFooter><Button variant="outline" onClick={() => { setIsAddDialogOpen(false); resetAddDialog() }}>{generatedToken ? '完成' : '取消'}</Button></DialogFooter>
+            <DialogFooter><Button variant="outline" onClick={() => { setIsAddDialogOpen(false); resetAddDialog() }}>{generatedToken ? t('servers.complete') : tc('actions.cancel')}</Button></DialogFooter>
           </DialogContent>
         </Dialog>
       </div>
 
       {/* --- VIEWS --- */}
       {isLoading ? (
-        <div className="text-center py-8"><RefreshCw className="h-8 w-8 animate-spin mx-auto mb-2" /><p className="text-gray-600">加载中...</p></div>
+        <div className="text-center py-8"><RefreshCw className="h-8 w-8 animate-spin mx-auto mb-2" /><p className="text-gray-600">{tc('actions.loading')}</p></div>
       ) : remoteServers.length === 0 ? (
-        <EmptyStateCard title="暂无服务器" description='点击"添加服务器"按钮添加远程服务器' />
+        <EmptyStateCard title={t('servers.noServers')} description={t('servers.noServersDesc')} />
       ) : viewMode === 'card' ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
           {remoteServers.map((server: RemoteServer) => {
@@ -741,7 +744,7 @@ function XrayServersPage() {
                 <CardHeader className="pb-3">
                   <div className="flex items-center justify-between gap-2">
                     <div className="flex items-center gap-2 min-w-0">
-                      <div className={cn("w-3 h-3 rounded-full flex-shrink-0", server.status === 'connected' ? "bg-green-500" : server.status === 'pending' ? "bg-yellow-500" : "bg-red-500")} title={server.status === 'connected' ? '在线' : server.status === 'pending' ? '等待连接' : '离线'} />
+                      <div className={cn("w-3 h-3 rounded-full flex-shrink-0", server.status === 'connected' ? "bg-green-500" : server.status === 'pending' ? "bg-yellow-500" : "bg-red-500")} title={server.status === 'connected' ? t('servers.online') : server.status === 'pending' ? t('servers.pending') : t('servers.offline')} />
                       <CardTitle className="text-lg truncate">{server.name}</CardTitle>
                       <RemoteServerStatusBadge status={server.status} />
                       {Math.abs(server.time_offset_seconds ?? 0) > 10 && (
@@ -750,22 +753,22 @@ function XrayServersPage() {
                             <TooltipTrigger asChild>
                               <AlertTriangle className="h-4 w-4 text-yellow-500 cursor-help flex-shrink-0" />
                             </TooltipTrigger>
-                            <TooltipContent>服务器时间有误差，可能导致vmess、ss等时间敏感协议无法使用</TooltipContent>
+                            <TooltipContent>{t('servers.timeOffsetWarning')}</TooltipContent>
                           </Tooltip>
                         </TooltipProvider>
                       )}
-                      {server.fallback_to_pull && (<Badge variant="secondary" className="text-xs bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200 shrink-0">已降级</Badge>)}
-                      {server.steal_mode && server.steal_mode !== 'tunnel' && (<Badge variant="outline" className="text-xs shrink-0">{server.steal_mode === 'fallback' ? '回落' : '默认'}</Badge>)}
+                      {server.fallback_to_pull && (<Badge variant="secondary" className="text-xs bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200 shrink-0">{t('servers.degraded')}</Badge>)}
+                      {server.steal_mode && server.steal_mode !== 'tunnel' && (<Badge variant="outline" className="text-xs shrink-0">{server.steal_mode === 'fallback' ? t('servers.fallbackLabel') : t('servers.stealModeDefault')}</Badge>)}
                     </div>
                     <div className="flex items-center gap-1 shrink-0">
-                      {server.status === 'connected' && (<Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); handleOpenXrayRawConfig(server) }} className="h-8 w-8 text-muted-foreground hover:text-primary hover:bg-muted" title="查看 Xray 配置"><Eye className="h-4 w-4" /></Button>)}
-                      {server.status === 'connected' && (<Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); remoteScanMutation.mutate(server.id) }} disabled={remoteScanMutation.isPending} className="h-8 w-8 text-muted-foreground hover:text-primary hover:bg-muted" title="扫描远程服务"><Search className={cn("h-4 w-4", remoteScanMutation.isPending && "animate-spin")} /></Button>)}
-                      <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); handleEditRemoteServer(server) }} className="h-8 w-8 text-muted-foreground hover:text-primary hover:bg-muted" title="编辑服务器"><Pencil className="h-4 w-4" /></Button>
-                      <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); handleDeleteRemoteServer(server.id) }} className="h-8 w-8 text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950" title="删除远程服务器"><X className="h-4 w-4" /></Button>
+                      {server.status === 'connected' && (<Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); handleOpenXrayRawConfig(server) }} className="h-8 w-8 text-muted-foreground hover:text-primary hover:bg-muted" title={t('servers.viewXrayConfig')}><Eye className="h-4 w-4" /></Button>)}
+                      {server.status === 'connected' && (<Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); remoteScanMutation.mutate(server.id) }} disabled={remoteScanMutation.isPending} className="h-8 w-8 text-muted-foreground hover:text-primary hover:bg-muted" title={t('servers.scan')}><Search className={cn("h-4 w-4", remoteScanMutation.isPending && "animate-spin")} /></Button>)}
+                      <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); handleEditRemoteServer(server) }} className="h-8 w-8 text-muted-foreground hover:text-primary hover:bg-muted" title={t('servers.editServer')}><Pencil className="h-4 w-4" /></Button>
+                      <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); handleDeleteRemoteServer(server.id) }} className="h-8 w-8 text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950" title={t('servers.deleteServer')}><X className="h-4 w-4" /></Button>
                     </div>
                   </div>
                   <CardDescription className="text-xs text-muted-foreground ml-5 flex items-center gap-2">
-                    <span>{server.ip_address || '等待连接...'}</span>
+                    <span>{server.ip_address || t('servers.waitConnection')}</span>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button variant="ghost" size="sm" className="h-5 px-1.5 text-xs gap-1" onClick={(e) => e.stopPropagation()}>
@@ -773,7 +776,7 @@ function XrayServersPage() {
                           {server.connection_mode === 'http' && <Radio className="h-3 w-3" />}
                           {server.connection_mode === 'pull' && <RefreshCw className="h-3 w-3" />}
                           {(server.connection_mode === 'auto' || !server.connection_mode) && <Settings className="h-3 w-3" />}
-                          <span className="hidden sm:inline">{server.connection_mode === 'websocket' ? 'WebSocket' : server.connection_mode === 'http' ? 'HTTP' : server.connection_mode === 'pull' ? '轮询' : '自动'}</span>
+                          <span className="hidden sm:inline">{server.connection_mode === 'websocket' ? t('servers.websocketMode') : server.connection_mode === 'http' ? t('servers.httpMode') : server.connection_mode === 'pull' ? t('servers.pullMode') : t('servers.autoMode')}</span>
                           <ChevronDown className="h-3 w-3" />
                         </Button>
                       </DropdownMenuTrigger>
@@ -781,7 +784,7 @@ function XrayServersPage() {
                         {(['auto', 'websocket', 'http', 'pull'] as const).map(mode => (
                           <DropdownMenuItem key={mode} onClick={(e) => { e.stopPropagation(); updateConnectionModeMutation.mutate({ id: server.id, connection_mode: mode }) }}>
                             {mode === 'auto' && <Settings className="mr-2 h-4 w-4" />}{mode === 'websocket' && <Wifi className="mr-2 h-4 w-4" />}{mode === 'http' && <Radio className="mr-2 h-4 w-4" />}{mode === 'pull' && <RefreshCw className="mr-2 h-4 w-4" />}
-                            {mode === 'auto' ? '自动' : mode === 'websocket' ? 'WebSocket' : mode === 'http' ? 'HTTP' : '轮询'}
+                            {mode === 'auto' ? t('servers.autoMode') : mode === 'websocket' ? t('servers.websocketMode') : mode === 'http' ? t('servers.httpMode') : t('servers.pullMode')}
                             {(server.connection_mode === mode || (!server.connection_mode && mode === 'auto')) && <span className="ml-auto">✓</span>}
                           </DropdownMenuItem>
                         ))}
@@ -791,55 +794,55 @@ function XrayServersPage() {
                   <div className="flex items-center gap-4 mt-3">
                     <RemoteServiceStatusIndicator status={remoteStatus?.xray} name="Xray" serverId={server.id} />
                     {remoteStatus?.nginx?.installed && (<RemoteServiceStatusIndicator status={remoteStatus?.nginx} name="Nginx" serverId={server.id} />)}
-                    {remoteStatus?.loading && (<span className="text-xs text-muted-foreground">加载中...</span>)}
+                    {remoteStatus?.loading && (<span className="text-xs text-muted-foreground">{t('servers.loadingStatus')}</span>)}
                   </div>
                   <div className="mt-4 flex gap-3">
                     <div className="flex-1 bg-muted/50 rounded-lg p-3">
                       <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-2">
                         <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2v20M2 12h20M7 7l5-5 5 5M7 17l5 5 5-5" /></svg>
-                        <span>实时网速</span>
+                        <span>{t('servers.realtimeSpeed')}</span>
                       </div>
                       {(server.current_upload_speed !== undefined && server.current_upload_speed > 0) || (server.current_download_speed !== undefined && server.current_download_speed > 0) ? (
                         <div className="space-y-1">
-                          <div className="flex items-center justify-between"><span className="text-xs text-muted-foreground">上传</span><span className="text-sm font-mono font-medium text-green-600 dark:text-green-400">↑ {formatSpeed(server.current_upload_speed || 0)}</span></div>
-                          <div className="flex items-center justify-between"><span className="text-xs text-muted-foreground">下载</span><span className="text-sm font-mono font-medium text-blue-600 dark:text-blue-400">↓ {formatSpeed(server.current_download_speed || 0)}</span></div>
+                          <div className="flex items-center justify-between"><span className="text-xs text-muted-foreground">{t('servers.upload')}</span><span className="text-sm font-mono font-medium text-green-600 dark:text-green-400">↑ {formatSpeed(server.current_upload_speed || 0)}</span></div>
+                          <div className="flex items-center justify-between"><span className="text-xs text-muted-foreground">{t('servers.download')}</span><span className="text-sm font-mono font-medium text-blue-600 dark:text-blue-400">↓ {formatSpeed(server.current_download_speed || 0)}</span></div>
                         </div>
-                      ) : server.status === 'connected' ? (<p className="text-sm font-mono text-muted-foreground">等待数据...</p>) : server.status === 'pending' ? (<p className="text-sm font-mono text-muted-foreground">待连接</p>) : (<p className="text-sm font-mono text-muted-foreground">离线</p>)}
+                      ) : server.status === 'connected' ? (<p className="text-sm font-mono text-muted-foreground">{t('servers.waitingData')}</p>) : server.status === 'pending' ? (<p className="text-sm font-mono text-muted-foreground">{t('servers.pendingShort')}</p>) : (<p className="text-sm font-mono text-muted-foreground">{t('servers.offline')}</p>)}
                     </div>
                     <div className="flex-1 bg-muted/50 rounded-lg p-3">
                       <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-2">
                         <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /><path d="M9 12l2 2 4-4" /></svg>
-                        <span>流量统计</span>
+                        <span>{t('servers.trafficStats')}</span>
                       </div>
                       {server.traffic_limit && server.traffic_limit > 0 ? (
                         <div className="space-y-2">
-                          <div className="flex items-center justify-between"><span className="text-xs text-muted-foreground">已用/总量</span><span className="text-sm font-mono font-medium">{formatTraffic(server.traffic_used || 0)}/{formatTraffic(server.traffic_limit)}</span></div>
+                          <div className="flex items-center justify-between"><span className="text-xs text-muted-foreground">{t('servers.usedTotal')}</span><span className="text-sm font-mono font-medium">{formatTraffic(server.traffic_used || 0)}/{formatTraffic(server.traffic_limit)}</span></div>
                           <div className="h-1.5 bg-muted rounded-full overflow-hidden"><div className={cn("h-full rounded-full transition-all", getTrafficPercent(server.traffic_used || 0, server.traffic_limit) > 90 ? "bg-red-500" : getTrafficPercent(server.traffic_used || 0, server.traffic_limit) > 70 ? "bg-yellow-500" : "bg-primary")} style={{ width: `${Math.min(getTrafficPercent(server.traffic_used || 0, server.traffic_limit), 100)}%` }} /></div>
-                          {server.traffic_reset_day && server.traffic_reset_day > 0 && (<div className="flex items-center justify-between text-xs text-muted-foreground"><span>重置</span><span>每月 {server.traffic_reset_day} 日</span></div>)}
+                          {server.traffic_reset_day && server.traffic_reset_day > 0 && (<div className="flex items-center justify-between text-xs text-muted-foreground"><span>{t('servers.resetLabel')}</span><span>{t('servers.monthlyReset', { day: server.traffic_reset_day })}</span></div>)}
                         </div>
                       ) : (
-                        <div className="space-y-1"><div className="flex items-center justify-between"><span className="text-xs text-muted-foreground">已使用</span><span className="text-sm font-mono font-medium">{formatTraffic(server.traffic_used || 0)}</span></div><div className="text-xs text-muted-foreground">不限流量</div></div>
+                        <div className="space-y-1"><div className="flex items-center justify-between"><span className="text-xs text-muted-foreground">{t('servers.used')}</span><span className="text-sm font-mono font-medium">{formatTraffic(server.traffic_used || 0)}</span></div><div className="text-xs text-muted-foreground">{t('servers.unlimited')}</div></div>
                       )}
                     </div>
                   </div>
-                  {server.last_heartbeat && (<div className="mt-3 text-xs text-muted-foreground">最后心跳: {new Date(server.last_heartbeat).toLocaleString()}</div>)}
+                  {server.last_heartbeat && (<div className="mt-3 text-xs text-muted-foreground">{t('servers.lastHeartbeat')}: {new Date(server.last_heartbeat).toLocaleString()}</div>)}
                 </CardHeader>
                 <CardFooter className="flex gap-2 pt-4">
                   {server.status === 'connected' && (
                     <>
                       <InstallPopover serverId={server.id} />
-                      {remoteStatus?.xray?.installed && (<Button variant="outline" size="sm" className="flex-1 min-w-0" onClick={(e) => { e.stopPropagation(); handleOpenRemoteXrayConfig(server) }}><Cog className="h-4 w-4 mr-1" />Xray配置</Button>)}
+                      {remoteStatus?.xray?.installed && (<Button variant="outline" size="sm" className="flex-1 min-w-0" onClick={(e) => { e.stopPropagation(); handleOpenRemoteXrayConfig(server) }}><Cog className="h-4 w-4 mr-1" />{t('servers.xrayConfig')}</Button>)}
                       {remoteStatus?.xray?.installed && (
                         <DropdownMenu>
-                          <DropdownMenuTrigger asChild><Button variant="outline" size="sm" className="flex-1 min-w-0"><Settings className="mr-1 h-3.5 w-3.5 shrink-0" />Agent 管理<ChevronDown className="ml-1 h-3.5 w-3.5 shrink-0" /></Button></DropdownMenuTrigger>
+                          <DropdownMenuTrigger asChild><Button variant="outline" size="sm" className="flex-1 min-w-0"><Settings className="mr-1 h-3.5 w-3.5 shrink-0" />{t('servers.agentManagement')}<ChevronDown className="ml-1 h-3.5 w-3.5 shrink-0" /></Button></DropdownMenuTrigger>
                           <DropdownMenuContent align="start">
-                            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setSyncingServerId(server.id); setSyncServerHost(server.ip_address || ''); setIsSyncNodesDialogOpen(true) }}><RefreshCw className="mr-2 h-4 w-4" />同步节点</DropdownMenuItem>
-                            {server.domain && (<><DropdownMenuSeparator /><DropdownMenuItem onClick={(e) => { e.stopPropagation(); deployStealSelfMutation.mutate(server.id) }} disabled={deployStealSelfMutation.isPending}><Download className="mr-2 h-4 w-4" />{deployStealSelfMutation.isPending ? '下发中...' : '下发配置'}</DropdownMenuItem></>)}
+                            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setSyncingServerId(server.id); setSyncServerHost(server.ip_address || ''); setIsSyncNodesDialogOpen(true) }}><RefreshCw className="mr-2 h-4 w-4" />{t('servers.syncNodes')}</DropdownMenuItem>
+                            {server.domain && (<><DropdownMenuSeparator /><DropdownMenuItem onClick={(e) => { e.stopPropagation(); deployStealSelfMutation.mutate(server.id) }} disabled={deployStealSelfMutation.isPending}><Download className="mr-2 h-4 w-4" />{deployStealSelfMutation.isPending ? t('servers.deploying') : t('servers.deployConfig')}</DropdownMenuItem></>)}
                             <DropdownMenuSeparator />
-                            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setAddWebsiteServerId(server.id); setIsAddWebsiteDialogOpen(true) }}><Globe className="mr-2 h-4 w-4" />添加网站</DropdownMenuItem>
+                            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setAddWebsiteServerId(server.id); setIsAddWebsiteDialogOpen(true) }}><Globe className="mr-2 h-4 w-4" />{t('servers.addWebsite')}</DropdownMenuItem>
                             <DropdownMenuSeparator />
-                            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleAgentUpgrade(server.id) }}><ArrowUpCircle className="mr-2 h-4 w-4" />升级 Agent</DropdownMenuItem>
-                            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleAgentUninstall(server.id) }} className="text-red-600"><Trash2 className="mr-2 h-4 w-4" />卸载 Agent</DropdownMenuItem>
+                            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleAgentUpgrade(server.id) }}><ArrowUpCircle className="mr-2 h-4 w-4" />{t('servers.upgradeAgent')}</DropdownMenuItem>
+                            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleAgentUninstall(server.id) }} className="text-red-600"><Trash2 className="mr-2 h-4 w-4" />{t('servers.uninstallAgent')}</DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
                       )}
@@ -855,13 +858,13 @@ function XrayServersPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>名称</TableHead>
-                <TableHead>连接模式</TableHead>
-                <TableHead>IP地址</TableHead>
-                <TableHead>网速</TableHead>
-                <TableHead>流量</TableHead>
-                <TableHead>服务</TableHead>
-                <TableHead className="text-right">操作</TableHead>
+                <TableHead>{t('servers.nameCol')}</TableHead>
+                <TableHead>{t('servers.connectionMode')}</TableHead>
+                <TableHead>{t('servers.ipAddress')}</TableHead>
+                <TableHead>{t('servers.speedCol')}</TableHead>
+                <TableHead>{t('servers.trafficCol')}</TableHead>
+                <TableHead>{t('servers.serviceCol')}</TableHead>
+                <TableHead className="text-right">{t('servers.actionsCol')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -882,14 +885,14 @@ function XrayServersPage() {
                                   <TooltipTrigger asChild>
                                     <AlertTriangle className="h-4 w-4 text-yellow-500 cursor-help flex-shrink-0" />
                                   </TooltipTrigger>
-                                  <TooltipContent>服务器时间有误差，可能导致vmess、ss等时间敏感协议无法使用</TooltipContent>
+                                  <TooltipContent>{t('servers.timeOffsetWarning')}</TooltipContent>
                                 </Tooltip>
                               </TooltipProvider>
                             )}
-                            {server.fallback_to_pull && (<Badge variant="secondary" className="text-xs bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">已降级</Badge>)}
-                            {server.steal_mode && server.steal_mode !== 'tunnel' && (<Badge variant="outline" className="text-xs">{server.steal_mode === 'fallback' ? '回落' : '默认'}</Badge>)}
+                            {server.fallback_to_pull && (<Badge variant="secondary" className="text-xs bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">{t('servers.degraded')}</Badge>)}
+                            {server.steal_mode && server.steal_mode !== 'tunnel' && (<Badge variant="outline" className="text-xs">{server.steal_mode === 'fallback' ? t('servers.fallbackLabel') : t('servers.stealModeDefault')}</Badge>)}
                           </div>
-                          {server.last_heartbeat && (<div className="text-xs text-muted-foreground mt-0.5">心跳: {new Date(server.last_heartbeat).toLocaleString()}</div>)}
+                          {server.last_heartbeat && (<div className="text-xs text-muted-foreground mt-0.5">{t('servers.heartbeatLabel')}: {new Date(server.last_heartbeat).toLocaleString()}</div>)}
                         </div>
                       </div>
                     </TableCell>
@@ -898,14 +901,14 @@ function XrayServersPage() {
                         <DropdownMenuTrigger asChild>
                           <Button variant="ghost" size="sm" className="h-7 px-2 text-xs gap-1">
                             {server.connection_mode === 'websocket' && <Wifi className="h-3 w-3" />}{server.connection_mode === 'http' && <Radio className="h-3 w-3" />}{server.connection_mode === 'pull' && <RefreshCw className="h-3 w-3" />}{(server.connection_mode === 'auto' || !server.connection_mode) && <Settings className="h-3 w-3" />}
-                            <span>{server.connection_mode === 'websocket' ? 'WS' : server.connection_mode === 'http' ? 'HTTP' : server.connection_mode === 'pull' ? '轮询' : '自动'}</span><ChevronDown className="h-3 w-3" />
+                            <span>{server.connection_mode === 'websocket' ? 'WS' : server.connection_mode === 'http' ? 'HTTP' : server.connection_mode === 'pull' ? t('servers.pullMode') : t('servers.autoMode')}</span><ChevronDown className="h-3 w-3" />
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="start" className="w-40">
                           {(['auto', 'websocket', 'http', 'pull'] as const).map(mode => (
                             <DropdownMenuItem key={mode} onClick={() => updateConnectionModeMutation.mutate({ id: server.id, connection_mode: mode })}>
                               {mode === 'auto' && <Settings className="mr-2 h-4 w-4" />}{mode === 'websocket' && <Wifi className="mr-2 h-4 w-4" />}{mode === 'http' && <Radio className="mr-2 h-4 w-4" />}{mode === 'pull' && <RefreshCw className="mr-2 h-4 w-4" />}
-                              {mode === 'auto' ? '自动' : mode === 'websocket' ? 'WebSocket' : mode === 'http' ? 'HTTP' : '轮询'}
+                              {mode === 'auto' ? t('servers.autoMode') : mode === 'websocket' ? t('servers.websocketMode') : mode === 'http' ? t('servers.httpMode') : t('servers.pullMode')}
                               {(server.connection_mode === mode || (!server.connection_mode && mode === 'auto')) && <span className="ml-auto">✓</span>}
                             </DropdownMenuItem>
                           ))}
@@ -927,44 +930,44 @@ function XrayServersPage() {
                         <div className="min-w-[100px]">
                           <div className="text-xs text-muted-foreground mb-1">{formatTraffic(server.traffic_used || 0)} / {formatTraffic(server.traffic_limit)}</div>
                           <div className="h-1.5 bg-muted rounded-full overflow-hidden"><div className={cn("h-full rounded-full", getTrafficPercent(server.traffic_used || 0, server.traffic_limit) > 90 ? "bg-red-500" : getTrafficPercent(server.traffic_used || 0, server.traffic_limit) > 70 ? "bg-yellow-500" : "bg-green-500")} style={{ width: `${Math.min(getTrafficPercent(server.traffic_used || 0, server.traffic_limit), 100)}%` }} /></div>
-                          {server.traffic_reset_day && server.traffic_reset_day > 0 && (<div className="text-xs text-muted-foreground mt-0.5">每月 {server.traffic_reset_day} 日重置</div>)}
+                          {server.traffic_reset_day && server.traffic_reset_day > 0 && (<div className="text-xs text-muted-foreground mt-0.5">{t('servers.monthlyResetFull', { day: server.traffic_reset_day })}</div>)}
                         </div>
-                      ) : (<span className="text-xs text-muted-foreground">不限制</span>)}
+                      ) : (<span className="text-xs text-muted-foreground">{t('servers.noLimit')}</span>)}
                     </TableCell>
                     <TableCell>
-                      {server.status === 'connected' ? (remoteStatus?.loading ? (<span className="text-xs text-muted-foreground">加载中...</span>) : (
+                      {server.status === 'connected' ? (remoteStatus?.loading ? (<span className="text-xs text-muted-foreground">{t('servers.loadingStatus')}</span>) : (
                         <div className="flex items-center gap-3">
                           <RemoteServiceStatusIndicator status={remoteStatus?.xray} name="Xray" serverId={server.id} />
                           {remoteStatus?.nginx?.installed && (<RemoteServiceStatusIndicator status={remoteStatus?.nginx} name="Nginx" serverId={server.id} />)}
                         </div>
-                      )) : (<span className="text-xs text-muted-foreground">未连接</span>)}
+                      )) : (<span className="text-xs text-muted-foreground">{t('servers.notConnected')}</span>)}
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-1">
                         {server.status === 'connected' && (
                           <>
                             <InstallPopover serverId={server.id} compact />
-                            {remoteStatus?.xray?.installed && (<Button variant="outline" size="sm" className="h-7 px-2" onClick={() => handleOpenRemoteXrayConfig(server)} title="Xray配置"><Cog className="h-3.5 w-3.5" /></Button>)}
+                            {remoteStatus?.xray?.installed && (<Button variant="outline" size="sm" className="h-7 px-2" onClick={() => handleOpenRemoteXrayConfig(server)} title={t('servers.xrayConfig')}><Cog className="h-3.5 w-3.5" /></Button>)}
                             {remoteStatus?.xray?.installed && (
                               <DropdownMenu>
-                                <DropdownMenuTrigger asChild><Button variant="outline" size="sm" className="h-7 px-2" title="Agent 管理"><Settings className="h-3.5 w-3.5" /><ChevronDown className="h-3 w-3 ml-1" /></Button></DropdownMenuTrigger>
+                                <DropdownMenuTrigger asChild><Button variant="outline" size="sm" className="h-7 px-2" title={t('servers.agentManagement')}><Settings className="h-3.5 w-3.5" /><ChevronDown className="h-3 w-3 ml-1" /></Button></DropdownMenuTrigger>
                                 <DropdownMenuContent>
-                                  <DropdownMenuItem onClick={() => { setSyncingServerId(server.id); setSyncServerHost(server.ip_address || ''); setIsSyncNodesDialogOpen(true) }}><RefreshCw className="mr-2 h-4 w-4" />同步节点</DropdownMenuItem>
-                                  {server.domain && (<><DropdownMenuSeparator /><DropdownMenuItem onClick={() => deployStealSelfMutation.mutate(server.id)} disabled={deployStealSelfMutation.isPending}><Download className="mr-2 h-4 w-4" />{deployStealSelfMutation.isPending ? '下发中...' : '下发配置'}</DropdownMenuItem></>)}
+                                  <DropdownMenuItem onClick={() => { setSyncingServerId(server.id); setSyncServerHost(server.ip_address || ''); setIsSyncNodesDialogOpen(true) }}><RefreshCw className="mr-2 h-4 w-4" />{t('servers.syncNodes')}</DropdownMenuItem>
+                                  {server.domain && (<><DropdownMenuSeparator /><DropdownMenuItem onClick={() => deployStealSelfMutation.mutate(server.id)} disabled={deployStealSelfMutation.isPending}><Download className="mr-2 h-4 w-4" />{deployStealSelfMutation.isPending ? t('servers.deploying') : t('servers.deployConfig')}</DropdownMenuItem></>)}
                                   <DropdownMenuSeparator />
-                                  <DropdownMenuItem onClick={() => { setAddWebsiteServerId(server.id); setIsAddWebsiteDialogOpen(true) }}><Globe className="mr-2 h-4 w-4" />添加网站</DropdownMenuItem>
+                                  <DropdownMenuItem onClick={() => { setAddWebsiteServerId(server.id); setIsAddWebsiteDialogOpen(true) }}><Globe className="mr-2 h-4 w-4" />{t('servers.addWebsite')}</DropdownMenuItem>
                                   <DropdownMenuSeparator />
-                                  <DropdownMenuItem onClick={() => handleAgentUpgrade(server.id)}><ArrowUpCircle className="mr-2 h-4 w-4" />升级 Agent</DropdownMenuItem>
-                                  <DropdownMenuItem onClick={() => handleAgentUninstall(server.id)} className="text-red-600"><Trash2 className="mr-2 h-4 w-4" />卸载 Agent</DropdownMenuItem>
+                                  <DropdownMenuItem onClick={() => handleAgentUpgrade(server.id)}><ArrowUpCircle className="mr-2 h-4 w-4" />{t('servers.upgradeAgent')}</DropdownMenuItem>
+                                  <DropdownMenuItem onClick={() => handleAgentUninstall(server.id)} className="text-red-600"><Trash2 className="mr-2 h-4 w-4" />{t('servers.uninstallAgent')}</DropdownMenuItem>
                                 </DropdownMenuContent>
                               </DropdownMenu>
                             )}
-                            <Button variant="ghost" size="sm" className="h-7 px-2" onClick={() => handleOpenXrayRawConfig(server)} title="查看 Xray 配置"><Eye className="h-3.5 w-3.5" /></Button>
-                            <Button variant="ghost" size="sm" className="h-7 px-2" onClick={() => remoteScanMutation.mutate(server.id)} disabled={remoteScanMutation.isPending} title="扫描"><Search className={cn("h-3.5 w-3.5", remoteScanMutation.isPending && "animate-spin")} /></Button>
+                            <Button variant="ghost" size="sm" className="h-7 px-2" onClick={() => handleOpenXrayRawConfig(server)} title={t('servers.viewXrayConfig')}><Eye className="h-3.5 w-3.5" /></Button>
+                            <Button variant="ghost" size="sm" className="h-7 px-2" onClick={() => remoteScanMutation.mutate(server.id)} disabled={remoteScanMutation.isPending} title={t('servers.scan')}><Search className={cn("h-3.5 w-3.5", remoteScanMutation.isPending && "animate-spin")} /></Button>
                           </>
                         )}
-                        <Button variant="ghost" size="sm" className="h-7 px-2" onClick={() => handleEditRemoteServer(server)} title="编辑"><Pencil className="h-3.5 w-3.5" /></Button>
-                        <Button variant="ghost" size="sm" className="h-7 px-2 text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950" onClick={() => handleDeleteRemoteServer(server.id)} title="删除"><X className="h-3.5 w-3.5" /></Button>
+                        <Button variant="ghost" size="sm" className="h-7 px-2" onClick={() => handleEditRemoteServer(server)} title={t('servers.editServer')}><Pencil className="h-3.5 w-3.5" /></Button>
+                        <Button variant="ghost" size="sm" className="h-7 px-2 text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950" onClick={() => handleDeleteRemoteServer(server.id)} title={t('servers.deleteServer')}><X className="h-3.5 w-3.5" /></Button>
                       </div>
                     </TableCell>
                   </TableRow>
@@ -980,14 +983,14 @@ function XrayServersPage() {
         <DialogContent className="sm:max-w-2xl">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2"><Terminal className="h-5 w-5" />{terminalTitle}</DialogTitle>
-            <DialogDescription>{terminalRunning ? '正在执行，请稍候...' : '执行完成'}</DialogDescription>
+            <DialogDescription>{terminalRunning ? t('servers.executing') : t('servers.executionDone')}</DialogDescription>
           </DialogHeader>
           <div className="py-4">
             <div ref={terminalRef} className="bg-zinc-900 text-zinc-100 p-4 rounded-lg text-sm font-mono overflow-auto max-h-[400px] whitespace-pre-wrap break-all">
               {terminalOutput}{terminalRunning && <span className="animate-pulse">▌</span>}
             </div>
           </div>
-          <DialogFooter><Button variant="outline" onClick={() => setIsTerminalDialogOpen(false)} disabled={terminalRunning}>{terminalRunning ? '执行中...' : '关闭'}</Button></DialogFooter>
+          <DialogFooter><Button variant="outline" onClick={() => setIsTerminalDialogOpen(false)} disabled={terminalRunning}>{terminalRunning ? t('servers.executingBtn') : tc('actions.close')}</Button></DialogFooter>
         </DialogContent>
       </Dialog>
 
@@ -995,36 +998,36 @@ function XrayServersPage() {
       <Dialog open={isXrayRawConfigDialogOpen} onOpenChange={(open) => { setIsXrayRawConfigDialogOpen(open); if (!open) setConfigServer(null) }}>
         <DialogContent className="w-[50vw] h-[85vh] flex flex-col overflow-hidden sm:max-w-none">
           <DialogHeader className="flex-shrink-0">
-            <DialogTitle>Xray 管理 - {xrayRawConfigServerName}</DialogTitle>
-            <DialogDescription>管理远程服务器的 Xray 服务控制、配置、入站、出站和路由</DialogDescription>
+            <DialogTitle>{t('servers.xrayManagement')} - {xrayRawConfigServerName}</DialogTitle>
+            <DialogDescription>{t('servers.xrayManagementDesc')}</DialogDescription>
           </DialogHeader>
           <Tabs defaultValue="config" className="flex-1 flex flex-col min-h-0">
             <TabsList className="flex-shrink-0 w-full justify-start">
-              <TabsTrigger value="config">配置管理</TabsTrigger>
-              <TabsTrigger value="inbounds">入站管理</TabsTrigger>
-              <TabsTrigger value="outbounds">出站管理</TabsTrigger>
-              <TabsTrigger value="routing">路由管理</TabsTrigger>
+              <TabsTrigger value="config">{t('servers.configManagement')}</TabsTrigger>
+              <TabsTrigger value="inbounds">{t('servers.inboundManagement')}</TabsTrigger>
+              <TabsTrigger value="outbounds">{t('servers.outboundManagement')}</TabsTrigger>
+              <TabsTrigger value="routing">{t('servers.routingManagement')}</TabsTrigger>
             </TabsList>
             <TabsContent value="config" className="flex-1 flex flex-col min-h-0 mt-2">
               {configServer?.type === 'remote' && (
                 <div className="flex flex-wrap items-center gap-x-6 gap-y-3 pb-3 border-b mb-3 flex-shrink-0">
                   <div className="flex items-center gap-2">
-                    <span className="text-sm text-muted-foreground">服务控制:</span>
-                    <Button variant="outline" size="sm" onClick={() => remoteServiceControlMutation.mutate({ serverId: configServer.server.id, service: 'xray', action: 'start' })} disabled={remoteServiceControlMutation.isPending || remoteServicesStatus?.xray?.running}><Play className="h-4 w-4 mr-1" />启动</Button>
-                    <Button variant="outline" size="sm" onClick={() => remoteServiceControlMutation.mutate({ serverId: configServer.server.id, service: 'xray', action: 'stop' })} disabled={remoteServiceControlMutation.isPending || !remoteServicesStatus?.xray?.running}><Square className="h-4 w-4 mr-1" />停止</Button>
-                    <Button variant="outline" size="sm" onClick={() => remoteServiceControlMutation.mutate({ serverId: configServer.server.id, service: 'xray', action: 'restart' })} disabled={remoteServiceControlMutation.isPending}><RotateCcw className="h-4 w-4 mr-1" />重启</Button>
+                    <span className="text-sm text-muted-foreground">{t('servers.serviceControl')}</span>
+                    <Button variant="outline" size="sm" onClick={() => remoteServiceControlMutation.mutate({ serverId: configServer.server.id, service: 'xray', action: 'start' })} disabled={remoteServiceControlMutation.isPending || remoteServicesStatus?.xray?.running}><Play className="h-4 w-4 mr-1" />{t('servers.startBtn')}</Button>
+                    <Button variant="outline" size="sm" onClick={() => remoteServiceControlMutation.mutate({ serverId: configServer.server.id, service: 'xray', action: 'stop' })} disabled={remoteServiceControlMutation.isPending || !remoteServicesStatus?.xray?.running}><Square className="h-4 w-4 mr-1" />{t('servers.stopBtn')}</Button>
+                    <Button variant="outline" size="sm" onClick={() => remoteServiceControlMutation.mutate({ serverId: configServer.server.id, service: 'xray', action: 'restart' })} disabled={remoteServiceControlMutation.isPending}><RotateCcw className="h-4 w-4 mr-1" />{t('servers.restartBtn')}</Button>
                   </div>
                   {remoteServicesLoading ? (<RefreshCw className="h-4 w-4 animate-spin text-muted-foreground" />) : (
                     <Badge variant={remoteServicesStatus?.xray?.running ? 'default' : 'secondary'}>
-                      {remoteServicesStatus?.xray?.installed ? (remoteServicesStatus?.xray?.running ? '运行中' : '已停止') : '未安装'}
+                      {remoteServicesStatus?.xray?.installed ? (remoteServicesStatus?.xray?.running ? t('servers.running') : t('servers.stopped')) : t('servers.notInstalled')}
                       {remoteServicesStatus?.xray?.version ? ` (${remoteServicesStatus.xray.version})` : ''}
                     </Badge>
                   )}
                   <div className="flex items-center gap-4 flex-wrap">
                     {!remoteXraySystemConfigLoading && (
                       <>
-                        <label className="flex items-center gap-1.5 text-sm"><Switch checked={remoteXraySystemConfig.metrics_enabled} onCheckedChange={(checked) => setRemoteXraySystemConfig(prev => ({ ...prev, metrics_enabled: checked }))} />指标统计</label>
-                        <label className="flex items-center gap-1.5 text-sm"><Switch checked={remoteXraySystemConfig.stats_enabled} onCheckedChange={(checked) => setRemoteXraySystemConfig(prev => ({ ...prev, stats_enabled: checked }))} />流量统计</label>
+                        <label className="flex items-center gap-1.5 text-sm"><Switch checked={remoteXraySystemConfig.metrics_enabled} onCheckedChange={(checked) => setRemoteXraySystemConfig(prev => ({ ...prev, metrics_enabled: checked }))} />{t('servers.metricsStats')}</label>
+                        <label className="flex items-center gap-1.5 text-sm"><Switch checked={remoteXraySystemConfig.stats_enabled} onCheckedChange={(checked) => setRemoteXraySystemConfig(prev => ({ ...prev, stats_enabled: checked }))} />{t('servers.trafficStatsConfig')}</label>
                         <label className="flex items-center gap-1.5 text-sm"><Switch checked={remoteXraySystemConfig.grpc_enabled} onCheckedChange={(checked) => setRemoteXraySystemConfig(prev => ({ ...prev, grpc_enabled: checked }))} />gRPC</label>
                       </>
                     )}
@@ -1033,12 +1036,12 @@ function XrayServersPage() {
               )}
               <div className="flex-1 flex flex-col min-h-0">
                 {xrayRawConfigLoading ? (<div className="flex items-center justify-center flex-1 bg-muted rounded-lg"><RefreshCw className="h-6 w-6 animate-spin text-muted-foreground" /></div>) : (
-                  <Textarea value={xrayRawConfig} onChange={(e) => setXrayRawConfig(e.target.value)} className="font-mono text-sm flex-1 resize-none" placeholder="Xray 配置文件内容..." />
+                  <Textarea value={xrayRawConfig} onChange={(e) => setXrayRawConfig(e.target.value)} className="font-mono text-sm flex-1 resize-none" placeholder={t('servers.xrayConfigPlaceholder')} />
                 )}
               </div>
               <div className="flex justify-end gap-2 pt-3 flex-shrink-0">
-                <Button onClick={() => { if (xrayRawConfigServerId === null) return; try { JSON.parse(xrayRawConfig) } catch { toast.error('JSON 格式错误，请检查配置'); return }; saveXrayRawConfigMutation.mutate({ serverId: xrayRawConfigServerId, config: xrayRawConfig }); if (configServer?.type === 'remote') handleSaveXrayConfig() }} disabled={saveXrayRawConfigMutation.isPending || updateRemoteXraySystemConfigMutation.isPending || xrayRawConfigLoading}>
-                  {(saveXrayRawConfigMutation.isPending || updateRemoteXraySystemConfigMutation.isPending) ? '保存中...' : '保存配置'}
+                <Button onClick={() => { if (xrayRawConfigServerId === null) return; try { JSON.parse(xrayRawConfig) } catch { toast.error(t('servers.jsonFormatError')); return }; saveXrayRawConfigMutation.mutate({ serverId: xrayRawConfigServerId, config: xrayRawConfig }); if (configServer?.type === 'remote') handleSaveXrayConfig() }} disabled={saveXrayRawConfigMutation.isPending || updateRemoteXraySystemConfigMutation.isPending || xrayRawConfigLoading}>
+                  {(saveXrayRawConfigMutation.isPending || updateRemoteXraySystemConfigMutation.isPending) ? t('servers.saving') : t('servers.saveConfig')}
                 </Button>
               </div>
             </TabsContent>
@@ -1058,8 +1061,8 @@ function XrayServersPage() {
       {/* Delete Remote Server Confirm */}
       <AlertDialog open={isDeleteRemoteServerDialogOpen} onOpenChange={setIsDeleteRemoteServerDialogOpen}>
         <AlertDialogContent>
-          <AlertDialogHeader><AlertDialogTitle>确认删除远程服务器</AlertDialogTitle><AlertDialogDescription>确定要删除这个远程服务器吗？删除后将撤销其 Token，远程服务器将无法再与本服务器通信。</AlertDialogDescription></AlertDialogHeader>
-          <AlertDialogFooter><AlertDialogCancel onClick={() => setDeletingRemoteServerId(null)}>取消</AlertDialogCancel><AlertDialogAction onClick={confirmDeleteRemoteServer} className="bg-red-600 hover:bg-red-700">确认删除</AlertDialogAction></AlertDialogFooter>
+          <AlertDialogHeader><AlertDialogTitle>{t('servers.confirmDeleteServer')}</AlertDialogTitle><AlertDialogDescription>{t('servers.deleteServerTokenWarning')}</AlertDialogDescription></AlertDialogHeader>
+          <AlertDialogFooter><AlertDialogCancel onClick={() => setDeletingRemoteServerId(null)}>{tc('actions.cancel')}</AlertDialogCancel><AlertDialogAction onClick={confirmDeleteRemoteServer} className="bg-red-600 hover:bg-red-700">{tc('actions.confirmDelete')}</AlertDialogAction></AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 
@@ -1069,23 +1072,23 @@ function XrayServersPage() {
       <Dialog open={isRemoteServerDetailDialogOpen} onOpenChange={setIsRemoteServerDetailDialogOpen}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>{selectedRemoteServer?.status === 'offline' ? '服务器离线' : '远程服务器安装信息'}</DialogTitle>
-            <DialogDescription>{selectedRemoteServer?.status === 'offline' ? '服务器已离线，请检查服务状态或重新安装。' : '在远程服务器上执行以下命令完成安装，或手动配置 Token。'}</DialogDescription>
+            <DialogTitle>{selectedRemoteServer?.status === 'offline' ? t('servers.serverOffline') : t('servers.serverInstallInfo')}</DialogTitle>
+            <DialogDescription>{selectedRemoteServer?.status === 'offline' ? t('servers.serverOfflineDesc') : t('servers.serverOfflineDescDetailed')}</DialogDescription>
           </DialogHeader>
           {selectedRemoteServer && (
             <div className="space-y-4">
               {selectedRemoteServer.status === 'offline' && (
                 <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 p-4 rounded-lg">
-                  <div className="flex items-center gap-2 text-red-700 dark:text-red-400 font-medium mb-2"><div className="w-3 h-3 rounded-full bg-red-500" />服务器离线</div>
-                  <p className="text-sm text-red-600 dark:text-red-400">上次心跳: {selectedRemoteServer.last_heartbeat ? new Date(selectedRemoteServer.last_heartbeat).toLocaleString() : '从未连接'}</p>
+                  <div className="flex items-center gap-2 text-red-700 dark:text-red-400 font-medium mb-2"><div className="w-3 h-3 rounded-full bg-red-500" />{t('servers.serverOffline')}</div>
+                  <p className="text-sm text-red-600 dark:text-red-400">{t('servers.lastHeartbeatTime', { time: selectedRemoteServer.last_heartbeat ? new Date(selectedRemoteServer.last_heartbeat).toLocaleString() : t('servers.neverConnected') })}</p>
                 </div>
               )}
-              <div className="space-y-2"><Label>服务器名称</Label><div className="text-sm font-medium">{selectedRemoteServer.name}</div></div>
+              <div className="space-y-2"><Label>{t('servers.serverName')}</Label><div className="text-sm font-medium">{selectedRemoteServer.name}</div></div>
               {selectedRemoteServer.status === 'offline' && (
                 <div className="space-y-2">
-                  <Label className="text-base font-semibold">启动服务</Label>
-                  <div className="bg-muted p-3 rounded-md"><pre className="text-xs font-mono whitespace-pre-wrap">{`# 检查服务状态\nsystemctl status mmwx\n\n# 启动服务\nsystemctl start mmwx\n\n# 查看日志\njournalctl -u mmwx -f`}</pre></div>
-                  <Button variant="outline" size="sm" onClick={() => copyToClipboard('systemctl start mmwx', '启动命令')}><Copy className="h-4 w-4 mr-2" />复制启动命令</Button>
+                  <Label className="text-base font-semibold">{t('servers.startService')}</Label>
+                  <div className="bg-muted p-3 rounded-md"><pre className="text-xs font-mono whitespace-pre-wrap">{`# Check service status\nsystemctl status mmwx\n\n# Start service\nsystemctl start mmwx\n\n# View logs\njournalctl -u mmwx -f`}</pre></div>
+                  <Button variant="outline" size="sm" onClick={() => copyToClipboard('systemctl start mmwx', t('servers.copyStartCommand'))}><Copy className="h-4 w-4 mr-2" />{t('servers.copyStartCommand')}</Button>
                 </div>
               )}
               <div className="space-y-2">
@@ -1093,48 +1096,48 @@ function XrayServersPage() {
                 <div className="flex gap-2"><Input id="detail-token" value={selectedRemoteServer.token} readOnly className="font-mono text-sm" /><Button variant="outline" size="icon" onClick={() => copyToClipboard(selectedRemoteServer.token, 'Token')}><Copy className="h-4 w-4" /></Button></div>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="detail-install-command">{selectedRemoteServer.status === 'offline' ? '重新安装命令' : '一键安装命令'}</Label>
-                <div className="flex gap-2"><Input id="detail-install-command" value={`curl -fsSL '${masterOrigin}/api/remote/install.sh?token=${selectedRemoteServer.token}' | bash`} readOnly className="font-mono text-xs" /><Button variant="outline" size="icon" onClick={() => copyToClipboard(`curl -fsSL '${masterOrigin}/api/remote/install.sh?token=${selectedRemoteServer.token}' | bash`, '安装命令')}><Copy className="h-4 w-4" /></Button></div>
-                <p className="text-xs text-muted-foreground">{selectedRemoteServer.status === 'offline' ? '如果服务无法启动，可以尝试重新安装。' : '在远程服务器上执行此命令，将自动下载并配置 MMWX 客户端。'}</p>
+                <Label htmlFor="detail-install-command">{selectedRemoteServer.status === 'offline' ? t('servers.reinstallCommand') : t('servers.oneClickInstall')}</Label>
+                <div className="flex gap-2"><Input id="detail-install-command" value={`curl -fsSL '${masterOrigin}/api/remote/install.sh?token=${selectedRemoteServer.token}' | bash`} readOnly className="font-mono text-xs" /><Button variant="outline" size="icon" onClick={() => copyToClipboard(`curl -fsSL '${masterOrigin}/api/remote/install.sh?token=${selectedRemoteServer.token}' | bash`, t('servers.installCommand'))}><Copy className="h-4 w-4" /></Button></div>
+                <p className="text-xs text-muted-foreground">{selectedRemoteServer.status === 'offline' ? t('servers.offlineReinstallHint') : t('servers.onlineInstallHint')}</p>
               </div>
               <div className="space-y-2">
-                <Label>手动配置</Label>
-                <div className="bg-muted p-3 rounded-md"><pre className="text-xs font-mono whitespace-pre-wrap">{`# 配置文件路径: /etc/mmwx/config.yaml\nmode: remote\nmaster_server: ${window.location.origin}\nremote_token: ${selectedRemoteServer.token}`}</pre></div>
-                <Button variant="outline" size="sm" onClick={() => copyToClipboard(`mode: remote\nmaster_server: ${window.location.origin}\nremote_token: ${selectedRemoteServer.token}`, '配置内容')}><Copy className="h-4 w-4 mr-2" />复制配置</Button>
+                <Label>{t('servers.manualConfig')}</Label>
+                <div className="bg-muted p-3 rounded-md"><pre className="text-xs font-mono whitespace-pre-wrap">{`# Config file: /etc/mmwx/config.yaml\nmode: remote\nmaster_server: ${window.location.origin}\nremote_token: ${selectedRemoteServer.token}`}</pre></div>
+                <Button variant="outline" size="sm" onClick={() => copyToClipboard(`mode: remote\nmaster_server: ${window.location.origin}\nremote_token: ${selectedRemoteServer.token}`, t('servers.manualConfig'))}><Copy className="h-4 w-4 mr-2" />{t('servers.copyConfig')}</Button>
               </div>
             </div>
           )}
-          <DialogFooter><Button variant="outline" onClick={() => setIsRemoteServerDetailDialogOpen(false)}>关闭</Button></DialogFooter>
+          <DialogFooter><Button variant="outline" onClick={() => setIsRemoteServerDetailDialogOpen(false)}>{tc('actions.close')}</Button></DialogFooter>
         </DialogContent>
       </Dialog>
 
       {/* Edit Remote Server Dialog */}
       <Dialog open={isEditRemoteServerDialogOpen} onOpenChange={(open) => { setIsEditRemoteServerDialogOpen(open); if (!open) { setEditingRemoteServer(null); setRemoteFormData({ name: '', domain: '', traffic_limit_gb: '', traffic_reset_day: '' }) } }}>
         <DialogContent className="max-w-md">
-          <DialogHeader><DialogTitle>编辑远程服务器</DialogTitle><DialogDescription>修改远程服务器的基本信息</DialogDescription></DialogHeader>
+          <DialogHeader><DialogTitle>{t('servers.editRemoteServer')}</DialogTitle><DialogDescription>{t('servers.editRemoteServerDesc')}</DialogDescription></DialogHeader>
           <div className="grid gap-4 py-4">
-            <div className="grid gap-2"><Label htmlFor="edit-remote-name">服务器名称</Label><Input id="edit-remote-name" value={remoteFormData.name} onChange={(e) => setRemoteFormData({ ...remoteFormData, name: e.target.value })} placeholder="例如：美国节点1" /></div>
-            <div className="grid gap-2"><Label htmlFor="edit-remote-domain">服务器域名（可选）</Label><Input id="edit-remote-domain" value={remoteFormData.domain} onChange={(e) => setRemoteFormData({ ...remoteFormData, domain: e.target.value })} placeholder="example.com" /><p className="text-xs text-muted-foreground">如果填写域名，节点的服务器地址将使用域名而非 IP</p></div>
+            <div className="grid gap-2"><Label htmlFor="edit-remote-name">{t('servers.serverName')}</Label><Input id="edit-remote-name" value={remoteFormData.name} onChange={(e) => setRemoteFormData({ ...remoteFormData, name: e.target.value })} placeholder={t('servers.serverNamePlaceholder')} /></div>
+            <div className="grid gap-2"><Label htmlFor="edit-remote-domain">{t('servers.domainOptional')}</Label><Input id="edit-remote-domain" value={remoteFormData.domain} onChange={(e) => setRemoteFormData({ ...remoteFormData, domain: e.target.value })} placeholder="example.com" /><p className="text-xs text-muted-foreground">{t('servers.domainHint')}</p></div>
             <div className="grid grid-cols-2 gap-4">
-              <div className="grid gap-2"><Label htmlFor="edit-remote-traffic-limit">流量限制 (GB)</Label><Input id="edit-remote-traffic-limit" type="number" step="0.01" placeholder="留空表示不限制" value={remoteFormData.traffic_limit_gb} onChange={(e) => setRemoteFormData({ ...remoteFormData, traffic_limit_gb: e.target.value })} /></div>
-              <div className="grid gap-2"><Label htmlFor="edit-remote-reset-day">重置日期 (每月)</Label><Input id="edit-remote-reset-day" type="number" min="1" max="31" placeholder="1-31，留空不重置" value={remoteFormData.traffic_reset_day} onChange={(e) => setRemoteFormData({ ...remoteFormData, traffic_reset_day: e.target.value })} /></div>
+              <div className="grid gap-2"><Label htmlFor="edit-remote-traffic-limit">{t('servers.trafficLimit')}</Label><Input id="edit-remote-traffic-limit" type="number" step="0.01" placeholder={t('servers.trafficLimitPlaceholder')} value={remoteFormData.traffic_limit_gb} onChange={(e) => setRemoteFormData({ ...remoteFormData, traffic_limit_gb: e.target.value })} /></div>
+              <div className="grid gap-2"><Label htmlFor="edit-remote-reset-day">{t('servers.resetDay')}</Label><Input id="edit-remote-reset-day" type="number" min="1" max="31" placeholder={t('servers.resetDayPlaceholder')} value={remoteFormData.traffic_reset_day} onChange={(e) => setRemoteFormData({ ...remoteFormData, traffic_reset_day: e.target.value })} /></div>
             </div>
             {editingRemoteServer?.status === 'connected' && (
               <div className="grid gap-2">
-                <Label>部署模式</Label>
+                <Label>{t('servers.deployMode')}</Label>
                 <RadioGroup value={remoteFormData.steal_mode} onValueChange={(value) => setRemoteFormData({ ...remoteFormData, steal_mode: value })} className="flex gap-4">
                   <div className="flex items-center gap-2"><RadioGroupItem value="tunnel" id="edit-steal-tunnel" /><Label htmlFor="edit-steal-tunnel" className="text-sm cursor-pointer">Tunnel</Label></div>
-                  <div className="flex items-center gap-2"><RadioGroupItem value="fallback" id="edit-steal-fallback" /><Label htmlFor="edit-steal-fallback" className="text-sm cursor-pointer">回落</Label></div>
-                  <div className="flex items-center gap-2"><RadioGroupItem value="default" id="edit-steal-default" /><Label htmlFor="edit-steal-default" className="text-sm cursor-pointer">默认</Label></div>
+                  <div className="flex items-center gap-2"><RadioGroupItem value="fallback" id="edit-steal-fallback" /><Label htmlFor="edit-steal-fallback" className="text-sm cursor-pointer">{t('servers.fallbackLabel')}</Label></div>
+                  <div className="flex items-center gap-2"><RadioGroupItem value="default" id="edit-steal-default" /><Label htmlFor="edit-steal-default" className="text-sm cursor-pointer">{t('servers.stealModeDefault')}</Label></div>
                 </RadioGroup>
-                <p className="text-xs text-muted-foreground">{remoteFormData.steal_mode === 'tunnel' ? 'Xray 监听 443，通过 tunnel 转发到 Nginx' : remoteFormData.steal_mode === 'fallback' ? 'Xray 监听443端口，通过fallback回落到Nginx' : '无偷自己，Xray 直接监听协议端口'}</p>
-                {remoteFormData.steal_mode !== (editingRemoteServer?.steal_mode || 'tunnel') && (<p className="text-xs text-yellow-600 dark:text-yellow-400">切换模式将重新部署配置，已有入站会自动保留</p>)}
+                <p className="text-xs text-muted-foreground">{remoteFormData.steal_mode === 'tunnel' ? t('servers.tunnelModeDesc') : remoteFormData.steal_mode === 'fallback' ? t('servers.fallbackModeDesc') : t('servers.stealModeDefaultDesc')}</p>
+                {remoteFormData.steal_mode !== (editingRemoteServer?.steal_mode || 'tunnel') && (<p className="text-xs text-yellow-600 dark:text-yellow-400">{t('servers.stealModeSwitchWarning')}</p>)}
               </div>
             )}
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsEditRemoteServerDialogOpen(false)} disabled={updateRemoteServerMutation.isPending || switchStealModeMutation.isPending}>取消</Button>
-            <Button onClick={handleSubmitRemoteServerEdit} disabled={updateRemoteServerMutation.isPending || switchStealModeMutation.isPending || !remoteFormData.name.trim()}>{(updateRemoteServerMutation.isPending || switchStealModeMutation.isPending) ? '保存中...' : '保存'}</Button>
+            <Button variant="outline" onClick={() => setIsEditRemoteServerDialogOpen(false)} disabled={updateRemoteServerMutation.isPending || switchStealModeMutation.isPending}>{tc('actions.cancel')}</Button>
+            <Button onClick={handleSubmitRemoteServerEdit} disabled={updateRemoteServerMutation.isPending || switchStealModeMutation.isPending || !remoteFormData.name.trim()}>{(updateRemoteServerMutation.isPending || switchStealModeMutation.isPending) ? tc('actions.saving') : tc('actions.save')}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -1142,55 +1145,55 @@ function XrayServersPage() {
       {/* Remote Manage Dialog */}
       <Dialog open={isRemoteManageDialogOpen} onOpenChange={(open) => { setIsRemoteManageDialogOpen(open); if (!open) { setManagingRemoteServer(null); setRemoteServicesStatus(null) } }}>
         <DialogContent className="max-w-lg">
-          <DialogHeader><DialogTitle>远程服务器管理</DialogTitle><DialogDescription>{managingRemoteServer?.name} - 管理远程服务</DialogDescription></DialogHeader>
+          <DialogHeader><DialogTitle>{t('servers.remoteServerManagement')}</DialogTitle><DialogDescription>{t('servers.manageRemoteService', { name: managingRemoteServer?.name || '' })}</DialogDescription></DialogHeader>
           {remoteServicesLoading ? (<div className="flex items-center justify-center py-8"><RefreshCw className="h-6 w-6 animate-spin text-muted-foreground" /></div>) : (
             <div className="space-y-6 py-4">
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2"><h4 className="font-medium">Xray</h4>{remoteServicesStatus?.xray?.installed ? (<Badge variant={remoteServicesStatus.xray.running ? 'default' : 'secondary'}>{remoteServicesStatus.xray.running ? '运行中' : '已停止'}</Badge>) : (<Badge variant="outline">未安装</Badge>)}</div>
+                  <div className="flex items-center gap-2"><h4 className="font-medium">Xray</h4>{remoteServicesStatus?.xray?.installed ? (<Badge variant={remoteServicesStatus.xray.running ? 'default' : 'secondary'}>{remoteServicesStatus.xray.running ? t('servers.running') : t('servers.stopped')}</Badge>) : (<Badge variant="outline">{t('servers.notInstalled')}</Badge>)}</div>
                   {remoteServicesStatus?.xray?.version && (<span className="text-xs text-muted-foreground">{remoteServicesStatus.xray.version}</span>)}
                 </div>
                 <div className="flex flex-wrap gap-2">
                   {remoteServicesStatus?.xray?.installed ? (
                     <>
-                      <Button variant="outline" size="sm" onClick={() => managingRemoteServer && remoteServiceControlMutation.mutate({ serverId: managingRemoteServer.id, service: 'xray', action: 'start' })} disabled={remoteServiceControlMutation.isPending || remoteServicesStatus?.xray?.running}><Play className="h-4 w-4 mr-1" />启动</Button>
-                      <Button variant="outline" size="sm" onClick={() => managingRemoteServer && remoteServiceControlMutation.mutate({ serverId: managingRemoteServer.id, service: 'xray', action: 'stop' })} disabled={remoteServiceControlMutation.isPending || !remoteServicesStatus?.xray?.running}><Square className="h-4 w-4 mr-1" />停止</Button>
-                      <Button variant="outline" size="sm" onClick={() => managingRemoteServer && remoteServiceControlMutation.mutate({ serverId: managingRemoteServer.id, service: 'xray', action: 'restart' })} disabled={remoteServiceControlMutation.isPending}><RotateCcw className="h-4 w-4 mr-1" />重启</Button>
-                      <Button variant="outline" size="sm" className="text-red-600 hover:text-red-700" onClick={() => managingRemoteServer && handleRemoteRemoveXray(managingRemoteServer.id)} disabled={terminalRunning}><Trash2 className="h-4 w-4 mr-1" />卸载</Button>
+                      <Button variant="outline" size="sm" onClick={() => managingRemoteServer && remoteServiceControlMutation.mutate({ serverId: managingRemoteServer.id, service: 'xray', action: 'start' })} disabled={remoteServiceControlMutation.isPending || remoteServicesStatus?.xray?.running}><Play className="h-4 w-4 mr-1" />{t('servers.startBtn')}</Button>
+                      <Button variant="outline" size="sm" onClick={() => managingRemoteServer && remoteServiceControlMutation.mutate({ serverId: managingRemoteServer.id, service: 'xray', action: 'stop' })} disabled={remoteServiceControlMutation.isPending || !remoteServicesStatus?.xray?.running}><Square className="h-4 w-4 mr-1" />{t('servers.stopBtn')}</Button>
+                      <Button variant="outline" size="sm" onClick={() => managingRemoteServer && remoteServiceControlMutation.mutate({ serverId: managingRemoteServer.id, service: 'xray', action: 'restart' })} disabled={remoteServiceControlMutation.isPending}><RotateCcw className="h-4 w-4 mr-1" />{t('servers.restartBtn')}</Button>
+                      <Button variant="outline" size="sm" className="text-red-600 hover:text-red-700" onClick={() => managingRemoteServer && handleRemoteRemoveXray(managingRemoteServer.id)} disabled={terminalRunning}><Trash2 className="h-4 w-4 mr-1" />{t('servers.uninstall')}</Button>
                     </>
-                  ) : (<Button variant="outline" size="sm" onClick={() => managingRemoteServer && handleRemoteInstallXray(managingRemoteServer.id)} disabled={terminalRunning}><Download className="h-4 w-4 mr-1" />安装 Xray</Button>)}
+                  ) : (<Button variant="outline" size="sm" onClick={() => managingRemoteServer && handleRemoteInstallXray(managingRemoteServer.id)} disabled={terminalRunning}><Download className="h-4 w-4 mr-1" />{t('servers.installXray')}</Button>)}
                 </div>
               </div>
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2"><h4 className="font-medium">Nginx</h4>{remoteServicesStatus?.nginx?.installed ? (<Badge variant={remoteServicesStatus.nginx.running ? 'default' : 'secondary'}>{remoteServicesStatus.nginx.running ? '运行中' : '已停止'}</Badge>) : (<Badge variant="outline">未安装</Badge>)}</div>
+                  <div className="flex items-center gap-2"><h4 className="font-medium">Nginx</h4>{remoteServicesStatus?.nginx?.installed ? (<Badge variant={remoteServicesStatus.nginx.running ? 'default' : 'secondary'}>{remoteServicesStatus.nginx.running ? t('servers.running') : t('servers.stopped')}</Badge>) : (<Badge variant="outline">{t('servers.notInstalled')}</Badge>)}</div>
                   {remoteServicesStatus?.nginx?.version && (<span className="text-xs text-muted-foreground">{remoteServicesStatus.nginx.version}</span>)}
                 </div>
                 <div className="flex flex-wrap gap-2">
                   {remoteServicesStatus?.nginx?.installed ? (
                     <>
-                      <Button variant="outline" size="sm" onClick={() => managingRemoteServer && remoteServiceControlMutation.mutate({ serverId: managingRemoteServer.id, service: 'nginx', action: 'start' })} disabled={remoteServiceControlMutation.isPending || remoteServicesStatus?.nginx?.running}><Play className="h-4 w-4 mr-1" />启动</Button>
-                      <Button variant="outline" size="sm" onClick={() => managingRemoteServer && remoteServiceControlMutation.mutate({ serverId: managingRemoteServer.id, service: 'nginx', action: 'stop' })} disabled={remoteServiceControlMutation.isPending || !remoteServicesStatus?.nginx?.running}><Square className="h-4 w-4 mr-1" />停止</Button>
-                      <Button variant="outline" size="sm" onClick={() => managingRemoteServer && remoteServiceControlMutation.mutate({ serverId: managingRemoteServer.id, service: 'nginx', action: 'restart' })} disabled={remoteServiceControlMutation.isPending}><RotateCcw className="h-4 w-4 mr-1" />重启</Button>
-                      <Button variant="outline" size="sm" className="text-red-600 hover:text-red-700" onClick={() => managingRemoteServer && handleRemoteRemoveNginx(managingRemoteServer.id)} disabled={terminalRunning}><Trash2 className="h-4 w-4 mr-1" />卸载</Button>
+                      <Button variant="outline" size="sm" onClick={() => managingRemoteServer && remoteServiceControlMutation.mutate({ serverId: managingRemoteServer.id, service: 'nginx', action: 'start' })} disabled={remoteServiceControlMutation.isPending || remoteServicesStatus?.nginx?.running}><Play className="h-4 w-4 mr-1" />{t('servers.startBtn')}</Button>
+                      <Button variant="outline" size="sm" onClick={() => managingRemoteServer && remoteServiceControlMutation.mutate({ serverId: managingRemoteServer.id, service: 'nginx', action: 'stop' })} disabled={remoteServiceControlMutation.isPending || !remoteServicesStatus?.nginx?.running}><Square className="h-4 w-4 mr-1" />{t('servers.stopBtn')}</Button>
+                      <Button variant="outline" size="sm" onClick={() => managingRemoteServer && remoteServiceControlMutation.mutate({ serverId: managingRemoteServer.id, service: 'nginx', action: 'restart' })} disabled={remoteServiceControlMutation.isPending}><RotateCcw className="h-4 w-4 mr-1" />{t('servers.restartBtn')}</Button>
+                      <Button variant="outline" size="sm" className="text-red-600 hover:text-red-700" onClick={() => managingRemoteServer && handleRemoteRemoveNginx(managingRemoteServer.id)} disabled={terminalRunning}><Trash2 className="h-4 w-4 mr-1" />{t('servers.uninstall')}</Button>
                     </>
-                  ) : (<Button variant="outline" size="sm" onClick={() => managingRemoteServer && handleRemoteInstallNginx(managingRemoteServer.id)} disabled={terminalRunning}><Download className="h-4 w-4 mr-1" />安装 Nginx</Button>)}
+                  ) : (<Button variant="outline" size="sm" onClick={() => managingRemoteServer && handleRemoteInstallNginx(managingRemoteServer.id)} disabled={terminalRunning}><Download className="h-4 w-4 mr-1" />{t('servers.installNginx')}</Button>)}
                 </div>
               </div>
               {managingRemoteServer && (
                 <div className="border-t pt-4 space-y-2">
-                  <h4 className="font-medium text-sm">服务器信息</h4>
+                  <h4 className="font-medium text-sm">{t('servers.serverInfo')}</h4>
                   <div className="text-xs text-muted-foreground space-y-1">
-                    <p>IP: {managingRemoteServer.ip_address || '未知'}</p>
-                    {managingRemoteServer.last_heartbeat && (<p>最后心跳: {new Date(managingRemoteServer.last_heartbeat).toLocaleString()}</p>)}
+                    <p>IP: {managingRemoteServer.ip_address || t('servers.unknown')}</p>
+                    {managingRemoteServer.last_heartbeat && (<p>{t('servers.lastHeartbeat')}: {new Date(managingRemoteServer.last_heartbeat).toLocaleString()}</p>)}
                   </div>
                 </div>
               )}
             </div>
           )}
           <DialogFooter>
-            <Button variant="outline" size="sm" onClick={() => managingRemoteServer && loadRemoteServicesStatus(managingRemoteServer.id)} disabled={remoteServicesLoading}><RefreshCw className={cn("h-4 w-4 mr-1", remoteServicesLoading && "animate-spin")} />刷新状态</Button>
-            <Button variant="outline" onClick={() => setIsRemoteManageDialogOpen(false)}>关闭</Button>
+            <Button variant="outline" size="sm" onClick={() => managingRemoteServer && loadRemoteServicesStatus(managingRemoteServer.id)} disabled={remoteServicesLoading}><RefreshCw className={cn("h-4 w-4 mr-1", remoteServicesLoading && "animate-spin")} />{t('servers.refreshStatus')}</Button>
+            <Button variant="outline" onClick={() => setIsRemoteManageDialogOpen(false)}>{tc('actions.close')}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -1198,21 +1201,21 @@ function XrayServersPage() {
       {/* Sync Nodes Dialog */}
       <Dialog open={isSyncNodesDialogOpen} onOpenChange={setIsSyncNodesDialogOpen}>
         <DialogContent>
-          <DialogHeader><DialogTitle>同步入站到节点</DialogTitle><DialogDescription>将远程服务器的入站配置同步到节点管理中，以便生成订阅链接。</DialogDescription></DialogHeader>
+          <DialogHeader><DialogTitle>{t('servers.syncToNodes')}</DialogTitle><DialogDescription>{t('servers.syncToNodesDesc')}</DialogDescription></DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="sync-server-host">服务器地址</Label>
-              <Input id="sync-server-host" placeholder="请输入远程服务器的对外访问地址（域名或IP）" value={syncServerHost} onChange={(e) => setSyncServerHost(e.target.value)} />
-              <p className="text-xs text-muted-foreground">用于生成节点配置，请输入客户端可以访问的地址。</p>
+              <Label htmlFor="sync-server-host">{t('servers.serverHost')}</Label>
+              <Input id="sync-server-host" placeholder={t('servers.syncServerHostPlaceholder')} value={syncServerHost} onChange={(e) => setSyncServerHost(e.target.value)} />
+              <p className="text-xs text-muted-foreground">{t('servers.syncServerHostHint')}</p>
             </div>
             <div className="flex items-center justify-between">
-              <div className="space-y-0.5"><Label htmlFor="sync-force-override">强制覆盖</Label><p className="text-xs text-muted-foreground">覆盖已存在的同名节点</p></div>
+              <div className="space-y-0.5"><Label htmlFor="sync-force-override">{t('servers.forceOverrideLabel')}</Label><p className="text-xs text-muted-foreground">{t('servers.forceOverrideDesc')}</p></div>
               <Switch id="sync-force-override" checked={syncForceOverride} onCheckedChange={setSyncForceOverride} />
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => { setIsSyncNodesDialogOpen(false); setSyncingServerId(null); setSyncServerHost(''); setSyncForceOverride(false) }}>取消</Button>
-            <Button onClick={() => { if (syncingServerId && syncServerHost) syncNodesMutation.mutate({ serverId: syncingServerId, serverHost: syncServerHost, forceOverride: syncForceOverride }) }} disabled={!syncServerHost || syncNodesMutation.isPending}>{syncNodesMutation.isPending ? '同步中...' : '开始同步'}</Button>
+            <Button variant="outline" onClick={() => { setIsSyncNodesDialogOpen(false); setSyncingServerId(null); setSyncServerHost(''); setSyncForceOverride(false) }}>{tc('actions.cancel')}</Button>
+            <Button onClick={() => { if (syncingServerId && syncServerHost) syncNodesMutation.mutate({ serverId: syncingServerId, serverHost: syncServerHost, forceOverride: syncForceOverride }) }} disabled={!syncServerHost || syncNodesMutation.isPending}>{syncNodesMutation.isPending ? t('servers.syncing') : t('servers.startSync')}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -1220,27 +1223,27 @@ function XrayServersPage() {
       <Dialog open={isAddWebsiteDialogOpen} onOpenChange={(open) => { if (!open) { setIsAddWebsiteDialogOpen(false); resetAddWebsiteDialog() } }}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2"><Globe className="h-5 w-5" />添加网站</DialogTitle>
-            <DialogDescription>为远程服务器添加新的网站域名</DialogDescription>
+            <DialogTitle className="flex items-center gap-2"><Globe className="h-5 w-5" />{t('servers.addWebsiteDialog')}</DialogTitle>
+            <DialogDescription>{t('servers.addWebsiteDesc')}</DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid gap-2">
-              <Label htmlFor="add-website-domain">域名 <span className="text-destructive">*</span></Label>
-              <Input id="add-website-domain" value={addWebsiteDomain} onChange={(e) => setAddWebsiteDomain(e.target.value)} placeholder="例如：blog.example.com" />
+              <Label htmlFor="add-website-domain">{t('servers.websiteDomain')} <span className="text-destructive">*</span></Label>
+              <Input id="add-website-domain" value={addWebsiteDomain} onChange={(e) => setAddWebsiteDomain(e.target.value)} placeholder={t('servers.domainPlaceholder')} />
             </div>
             <div className="grid gap-2">
-              <Label>网站类型</Label>
+              <Label>{t('servers.siteType')}</Label>
               <div className="flex gap-2">
-                <Button type="button" size="sm" variant={addWebsiteSiteType === 'static' ? 'default' : 'outline'} onClick={() => { setAddWebsiteSiteType('static'); setAddWebsiteValidResult(null) }} className="flex-1">静态页面</Button>
-                <Button type="button" size="sm" variant={addWebsiteSiteType === 'proxy' ? 'default' : 'outline'} onClick={() => { setAddWebsiteSiteType('proxy'); setAddWebsiteValidResult(null) }} className="flex-1">反向代理</Button>
+                <Button type="button" size="sm" variant={addWebsiteSiteType === 'static' ? 'default' : 'outline'} onClick={() => { setAddWebsiteSiteType('static'); setAddWebsiteValidResult(null) }} className="flex-1">{t('servers.staticPage')}</Button>
+                <Button type="button" size="sm" variant={addWebsiteSiteType === 'proxy' ? 'default' : 'outline'} onClick={() => { setAddWebsiteSiteType('proxy'); setAddWebsiteValidResult(null) }} className="flex-1">{t('servers.reverseProxy')}</Button>
               </div>
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="add-website-value">{addWebsiteSiteType === 'static' ? '静态页面路径' : '反向代理地址'} <span className="text-destructive">*</span></Label>
+              <Label htmlFor="add-website-value">{addWebsiteSiteType === 'static' ? t('servers.staticPath') : t('servers.reverseProxyAddress')} <span className="text-destructive">*</span></Label>
               <div className="flex gap-2">
-                <Input id="add-website-value" value={addWebsiteSiteValue} onChange={(e) => { setAddWebsiteSiteValue(e.target.value); setAddWebsiteValidResult(null) }} placeholder={addWebsiteSiteType === 'static' ? '例如：/var/www/html' : '例如：http://127.0.0.1:8080'} className="flex-1" />
+                <Input id="add-website-value" value={addWebsiteSiteValue} onChange={(e) => { setAddWebsiteSiteValue(e.target.value); setAddWebsiteValidResult(null) }} placeholder={addWebsiteSiteType === 'static' ? t('servers.staticPathPlaceholder') : t('servers.reverseProxyPlaceholder')} className="flex-1" />
                 <Button type="button" variant="outline" size="sm" onClick={validateWebsite} disabled={addWebsiteValidating || !addWebsiteSiteValue.trim()}>
-                  {addWebsiteValidating ? <Loader2 className="h-4 w-4 animate-spin" /> : '验证'}
+                  {addWebsiteValidating ? <Loader2 className="h-4 w-4 animate-spin" /> : t('servers.validate')}
                 </Button>
               </div>
               {addWebsiteValidResult && (
@@ -1252,8 +1255,8 @@ function XrayServersPage() {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => { setIsAddWebsiteDialogOpen(false); resetAddWebsiteDialog() }}>取消</Button>
-            <Button onClick={submitAddWebsite} disabled={addWebsiteSubmitting || !addWebsiteDomain.trim() || !addWebsiteSiteValue.trim()}>{addWebsiteSubmitting ? '添加中...' : '添加'}</Button>
+            <Button variant="outline" onClick={() => { setIsAddWebsiteDialogOpen(false); resetAddWebsiteDialog() }}>{tc('actions.cancel')}</Button>
+            <Button onClick={submitAddWebsite} disabled={addWebsiteSubmitting || !addWebsiteDomain.trim() || !addWebsiteSiteValue.trim()}>{addWebsiteSubmitting ? t('servers.adding') : tc('actions.add')}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

@@ -1,5 +1,6 @@
 // @ts-nocheck
 import { useState, useEffect, useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 import {
   format,
   addDays,
@@ -353,12 +354,12 @@ const PROTOCOL_CONFIGS = [
 
 // IP 版本选项
 const IP_VERSION_OPTIONS = [
-  { value: '', label: '默认' },
-  { value: 'dual', label: 'dual (双栈)' },
-  { value: 'ipv4', label: 'ipv4' },
-  { value: 'ipv6', label: 'ipv6' },
-  { value: 'ipv4-prefer', label: 'ipv4-prefer' },
-  { value: 'ipv6-prefer', label: 'ipv6-prefer' },
+  { value: '', labelKey: 'default' },
+  { value: 'dual', labelKey: 'dual' },
+  { value: 'ipv4', labelKey: 'ipv4' },
+  { value: 'ipv6', labelKey: 'ipv6' },
+  { value: 'ipv4-prefer', labelKey: 'ipv4-prefer' },
+  { value: 'ipv6-prefer', labelKey: 'ipv6-prefer' },
 ]
 
 // Override 表单类型
@@ -450,6 +451,7 @@ function formatTrafficGB(bytes: number): string {
 }
 
 function SubscribeFilesPage() {
+  const { t } = useTranslation('subscribe')
   const { auth } = useAuthStore()
   const queryClient = useQueryClient()
   const navigate = useNavigate()
@@ -714,12 +716,12 @@ function SubscribeFilesPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['subscribe-files'] })
       queryClient.invalidateQueries({ queryKey: ['user-subscriptions'] })
-      toast.success('订阅导入成功')
+      toast.success(t('toast.importSuccess'))
       setImportDialogOpen(false)
       setImportForm({ name: '', description: '', url: '', filename: '' })
     },
     onError: (error: any) => {
-      toast.error(error.response?.data?.error || '导入失败')
+      toast.error(error.response?.data?.error || t('toast.importFailed'))
     },
   })
 
@@ -727,7 +729,7 @@ function SubscribeFilesPage() {
   const uploadMutation = useMutation({
     mutationFn: async () => {
       if (!uploadFile) {
-        throw new Error('请选择文件')
+        throw new Error(t('toast.selectFile'))
       }
 
       const formData = new FormData()
@@ -750,13 +752,13 @@ function SubscribeFilesPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['subscribe-files'] })
       queryClient.invalidateQueries({ queryKey: ['user-subscriptions'] })
-      toast.success('文件上传成功')
+      toast.success(t('toast.uploadSuccess'))
       setUploadDialogOpen(false)
       setUploadForm({ name: '', description: '', filename: '' })
       setUploadFile(null)
     },
     onError: (error: any) => {
-      toast.error(error.response?.data?.error || '上传失败')
+      toast.error(error.response?.data?.error || t('toast.uploadFailed'))
     },
   })
 
@@ -768,10 +770,10 @@ function SubscribeFilesPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['subscribe-files'] })
       queryClient.invalidateQueries({ queryKey: ['user-subscriptions'] })
-      toast.success('订阅已删除')
+      toast.success(t('toast.deleteSuccess'))
     },
     onError: (error: any) => {
-      toast.error(error.response?.data?.error || '删除失败')
+      toast.error(error.response?.data?.error || t('toast.deleteFailed'))
     },
   })
 
@@ -787,13 +789,13 @@ function SubscribeFilesPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['subscribe-files'] })
       queryClient.invalidateQueries({ queryKey: ['user-subscriptions'] })
-      toast.success('订阅信息已更新')
+      toast.success(t('toast.updateSuccess'))
       setEditMetadataDialogOpen(false)
       setEditingMetadata(null)
       setMetadataForm({ name: '', description: '', filename: '' })
     },
     onError: (error: any) => {
-      toast.error(error.response?.data?.error || '更新失败')
+      toast.error(error.response?.data?.error || t('toast.updateFailed'))
     },
   })
 
@@ -805,10 +807,10 @@ function SubscribeFilesPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['external-subscriptions'] })
       queryClient.invalidateQueries({ queryKey: ['traffic-summary'] })
-      toast.success('外部订阅已删除')
+      toast.success(t('toast.externalSubDeleted'))
     },
     onError: (error: any) => {
-      toast.error(error.response?.data?.error || '删除失败')
+      toast.error(error.response?.data?.error || t('toast.deleteFailed'))
     },
   })
 
@@ -831,10 +833,10 @@ function SubscribeFilesPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['external-subscriptions'] })
       queryClient.invalidateQueries({ queryKey: ['traffic-summary'] })
-      toast.success('外部订阅已更新')
+      toast.success(t('toast.externalSubUpdated'))
     },
     onError: (error: any) => {
-      toast.error(error.response?.data?.error || '更新失败')
+      toast.error(error.response?.data?.error || t('toast.updateFailed'))
     },
   })
 
@@ -848,10 +850,10 @@ function SubscribeFilesPage() {
       queryClient.invalidateQueries({ queryKey: ['external-subscriptions'] })
       queryClient.invalidateQueries({ queryKey: ['nodes'] })
       queryClient.invalidateQueries({ queryKey: ['traffic-summary'] })
-      toast.success('外部订阅同步成功')
+      toast.success(t('toast.externalSubSynced'))
     },
     onError: (error: any) => {
-      toast.error(error.response?.data?.error || '同步失败')
+      toast.error(error.response?.data?.error || t('toast.syncFailed'))
     },
   })
 
@@ -870,11 +872,11 @@ function SubscribeFilesPage() {
       queryClient.invalidateQueries({ queryKey: ['nodes'] })
       queryClient.invalidateQueries({ queryKey: ['all-nodes-with-tags'] })
       queryClient.invalidateQueries({ queryKey: ['traffic-summary'] })
-      toast.success(data.message || '订阅同步成功')
+      toast.success(data.message || t('toast.subscriptionSynced'))
       setSyncingSingleId(null)
     },
     onError: (error: any) => {
-      toast.error(error.response?.data?.error || '同步失败')
+      toast.error(error.response?.data?.error || t('toast.syncFailed'))
       setSyncingSingleId(null)
     },
   })
@@ -916,7 +918,7 @@ function SubscribeFilesPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['proxy-provider-configs'] })
-      toast.success('代理集合配置创建成功')
+      toast.success(t('toast.proxyProviderCreated'))
       setProxyProviderDialogOpen(false)
       // 重置表单
       setProxyProviderForm({
@@ -941,7 +943,7 @@ function SubscribeFilesPage() {
       })
     },
     onError: (error: any) => {
-      toast.error(error.response?.data?.error || '创建失败')
+      toast.error(error.response?.data?.error || t('toast.createFailed'))
     },
   })
 
@@ -983,12 +985,12 @@ function SubscribeFilesPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['proxy-provider-configs'] })
-      toast.success('代理集合配置更新成功')
+      toast.success(t('toast.proxyProviderUpdated'))
       setProxyProviderDialogOpen(false)
       setEditingProxyProvider(null)
     },
     onError: (error: any) => {
-      toast.error(error.response?.data?.error || '更新失败')
+      toast.error(error.response?.data?.error || t('toast.updateFailed'))
     },
   })
 
@@ -999,10 +1001,10 @@ function SubscribeFilesPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['proxy-provider-configs'] })
-      toast.success('代理集合配置已删除')
+      toast.success(t('toast.proxyProviderDeleted'))
     },
     onError: (error: any) => {
-      toast.error(error.response?.data?.error || '删除失败')
+      toast.error(error.response?.data?.error || t('toast.deleteFailed'))
     },
   })
 
@@ -1015,20 +1017,20 @@ function SubscribeFilesPage() {
       )
       const failed = results.filter((r) => r.status === 'rejected').length
       if (failed > 0) {
-        throw new Error(`${failed} 个配置删除失败`)
+        throw new Error(t('toast.configDeleteFailed', { count: failed }))
       }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['proxy-provider-configs'] })
       setSelectedProxyProviderIds(new Set())
       setBatchDeleteDialogOpen(false)
-      toast.success('批量删除成功')
+      toast.success(t('toast.batchDeleteSuccess'))
     },
     onError: (error: any) => {
       queryClient.invalidateQueries({ queryKey: ['proxy-provider-configs'] })
       setSelectedProxyProviderIds(new Set())
       setBatchDeleteDialogOpen(false)
-      toast.error(error.message || '批量删除失败')
+      toast.error(error.message || t('toast.batchDeleteFailed'))
     },
   })
 
@@ -1079,11 +1081,11 @@ function SubscribeFilesPage() {
     onSuccess: (newMode) => {
       queryClient.invalidateQueries({ queryKey: ['proxy-provider-configs'] })
       toast.success(
-        `已切换为${newMode === 'mmw' ? '妙妙屋处理' : '客户端处理'}`
+        newMode === 'mmw' ? t('toast.switchedToMmw') : t('toast.switchedToClient')
       )
     },
     onError: (error: any) => {
-      toast.error(error.response?.data?.error || '切换失败')
+      toast.error(error.response?.data?.error || t('toast.switchFailed'))
     },
   })
 
@@ -1091,11 +1093,11 @@ function SubscribeFilesPage() {
   // 使用 MMW 模式以支持 GeoIP 匹配
   const handleBatchCreateByRegion = async () => {
     if (!proSelectedExternalSub) {
-      toast.error('请先选择外部订阅')
+      toast.error(t('toast.selectExternalSub'))
       return
     }
     if (!proNamePrefix.trim()) {
-      toast.error('请输入名称前缀')
+      toast.error(t('toast.enterNamePrefix'))
       return
     }
 
@@ -1119,14 +1121,14 @@ function SubscribeFilesPage() {
         nodeNames = response.data.node_names || []
       } catch (error: any) {
         toast.error(
-          '获取节点列表失败: ' + (error.response?.data?.error || error.message)
+          t('toast.getNodeListFailed') + (error.response?.data?.error || error.message)
         )
         setProCreatingRegion(false)
         return
       }
 
       if (nodeNames.length === 0) {
-        toast.error('订阅中没有节点')
+        toast.error(t('toast.noNodesInSub'))
         setProCreatingRegion(false)
         return
       }
@@ -1202,7 +1204,7 @@ function SubscribeFilesPage() {
           name: providerName,
           success: false,
           skipped: true,
-          error: '无匹配节点',
+          error: t('proxyProvider.basicDialog.noMatchNodes'),
         })
         skippedCount++
         setProCreationResults([...results])
@@ -1236,7 +1238,7 @@ function SubscribeFilesPage() {
         results.push({
           name: providerName,
           success: false,
-          error: error.response?.data?.error || '创建失败',
+          error: error.response?.data?.error || t('toast.createFailed'),
         })
       }
       // 更新结果以显示进度
@@ -1250,12 +1252,12 @@ function SubscribeFilesPage() {
     const failedCount = results.filter((r) => !r.success && !r.skipped).length
     if (skippedCount > 0) {
       toast.success(
-        `创建完成: ${successCount} 个成功, ${skippedCount} 个跳过(无节点), ${failedCount} 个失败`
+        t('toast.creationComplete', { success: successCount, skipped: skippedCount, failed: failedCount })
       )
     } else {
-      toast.success(`创建完成: ${successCount}/${results.length} 个代理集合`)
+      toast.success(t('toast.creationCompleteSimple', { success: successCount, total: results.length }))
     }
-    // 清空名称前缀
+    // 清空{t('proxyProvider.dialog.namePrefix')}
     setProNamePrefix('')
   }
 
@@ -1263,11 +1265,11 @@ function SubscribeFilesPage() {
   // 使用 MMW 模式（妙妙屋处理）
   const handleBatchCreateByProtocol = async () => {
     if (!proSelectedExternalSub) {
-      toast.error('请先选择外部订阅')
+      toast.error(t('toast.selectExternalSub'))
       return
     }
     if (!proNamePrefix.trim()) {
-      toast.error('请输入名称前缀')
+      toast.error(t('toast.enterNamePrefix'))
       return
     }
 
@@ -1305,7 +1307,7 @@ function SubscribeFilesPage() {
         results.push({
           name: providerName,
           success: false,
-          error: error.response?.data?.error || '创建失败',
+          error: error.response?.data?.error || t('toast.createFailed'),
         })
       }
       // 更新结果以显示进度
@@ -1316,15 +1318,15 @@ function SubscribeFilesPage() {
     queryClient.invalidateQueries({ queryKey: ['proxy-provider-configs'] })
 
     const successCount = results.filter((r) => r.success).length
-    toast.success(`创建完成: ${successCount}/${results.length} 个代理集合`)
-    // 清空名称前缀
+    toast.success(t('toast.creationCompleteSimple', { success: successCount, total: results.length }))
+    // 清空{t('proxyProvider.dialog.namePrefix')}
     setProNamePrefix('')
   }
 
   // 预览妙妙屋处理后的配置
   const handlePreviewProxyProvider = async (config: ProxyProviderConfig) => {
     if (config.process_mode !== 'mmw') {
-      toast.error('仅妙妙屋处理模式支持预览')
+      toast.error(t('toast.onlyMmwPreview'))
       return
     }
 
@@ -1343,9 +1345,9 @@ function SubscribeFilesPage() {
       setPreviewContent(response.data)
     } catch (error: any) {
       setPreviewContent(
-        `# 预览失败\n# ${error.response?.data || error.message || '未知错误'}`
+        `# ${t('toast.previewFailed')}\n# ${error.response?.data || error.message || 'Unknown error'}`
       )
-      toast.error('预览失败')
+      toast.error(t('toast.previewFailed'))
     } finally {
       setPreviewLoading(false)
     }
@@ -1528,7 +1530,7 @@ function SubscribeFilesPage() {
       return response.data as { version: number }
     },
     onSuccess: () => {
-      toast.success('规则已保存')
+      toast.success(t('toast.ruleSaved'))
       setIsDirty(false)
       setValidationError(null)
       queryClient.invalidateQueries({
@@ -1556,7 +1558,7 @@ function SubscribeFilesPage() {
       return response.data
     },
     onSuccess: () => {
-      toast.success('配置已保存')
+      toast.success(t('toast.configSaved'))
       queryClient.invalidateQueries({
         queryKey: ['subscribe-file-content', editingConfigFile?.filename],
       })
@@ -1582,7 +1584,7 @@ function SubscribeFilesPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['subscribe-files'] })
-      toast.success('规则同步设置已更新')
+      toast.success(t('toast.syncSettingUpdated'))
     },
     onError: (error) => {
       handleServerError(error)
@@ -1604,7 +1606,7 @@ function SubscribeFilesPage() {
     const timer = setTimeout(() => {
       const trimmed = editorValue.trim()
       if (!trimmed) {
-        setValidationError('内容不能为空')
+        setValidationError(t('toast.validationEmpty'))
         return
       }
 
@@ -1612,7 +1614,7 @@ function SubscribeFilesPage() {
         parseYAML(editorValue)
         setValidationError(null)
       } catch (error) {
-        const message = error instanceof Error ? error.message : 'YAML 解析失败'
+        const message = error instanceof Error ? error.message : 'YAML parse failed'
         setValidationError(message)
       }
     }, 300)
@@ -1644,7 +1646,7 @@ function SubscribeFilesPage() {
       }
     } catch (error) {
       console.error('解析YAML失败:', error)
-      toast.error('解析配置文件失败')
+      toast.error(t('toast.parseConfigFailed'))
     }
   }, [nodesConfigQuery.data])
 
@@ -1662,9 +1664,9 @@ function SubscribeFilesPage() {
       parseYAML(editorValue || '')
       setValidationError(null)
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'YAML 解析失败'
+      const message = error instanceof Error ? error.message : 'YAML parse failed'
       setValidationError(message)
-      toast.error('保存失败，YAML 格式错误')
+      toast.error(t('toast.saveFailed'))
       return
     }
 
@@ -1680,7 +1682,7 @@ function SubscribeFilesPage() {
 
   const handleImport = () => {
     if (!importForm.name || !importForm.url) {
-      toast.error('请填写订阅名称和链接')
+      toast.error(t('toast.fillNameAndUrl'))
       return
     }
     importMutation.mutate(importForm)
@@ -1688,7 +1690,7 @@ function SubscribeFilesPage() {
 
   const handleUpload = () => {
     if (!uploadFile) {
-      toast.error('请选择文件')
+      toast.error(t('toast.selectFile'))
       return
     }
     uploadMutation.mutate()
@@ -1712,11 +1714,11 @@ function SubscribeFilesPage() {
   const handleUpdateMetadata = () => {
     if (!editingMetadata) return
     if (!metadataForm.name.trim()) {
-      toast.error('请填写订阅名称')
+      toast.error(t('toast.fillName'))
       return
     }
     if (!metadataForm.filename.trim()) {
-      toast.error('请填写文件名')
+      toast.error(t('toast.fillFilename'))
       return
     }
     updateMetadataMutation.mutate({
@@ -1748,8 +1750,8 @@ function SubscribeFilesPage() {
     try {
       parsed = parseYAML(configContent || '')
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'YAML 解析失败'
-      toast.error('保存失败，YAML 格式错误：' + message)
+      const message = error instanceof Error ? error.message : 'YAML parse failed'
+      toast.error(t('toast.saveFailed2') + message)
       return
     }
 
@@ -1759,7 +1761,7 @@ function SubscribeFilesPage() {
     if (!clashValidationResult.valid) {
       // 有错误级别的问题，阻止保存
       const errorMessage = formatValidationIssues(clashValidationResult.issues)
-      toast.error('配置校验失败', {
+      toast.error(t('toast.configValidationFailed'), {
         description: errorMessage,
         duration: 10000,
       })
@@ -1782,7 +1784,7 @@ function SubscribeFilesPage() {
         (i) => i.level === 'warning'
       )
       if (warningIssues.length > 0) {
-        toast.warning('配置已自动修复', {
+        toast.warning(t('toast.configAutoFixed'), {
           description: formatValidationIssues(warningIssues),
           duration: 8000,
         })
@@ -1836,9 +1838,9 @@ function SubscribeFilesPage() {
 
       // 只关闭替换对话框，不关闭编辑节点对话框
       setMissingNodesDialogOpen(false)
-      toast.success(`已将缺失节点替换为 ${replacementChoice}`)
+      toast.success(t('toast.replacementApplied', { choice: replacementChoice }))
     } catch (error) {
-      const message = error instanceof Error ? error.message : '应用替换失败'
+      const message = error instanceof Error ? error.message : t('toast.applyFailed')
       toast.error(message)
       console.error('应用替换失败:', error)
     }
@@ -2378,7 +2380,7 @@ function SubscribeFilesPage() {
         const errorMessage = formatValidationIssues(
           clashValidationResult.issues
         )
-        toast.error('配置校验失败', {
+        toast.error(t('toast.configValidationFailed'), {
           description: errorMessage,
           duration: 10000,
         })
@@ -2395,7 +2397,7 @@ function SubscribeFilesPage() {
           (i) => i.level === 'warning'
         )
         if (warningIssues.length > 0) {
-          toast.warning('配置已自动修复', {
+          toast.warning(t('toast.configAutoFixed'), {
             description: formatValidationIssues(warningIssues),
             duration: 8000,
           })
@@ -2418,10 +2420,10 @@ function SubscribeFilesPage() {
         setConfigContent(newContent)
         // 只关闭编辑节点对话框，不保存到文件
         setEditNodesDialogOpen(false)
-        toast.success('已应用节点配置')
+        toast.success(t('toast.nodesApplied'))
       }
     } catch (error) {
-      const message = error instanceof Error ? error.message : '应用配置失败'
+      const message = error instanceof Error ? error.message : t('toast.applyFailed')
       toast.error(message)
       console.error('应用节点配置失败:', error)
     }
@@ -2570,11 +2572,11 @@ function SubscribeFilesPage() {
     <main className='mx-auto w-full max-w-7xl px-4 py-8 pt-24 sm:px-6'>
       <section className='space-y-4'>
         <div className='flex flex-col gap-3 sm:gap-4'>
-          <h1 className='text-3xl font-semibold tracking-tight'>订阅管理</h1>
+          <h1 className='text-3xl font-semibold tracking-tight'>{t('management.title')}</h1>
 
           <div className='flex gap-2'>
             <p className='text-muted-foreground mt-2'>
-              从Clash订阅链接导入或上传本地文件
+              {t('management.description')}
             </p>
           </div>
 
@@ -2599,7 +2601,7 @@ function SubscribeFilesPage() {
                     <Label htmlFor='import-name'>订阅名称 *</Label>
                     <Input
                       id='import-name'
-                      placeholder='例如：机场A'
+                      placeholder={t('editMetadata.namePlaceholder')}
                       value={importForm.name}
                       onChange={(e) => setImportForm({ ...importForm, name: e.target.value })}
                     />
@@ -2626,7 +2628,7 @@ function SubscribeFilesPage() {
                     <Label htmlFor='import-description'>说明（可选）</Label>
                     <Textarea
                       id='import-description'
-                      placeholder='订阅说明信息'
+                      placeholder={t('editMetadata.descriptionPlaceholder')}
                       value={importForm.description}
                       onChange={(e) => setImportForm({ ...importForm, description: e.target.value })}
                     />
@@ -2690,7 +2692,7 @@ function SubscribeFilesPage() {
                     <Label htmlFor='upload-description'>说明（可选）</Label>
                     <Textarea
                       id='upload-description'
-                      placeholder='订阅说明信息'
+                      placeholder={t('editMetadata.descriptionPlaceholder')}
                       value={uploadForm.description}
                       onChange={(e) => setUploadForm({ ...uploadForm, description: e.target.value })}
                     />
@@ -2725,34 +2727,34 @@ function SubscribeFilesPage() {
 
         <Card>
           <CardHeader>
-            <CardTitle>订阅列表 ({files.length})</CardTitle>
-            <CardDescription>已添加的订阅文件</CardDescription>
+            <CardTitle>{t('management.fileList.title')} ({files.length})</CardTitle>
+            <CardDescription>{t('management.fileList.description')}</CardDescription>
           </CardHeader>
           <CardContent>
             {isLoading ? (
               <div className='text-muted-foreground py-8 text-center'>
-                加载中...
+                {t('actions.loading', { ns: 'common' })}
               </div>
             ) : files.length === 0 ? (
               <div className='text-muted-foreground py-8 text-center'>
-                暂无订阅，点击上方按钮添加
+                {t('management.noFilesHint')}
               </div>
             ) : (
               <DataTable
                 data={files}
                 getRowKey={(file) => file.id}
-                emptyText='暂无订阅，点击上方按钮添加'
+                emptyText={t('management.noFilesHint')}
                 columns={
                   [
                     {
-                      header: '订阅名称',
+                      header: t('management.fileList.subscriptionName'),
                       cell: (file) => (
                         <div className='flex flex-wrap items-center gap-2'>
                           <Badge
                             variant='outline'
                             className={TYPE_COLORS[file.type]}
                           >
-                            {TYPE_LABELS[file.type]}
+                            {t(`management.typeLabels.${file.type}`)}
                           </Badge>
                           <span className='font-medium'>{file.name}</span>
                           {file.latest_version && (
@@ -2764,7 +2766,7 @@ function SubscribeFilesPage() {
                       ),
                     },
                     {
-                      header: '说明',
+                      header: t('management.fileList.descriptionCol'),
                       cell: (file) =>
                         file.description ? (
                           <Tooltip>
@@ -2785,7 +2787,7 @@ function SubscribeFilesPage() {
                       cellClassName: 'max-w-[200px]',
                     },
                     {
-                      header: '最后更新',
+                      header: t('management.fileList.lastUpdated'),
                       cell: (file) => (
                         <span className='text-muted-foreground text-sm whitespace-nowrap'>
                           {file.updated_at
@@ -2796,7 +2798,7 @@ function SubscribeFilesPage() {
                       width: '160px',
                     },
                     {
-                      header: '过期时间',
+                      header: t('management.fileList.expireDate'),
                       cell: (file) => {
                         const handleQuickExpire = (
                           days: number | 'expired' | Date
@@ -2829,7 +2831,7 @@ function SubscribeFilesPage() {
                               onSuccess: () => {
                                 setExpirePopoverFileId(null)
                                 setCustomDateFileId(null)
-                                toast.success('过期时间已更新')
+                                toast.success(t('management.fileList.expireUpdated'))
                               },
                             }
                           )
@@ -2844,7 +2846,7 @@ function SubscribeFilesPage() {
                           if (isToday(expireDate)) {
                             return {
                               status: 'expiring',
-                              label: '今天过期',
+                              label: t('management.fileList.todayExpire'),
                               className:
                                 'bg-yellow-500/10 text-yellow-700 dark:text-yellow-400',
                             }
@@ -2854,7 +2856,7 @@ function SubscribeFilesPage() {
                           if (isPast(expireDate)) {
                             return {
                               status: 'expired',
-                              label: '已过期',
+                              label: t('management.fileList.expired'),
                               className:
                                 'bg-red-500/10 text-red-700 dark:text-red-400',
                             }
@@ -2869,7 +2871,7 @@ function SubscribeFilesPage() {
                           if (daysRemaining <= 7) {
                             return {
                               status: 'expiring',
-                              label: `${daysRemaining}天后过期`,
+                              label: t('management.fileList.daysRemaining', { days: daysRemaining }),
                               className:
                                 'bg-yellow-500/10 text-yellow-700 dark:text-yellow-400',
                             }
@@ -2907,7 +2909,7 @@ function SubscribeFilesPage() {
                                   </Badge>
                                 ) : (
                                   <span className='text-muted-foreground text-sm'>
-                                    未设置
+                                    {t('management.fileList.notSet')}
                                   </span>
                                 )}
                               </Button>
@@ -2923,7 +2925,7 @@ function SubscribeFilesPage() {
                                   onClick={() => handleQuickExpire(30)}
                                   disabled={updateMetadataMutation.isPending}
                                 >
-                                  延长30天
+                                  {t('management.fileList.extend30Days')}
                                 </Button>
                                 <Button
                                   variant='outline'
@@ -2931,7 +2933,7 @@ function SubscribeFilesPage() {
                                   onClick={() => handleQuickExpire('expired')}
                                   disabled={updateMetadataMutation.isPending}
                                 >
-                                  标记过期
+                                  {t('management.fileList.markExpired')}
                                 </Button>
                                 <Popover
                                   open={customDateFileId === file.id}
@@ -2942,7 +2944,7 @@ function SubscribeFilesPage() {
                                   <PopoverTrigger asChild>
                                     <Button variant='outline' size='sm'>
                                       <CalendarIcon className='mr-2 h-4 w-4' />
-                                      选择时间
+                                      {t('management.fileList.selectTime')}
                                     </Button>
                                   </PopoverTrigger>
                                   <PopoverContent
@@ -2985,7 +2987,7 @@ function SubscribeFilesPage() {
                                         {
                                           onSuccess: () => {
                                             setExpirePopoverFileId(null)
-                                            toast.success('已清除过期时间')
+                                            toast.success(t('management.fileList.expireCleared'))
                                           },
                                         }
                                       )
@@ -2993,7 +2995,7 @@ function SubscribeFilesPage() {
                                     disabled={updateMetadataMutation.isPending}
                                     className='text-destructive hover:text-destructive'
                                   >
-                                    清除过期时间
+                                    {t('management.fileList.clearExpireTime')}
                                   </Button>
                                 )}
                               </div>
@@ -3004,7 +3006,7 @@ function SubscribeFilesPage() {
                       width: '180px',
                     },
                     {
-                      header: '规则同步',
+                      header: t('management.fileList.ruleSync'),
                       cell: (file) => (
                         <Switch
                           checked={file.auto_sync_custom_rules || false}
@@ -3018,7 +3020,7 @@ function SubscribeFilesPage() {
                       width: '90px',
                     },
                     {
-                      header: '操作',
+                      header: t('management.fileList.actions'),
                       cell: (file) => (
                         <div className='flex items-center gap-1'>
                           <Button
@@ -3049,18 +3051,17 @@ function SubscribeFilesPage() {
                             </AlertDialogTrigger>
                             <AlertDialogContent>
                               <AlertDialogHeader>
-                                <AlertDialogTitle>确认删除</AlertDialogTitle>
+                                <AlertDialogTitle>{t('management.fileList.deleteConfirmTitle')}</AlertDialogTitle>
                                 <AlertDialogDescription>
-                                  确定要删除订阅 "{file.name}"
-                                  吗？此操作将同时删除对应的文件，不可撤销。
+                                  {t('management.fileList.deleteConfirmDesc', { name: file.name })}
                                 </AlertDialogDescription>
                               </AlertDialogHeader>
                               <AlertDialogFooter>
-                                <AlertDialogCancel>取消</AlertDialogCancel>
+                                <AlertDialogCancel>{t('actions.cancel', { ns: 'common' })}</AlertDialogCancel>
                                 <AlertDialogAction
                                   onClick={() => handleDelete(file.id)}
                                 >
-                                  删除
+                                  {t('actions.delete', { ns: 'common' })}
                                 </AlertDialogAction>
                               </AlertDialogFooter>
                             </AlertDialogContent>
@@ -3081,7 +3082,7 @@ function SubscribeFilesPage() {
                           variant='outline'
                           className={TYPE_COLORS[file.type]}
                         >
-                          {TYPE_LABELS[file.type]}
+                          {t(`management.typeLabels.${file.type}`)}
                         </Badge>
                         <div className='truncate text-sm font-medium'>
                           {file.name}
@@ -3101,18 +3102,17 @@ function SubscribeFilesPage() {
                         </AlertDialogTrigger>
                         <AlertDialogContent>
                           <AlertDialogHeader>
-                            <AlertDialogTitle>确认删除</AlertDialogTitle>
+                            <AlertDialogTitle>{t('management.fileList.deleteConfirmTitle')}</AlertDialogTitle>
                             <AlertDialogDescription>
-                              确定要删除订阅 "{file.name}"
-                              吗？此操作将同时删除对应的文件，不可撤销。
+                              {t('management.fileList.deleteConfirmDesc', { name: file.name })}
                             </AlertDialogDescription>
                           </AlertDialogHeader>
                           <AlertDialogFooter>
-                            <AlertDialogCancel>取消</AlertDialogCancel>
+                            <AlertDialogCancel>{t('actions.cancel', { ns: 'common' })}</AlertDialogCancel>
                             <AlertDialogAction
                               onClick={() => handleDelete(file.id)}
                             >
-                              删除
+                              {t('actions.delete', { ns: 'common' })}
                             </AlertDialogAction>
                           </AlertDialogFooter>
                         </AlertDialogContent>
@@ -3121,7 +3121,7 @@ function SubscribeFilesPage() {
                   ),
                   fields: [
                     {
-                      label: '描述',
+                      label: t('management.fileList.mobileDescriptionLabel'),
                       value: (file) => (
                         <span className='line-clamp-1 text-xs'>
                           {file.description}
@@ -3130,7 +3130,7 @@ function SubscribeFilesPage() {
                       hidden: (file) => !file.description,
                     },
                     {
-                      label: '文件',
+                      label: t('management.fileList.mobileFileLabel'),
                       value: (file) => (
                         <span className='font-mono break-all'>
                           {file.filename}
@@ -3138,7 +3138,7 @@ function SubscribeFilesPage() {
                       ),
                     },
                     {
-                      label: '更新时间',
+                      label: t('management.fileList.mobileUpdateTimeLabel'),
                       value: (file) => (
                         <div className='flex flex-wrap items-center gap-2'>
                           <span>
@@ -3158,7 +3158,7 @@ function SubscribeFilesPage() {
                       ),
                     },
                     {
-                      label: '规则同步',
+                      label: t('management.fileList.mobileRuleSyncLabel'),
                       value: (file) => (
                         <div className='flex items-center gap-2'>
                           <Switch
@@ -3168,7 +3168,7 @@ function SubscribeFilesPage() {
                             }
                           />
                           <span className='text-xs'>
-                            {file.auto_sync_custom_rules ? '已启用' : '未启用'}
+                            {file.auto_sync_custom_rules ? t('management.fileList.ruleSyncEnabled') : t('management.fileList.ruleSyncDisabled')}
                           </span>
                         </div>
                       ),
@@ -3184,7 +3184,7 @@ function SubscribeFilesPage() {
                         disabled={updateMetadataMutation.isPending}
                       >
                         <Settings className='mr-1 h-4 w-4' />
-                        编辑信息
+                        {t('management.fileList.editInfo')}
                       </Button>
                       <Button
                         variant='outline'
@@ -3193,7 +3193,7 @@ function SubscribeFilesPage() {
                         onClick={() => handleEditConfig(file)}
                       >
                         <Edit className='mr-1 h-4 w-4' />
-                        编辑配置
+                        {t('management.fileList.editConfig')}
                       </Button>
                     </>
                   ),
@@ -3215,10 +3215,10 @@ function SubscribeFilesPage() {
                   <div>
                     <CardTitle className='flex items-center gap-2'>
                       <ExternalLink className='h-5 w-5' />
-                      外部订阅 ({externalSubs.length})
+                      {t('externalSub.title')} ({externalSubs.length})
                     </CardTitle>
                     <CardDescription>
-                      管理从节点管理导入的外部订阅源，用于从第三方订阅同步节点
+                      {t('externalSub.description')}
                     </CardDescription>
                   </div>
                   {isExternalSubsExpanded ? (
@@ -3246,33 +3246,33 @@ function SubscribeFilesPage() {
                       className={`mr-2 h-4 w-4 ${syncExternalSubsMutation.isPending ? 'animate-spin' : ''}`}
                     />
                     {syncExternalSubsMutation.isPending
-                      ? '同步中...'
-                      : '同步所有订阅'}
+                      ? t('externalSub.syncing')
+                      : t('externalSub.syncAll')}
                   </Button>
                 </div>
 
                 {isExternalSubsLoading ? (
                   <div className='text-muted-foreground py-8 text-center'>
-                    加载中...
+                    {t('actions.loading', { ns: 'common' })}
                   </div>
                 ) : externalSubs.length === 0 ? (
                   <div className='text-muted-foreground py-8 text-center'>
-                    暂无外部订阅，请在"生成订阅"页面添加
+                    {t('externalSub.noSubs')}
                   </div>
                 ) : (
                   <DataTable
                     data={externalSubs}
                     getRowKey={(sub) => sub.id}
-                    emptyText='暂无外部订阅'
+                    emptyText={t('externalSub.noSubsShort')}
                     columns={
                       [
                         {
-                          header: '名称',
+                          header: t('externalSub.columns.name'),
                           cell: (sub) => sub.name,
                           cellClassName: 'font-medium',
                         },
                         {
-                          header: '订阅链接',
+                          header: t('externalSub.columns.subscriptionUrl'),
                           cell: (sub) => (
                             <Tooltip>
                               <TooltipTrigger asChild>
@@ -3287,7 +3287,7 @@ function SubscribeFilesPage() {
                           ),
                         },
                         {
-                          header: '节点数',
+                          header: t('externalSub.columns.nodeCount'),
                           cell: (sub) => {
                             const nodes = nodesByTag[sub.name] ?? []
                             // 优先使用实际查询到的节点数量，如果还没加载则使用数据库存储的数量
@@ -3306,7 +3306,7 @@ function SubscribeFilesPage() {
                                 </TooltipTrigger>
                                 <TooltipContent className='max-h-60 max-w-64 overflow-y-auto p-2'>
                                   <div className='mb-1 text-xs font-medium'>
-                                    {sub.name} 的节点
+                                    {t('externalSub.nodesOf', { name: sub.name })}
                                   </div>
                                   {nodes.length > 0 ? (
                                     <ul className='space-y-0.5'>
@@ -3320,7 +3320,7 @@ function SubscribeFilesPage() {
                                       ))}
                                     </ul>
                                   ) : (
-                                    <div className='text-xs'>暂无节点</div>
+                                    <div className='text-xs'>{t('externalSub.noNodes')}</div>
                                   )}
                                 </TooltipContent>
                               </Tooltip>
@@ -3330,7 +3330,7 @@ function SubscribeFilesPage() {
                           cellClassName: 'text-center',
                         },
                         {
-                          header: '流量使用',
+                          header: t('externalSub.columns.trafficUsage'),
                           cell: (sub) => {
                             if (sub.total <= 0) {
                               return (
@@ -3354,10 +3354,10 @@ function SubscribeFilesPage() {
                             const remaining = Math.max(sub.total - used, 0)
                             const modeLabel =
                               mode === 'download'
-                                ? '仅下行'
+                                ? t('externalSub.downloadOnly')
                                 : mode === 'upload'
-                                  ? '仅上行'
-                                  : '上下行'
+                                  ? t('externalSub.uploadOnly')
+                                  : t('externalSub.uploadAndDownload')
                             return (
                               <div className='flex items-center gap-1'>
                                 <Tooltip>
@@ -3375,30 +3375,30 @@ function SubscribeFilesPage() {
                                   <TooltipContent className='space-y-1'>
                                     <div className='text-xs'>
                                       <span className='font-medium'>
-                                        上传:{' '}
+                                        {t('externalSub.upload')}:{' '}
                                       </span>
                                       {formatTrafficGB(sub.upload)}
                                     </div>
                                     <div className='text-xs'>
                                       <span className='font-medium'>
-                                        下载:{' '}
+                                        {t('externalSub.download')}:{' '}
                                       </span>
                                       {formatTrafficGB(sub.download)}
                                     </div>
                                     <div className='text-xs'>
                                       <span className='font-medium'>
-                                        总量:{' '}
+                                        {t('externalSub.total')}:{' '}
                                       </span>
                                       {formatTrafficGB(sub.total)}
                                     </div>
                                     <div className='text-xs'>
                                       <span className='font-medium'>
-                                        剩余:{' '}
+                                        {t('externalSub.remaining')}:{' '}
                                       </span>
                                       {formatTrafficGB(remaining)}
                                     </div>
                                     <div className='text-muted-foreground text-xs'>
-                                      统计方式: {modeLabel}
+                                      {t('externalSub.statsMode')}: {modeLabel}
                                     </div>
                                   </TooltipContent>
                                 </Tooltip>
@@ -3448,7 +3448,7 @@ function SubscribeFilesPage() {
                                     </Button>
                                   </TooltipTrigger>
                                   <TooltipContent>
-                                    <span>切换统计方式: {modeLabel}</span>
+                                    <span>{t('externalSub.switchStatsMode')}: {modeLabel}</span>
                                   </TooltipContent>
                                 </Tooltip>
                               </div>
@@ -3457,7 +3457,7 @@ function SubscribeFilesPage() {
                           width: '140px',
                         },
                         {
-                          header: '到期时间',
+                          header: t('externalSub.columns.expireTime'),
                           cell: (sub) =>
                             sub.expire ? (
                               <span className='text-sm'>
@@ -3470,7 +3470,7 @@ function SubscribeFilesPage() {
                             ),
                         },
                         {
-                          header: '最后同步',
+                          header: t('externalSub.columns.lastSync'),
                           cell: (sub) => (
                             <span className='text-muted-foreground text-sm'>
                               {sub.last_sync_at
@@ -3482,7 +3482,7 @@ function SubscribeFilesPage() {
                           ),
                         },
                         {
-                          header: '操作',
+                          header: t('externalSub.columns.actions'),
                           cell: (sub) => (
                             <div className='flex items-center gap-1'>
                               <Button
@@ -3532,21 +3532,20 @@ function SubscribeFilesPage() {
                                 <AlertDialogContent>
                                   <AlertDialogHeader>
                                     <AlertDialogTitle>
-                                      确认删除
+                                      {t('externalSub.deleteConfirmTitle')}
                                     </AlertDialogTitle>
                                     <AlertDialogDescription>
-                                      确定要删除外部订阅 "{sub.name}"
-                                      吗？此操作不会删除已同步的节点，但会停止后续同步。
+                                      {t('externalSub.deleteConfirmDesc', { name: sub.name })}
                                     </AlertDialogDescription>
                                   </AlertDialogHeader>
                                   <AlertDialogFooter>
-                                    <AlertDialogCancel>取消</AlertDialogCancel>
+                                    <AlertDialogCancel>{t('actions.cancel', { ns: 'common' })}</AlertDialogCancel>
                                     <AlertDialogAction
                                       onClick={() =>
                                         deleteExternalSubMutation.mutate(sub.id)
                                       }
                                     >
-                                      删除
+                                      {t('actions.delete', { ns: 'common' })}
                                     </AlertDialogAction>
                                   </AlertDialogFooter>
                                 </AlertDialogContent>
@@ -3575,12 +3574,12 @@ function SubscribeFilesPage() {
                                     variant='secondary'
                                     className='cursor-help'
                                   >
-                                    {nodeCount} 节点
+                                    {t('externalSub.nodeCountLabel', { count: nodeCount })}
                                   </Badge>
                                 </TooltipTrigger>
                                 <TooltipContent className='max-h-60 max-w-64 overflow-y-auto p-2'>
                                   <div className='mb-1 text-xs font-medium'>
-                                    {sub.name} 的节点
+                                    {t('externalSub.nodesOf', { name: sub.name })}
                                   </div>
                                   {nodes.length > 0 ? (
                                     <ul className='space-y-0.5'>
@@ -3594,7 +3593,7 @@ function SubscribeFilesPage() {
                                       ))}
                                     </ul>
                                   ) : (
-                                    <div className='text-xs'>暂无节点</div>
+                                    <div className='text-xs'>{t('externalSub.noNodes')}</div>
                                   )}
                                 </TooltipContent>
                               </Tooltip>
@@ -3655,21 +3654,20 @@ function SubscribeFilesPage() {
                                 <AlertDialogContent>
                                   <AlertDialogHeader>
                                     <AlertDialogTitle>
-                                      确认删除
+                                      {t('externalSub.deleteConfirmTitle')}
                                     </AlertDialogTitle>
                                     <AlertDialogDescription>
-                                      确定要删除外部订阅 "{sub.name}"
-                                      吗？此操作不会删除已同步的节点，但会停止后续同步。
+                                      {t('externalSub.deleteConfirmDesc', { name: sub.name })}
                                     </AlertDialogDescription>
                                   </AlertDialogHeader>
                                   <AlertDialogFooter>
-                                    <AlertDialogCancel>取消</AlertDialogCancel>
+                                    <AlertDialogCancel>{t('actions.cancel', { ns: 'common' })}</AlertDialogCancel>
                                     <AlertDialogAction
                                       onClick={() =>
                                         deleteExternalSubMutation.mutate(sub.id)
                                       }
                                     >
-                                      删除
+                                      {t('actions.delete', { ns: 'common' })}
                                     </AlertDialogAction>
                                   </AlertDialogFooter>
                                 </AlertDialogContent>
@@ -3680,7 +3678,7 @@ function SubscribeFilesPage() {
                       },
                       fields: [
                         {
-                          label: '链接',
+                          label: t('externalSub.mobileUrlLabel'),
                           value: (sub) => (
                             <span className='font-mono text-xs break-all'>
                               {sub.url}
@@ -3688,7 +3686,7 @@ function SubscribeFilesPage() {
                           ),
                         },
                         {
-                          label: '流量',
+                          label: t('externalSub.mobileTrafficLabel'),
                           value: (sub) => {
                             if (sub.total <= 0) {
                               return (
@@ -3710,10 +3708,10 @@ function SubscribeFilesPage() {
                             const remaining = Math.max(sub.total - used, 0)
                             const modeLabel =
                               mode === 'download'
-                                ? '仅下行'
+                                ? t('externalSub.downloadOnly')
                                 : mode === 'upload'
-                                  ? '仅上行'
-                                  : '上下行'
+                                  ? t('externalSub.uploadOnly')
+                                  : t('externalSub.uploadAndDownload')
                             return (
                               <div className='flex items-center gap-2'>
                                 <Tooltip>
@@ -3732,24 +3730,24 @@ function SubscribeFilesPage() {
                                   <TooltipContent className='space-y-1'>
                                     <div className='text-xs'>
                                       <span className='font-medium'>
-                                        上传:{' '}
+                                        {t('externalSub.upload')}:{' '}
                                       </span>
                                       {formatTrafficGB(sub.upload)}
                                     </div>
                                     <div className='text-xs'>
                                       <span className='font-medium'>
-                                        下载:{' '}
+                                        {t('externalSub.download')}:{' '}
                                       </span>
                                       {formatTrafficGB(sub.download)}
                                     </div>
                                     <div className='text-xs'>
                                       <span className='font-medium'>
-                                        剩余:{' '}
+                                        {t('externalSub.remaining')}:{' '}
                                       </span>
                                       {formatTrafficGB(remaining)}
                                     </div>
                                     <div className='text-muted-foreground text-xs'>
-                                      统计方式: {modeLabel}
+                                      {t('externalSub.statsMode')}: {modeLabel}
                                     </div>
                                   </TooltipContent>
                                 </Tooltip>
@@ -3800,7 +3798,7 @@ function SubscribeFilesPage() {
                                     </Button>
                                   </TooltipTrigger>
                                   <TooltipContent>
-                                    <span>切换统计方式: {modeLabel}</span>
+                                    <span>{t('externalSub.switchStatsMode')}: {modeLabel}</span>
                                   </TooltipContent>
                                 </Tooltip>
                               </div>
@@ -3808,14 +3806,14 @@ function SubscribeFilesPage() {
                           },
                         },
                         {
-                          label: '到期',
+                          label: t('externalSub.mobileExpireLabel'),
                           value: (sub) =>
                             sub.expire
                               ? dateFormatter.format(new Date(sub.expire))
                               : '-',
                         },
                         {
-                          label: '最后同步',
+                          label: t('externalSub.mobileLastSyncLabel'),
                           value: (sub) =>
                             sub.last_sync_at
                               ? dateFormatter.format(new Date(sub.last_sync_at))
@@ -3841,15 +3839,14 @@ function SubscribeFilesPage() {
                 <CardHeader className='hover:bg-muted/50 cursor-pointer transition-colors'>
                   <div className='flex items-center justify-between'>
                     <div>
-                      <CardTitle className='text-base'>代理集合配置</CardTitle>
+                      <CardTitle className='text-base'>{t('proxyProvider.title')}</CardTitle>
                       <CardDescription>
-                        管理 Clash Meta proxy-providers
-                        配置，用于按需加载代理节点
+                        {t('proxyProvider.description')}
                       </CardDescription>
                     </div>
                     <div className='flex items-center gap-2'>
                       <Badge variant='secondary'>
-                        {proxyProviderConfigs.length} 个配置
+                        {t('proxyProvider.configCount', { count: proxyProviderConfigs.length })}
                       </Badge>
                       {isProxyProvidersExpanded ? (
                         <ChevronUp className='h-4 w-4' />
@@ -3869,7 +3866,7 @@ function SubscribeFilesPage() {
                       {selectedProxyProviderIds.size > 0 && (
                         <>
                           <Badge variant='secondary'>
-                            {selectedProxyProviderIds.size} 项已选
+                            {t('proxyProvider.selectedCount', { count: selectedProxyProviderIds.size })}
                           </Badge>
                           <Button
                             size='sm'
@@ -3877,7 +3874,7 @@ function SubscribeFilesPage() {
                             onClick={() => setBatchDeleteDialogOpen(true)}
                           >
                             <Trash2 className='mr-1 h-4 w-4' />
-                            批量删除
+                            {t('proxyProvider.batchDelete')}
                           </Button>
                         </>
                       )}
@@ -3895,7 +3892,7 @@ function SubscribeFilesPage() {
                         }}
                       >
                         <Settings className='mr-2 h-4 w-4' />
-                        创建代理集合(初级)
+                        {t('proxyProvider.createBasic')}
                       </Button>
                       <Button
                         size='sm'
@@ -3928,7 +3925,7 @@ function SubscribeFilesPage() {
                         }}
                       >
                         <Settings className='mr-2 h-4 w-4' />
-                        创建代理集合(高级)
+                        {t('proxyProvider.createAdvanced')}
                       </Button>
                     </div>
                   </div>
@@ -3960,7 +3957,7 @@ function SubscribeFilesPage() {
                           }
                         }}
                       >
-                        全部 ({proxyProviderConfigs.length})
+                        {t('proxyProvider.allFilter')} ({proxyProviderConfigs.length})
                       </Button>
                       {externalSubs.map((sub) => {
                         const subConfigs = proxyProviderConfigs.filter(
@@ -4004,13 +4001,13 @@ function SubscribeFilesPage() {
                   )}
                   {isProxyProviderConfigsLoading ? (
                     <div className='text-muted-foreground py-4 text-center'>
-                      加载中...
+                      {t('actions.loading', { ns: 'common' })}
                     </div>
                   ) : filteredProxyProviderConfigs.length === 0 ? (
                     <div className='text-muted-foreground py-8 text-center'>
-                      <p>暂无代理集合配置</p>
+                      <p>{t('proxyProvider.noConfigs')}</p>
                       <p className='mt-1 text-sm'>
-                        点击上方按钮创建你的第一个代理集合
+                        {t('proxyProvider.noConfigsHint')}
                       </p>
                     </div>
                   ) : (
@@ -4030,7 +4027,7 @@ function SubscribeFilesPage() {
                                   )
                                 }
                                 onCheckedChange={handleSelectAllProxyProviders}
-                                aria-label='全选'
+                                aria-label={t('proxyProvider.selectAll')}
                               />
                             ),
                             cell: (config) => (
@@ -4044,7 +4041,7 @@ function SubscribeFilesPage() {
                                     checked as boolean
                                   )
                                 }
-                                aria-label={`选择 ${config.name}`}
+                                aria-label={t('proxyProvider.selectItem', { name: config.name })}
                               />
                             ),
                             width: '40px',
@@ -4053,14 +4050,14 @@ function SubscribeFilesPage() {
                           },
                           {
                             key: 'name',
-                            header: '名称',
+                            header: t('proxyProvider.columns.name'),
                             cell: (config) => (
                               <div className='font-medium'>{config.name}</div>
                             ),
                           },
                           {
                             key: 'external_subscription',
-                            header: '关联订阅',
+                            header: t('proxyProvider.columns.linkedSub'),
                             cell: (config) => {
                               const sub = externalSubs.find(
                                 (s) => s.id === config.external_subscription_id
@@ -4069,14 +4066,14 @@ function SubscribeFilesPage() {
                                 <Badge variant='outline'>{sub.name}</Badge>
                               ) : (
                                 <span className='text-muted-foreground'>
-                                  未知
+                                  {t('proxyProvider.unknown')}
                                 </span>
                               )
                             },
                           },
                           {
                             key: 'process_mode',
-                            header: '处理模式',
+                            header: t('proxyProvider.columns.processMode'),
                             cell: (config) => (
                               <Tooltip>
                                 <TooltipTrigger asChild>
@@ -4100,16 +4097,15 @@ function SubscribeFilesPage() {
                                       className='cursor-pointer hover:opacity-80'
                                     >
                                       {config.process_mode === 'mmw'
-                                        ? '妙妙屋处理'
-                                        : '客户端处理'}
+                                        ? t('proxyProvider.mmwProcess')
+                                        : t('proxyProvider.clientProcess')}
                                     </Badge>
                                   </Button>
                                 </TooltipTrigger>
                                 <TooltipContent>
-                                  点击切换为
-                                  {config.process_mode === 'mmw'
-                                    ? '客户端处理'
-                                    : '妙妙屋处理'}
+                                  {t('proxyProvider.switchTo')}{config.process_mode === 'mmw'
+                                    ? t('proxyProvider.clientProcess')
+                                    : t('proxyProvider.mmwProcess')}
                                 </TooltipContent>
                               </Tooltip>
                             ),
@@ -4118,18 +4114,18 @@ function SubscribeFilesPage() {
                           },
                           {
                             key: 'filter',
-                            header: '过滤规则',
+                            header: t('proxyProvider.columns.filterRule'),
                             cell: (config) => (
                               <div className='text-muted-foreground max-w-[150px] truncate text-xs'>
                                 {config.filter ||
                                 config.exclude_filter ||
                                 config.exclude_type ? (
                                   <span>
-                                    {config.filter && `保留: ${config.filter}`}
+                                    {config.filter && t('proxyProvider.filterKeep', { filter: config.filter })}
                                     {config.exclude_filter &&
-                                      ` 排除: ${config.exclude_filter}`}
+                                      ` ${t('proxyProvider.filterExclude', { filter: config.exclude_filter })}`}
                                     {config.exclude_type &&
-                                      ` 类型: ${config.exclude_type}`}
+                                      ` ${t('proxyProvider.filterExcludeType', { filter: config.exclude_type })}`}
                                   </span>
                                 ) : (
                                   '-'
@@ -4139,7 +4135,7 @@ function SubscribeFilesPage() {
                           },
                           {
                             key: 'actions',
-                            header: '操作',
+                            header: t('proxyProvider.columns.actions'),
                             cell: (config) => (
                               <div className='flex items-center gap-1'>
                                 {config.process_mode === 'mmw' && (
@@ -4156,7 +4152,7 @@ function SubscribeFilesPage() {
                                       </Button>
                                     </TooltipTrigger>
                                     <TooltipContent>
-                                      预览处理结果
+                                      {t('proxyProvider.previewResult')}
                                     </TooltipContent>
                                   </Tooltip>
                                 )}
@@ -4244,7 +4240,7 @@ function SubscribeFilesPage() {
                                       <Edit className='h-4 w-4' />
                                     </Button>
                                   </TooltipTrigger>
-                                  <TooltipContent>编辑配置</TooltipContent>
+                                  <TooltipContent>{t('proxyProvider.editConfig')}</TooltipContent>
                                 </Tooltip>
                                 <Tooltip>
                                   <TooltipTrigger asChild>
@@ -4370,13 +4366,13 @@ function SubscribeFilesPage() {
                                           lineWidth: -1,
                                         })
                                         navigator.clipboard.writeText(yamlStr)
-                                        toast.success('配置已复制到剪贴板')
+                                        toast.success(t('proxyProvider.configCopied'))
                                       }}
                                     >
                                       <Copy className='h-4 w-4' />
                                     </Button>
                                   </TooltipTrigger>
-                                  <TooltipContent>复制配置</TooltipContent>
+                                  <TooltipContent>{t('proxyProvider.copyConfig')}</TooltipContent>
                                 </Tooltip>
                                 <AlertDialog>
                                   <AlertDialogTrigger asChild>
@@ -4391,16 +4387,15 @@ function SubscribeFilesPage() {
                                   <AlertDialogContent>
                                     <AlertDialogHeader>
                                       <AlertDialogTitle>
-                                        确认删除
+                                        {t('externalSub.deleteConfirmTitle')}
                                       </AlertDialogTitle>
                                       <AlertDialogDescription>
-                                        确定要删除代理集合配置 "{config.name}"
-                                        吗？此操作无法撤销。
+                                        {t('proxyProvider.deleteConfirmDesc', { name: config.name })}
                                       </AlertDialogDescription>
                                     </AlertDialogHeader>
                                     <AlertDialogFooter>
                                       <AlertDialogCancel>
-                                        取消
+                                        {t('actions.cancel', { ns: 'common' })}
                                       </AlertDialogCancel>
                                       <AlertDialogAction
                                         onClick={() =>
@@ -4409,7 +4404,7 @@ function SubscribeFilesPage() {
                                           )
                                         }
                                       >
-                                        删除
+                                        {t('actions.delete', { ns: 'common' })}
                                       </AlertDialogAction>
                                     </AlertDialogFooter>
                                   </AlertDialogContent>
@@ -4437,7 +4432,7 @@ function SubscribeFilesPage() {
                                   )
                                 }
                                 onClick={(e) => e.stopPropagation()}
-                                aria-label={`选择 ${config.name}`}
+                                aria-label={t('proxyProvider.selectItem', { name: config.name })}
                                 className='shrink-0'
                               />
                               <Tooltip>
@@ -4463,16 +4458,15 @@ function SubscribeFilesPage() {
                                       className='cursor-pointer hover:opacity-80'
                                     >
                                       {config.process_mode === 'mmw'
-                                        ? '妙妙屋'
-                                        : '客户端'}
+                                        ? t('proxyProvider.mmwShort')
+                                        : t('proxyProvider.clientShort')}
                                     </Badge>
                                   </Button>
                                 </TooltipTrigger>
                                 <TooltipContent>
-                                  点击切换为
-                                  {config.process_mode === 'mmw'
-                                    ? '客户端处理'
-                                    : '妙妙屋处理'}
+                                  {t('proxyProvider.switchTo')}{config.process_mode === 'mmw'
+                                    ? t('proxyProvider.clientProcess')
+                                    : t('proxyProvider.mmwProcess')}
                                 </TooltipContent>
                               </Tooltip>
                               <div className='truncate text-sm font-medium'>
@@ -4580,15 +4574,14 @@ function SubscribeFilesPage() {
                                 <AlertDialogContent>
                                   <AlertDialogHeader>
                                     <AlertDialogTitle>
-                                      确认删除
+                                      {t('externalSub.deleteConfirmTitle')}
                                     </AlertDialogTitle>
                                     <AlertDialogDescription>
-                                      确定要删除代理集合配置 "{config.name}"
-                                      吗？
+                                      {t('proxyProvider.deleteConfirmDesc', { name: config.name })}
                                     </AlertDialogDescription>
                                   </AlertDialogHeader>
                                   <AlertDialogFooter>
-                                    <AlertDialogCancel>取消</AlertDialogCancel>
+                                    <AlertDialogCancel>{t('actions.cancel', { ns: 'common' })}</AlertDialogCancel>
                                     <AlertDialogAction
                                       onClick={() =>
                                         deleteProxyProviderMutation.mutate(
@@ -4596,7 +4589,7 @@ function SubscribeFilesPage() {
                                         )
                                       }
                                     >
-                                      删除
+                                      {t('actions.delete', { ns: 'common' })}
                                     </AlertDialogAction>
                                   </AlertDialogFooter>
                                 </AlertDialogContent>
@@ -4606,16 +4599,16 @@ function SubscribeFilesPage() {
                         ),
                         fields: [
                           {
-                            label: '关联订阅',
+                            label: t('proxyProvider.mobileLinkedSubLabel'),
                             value: (config) => {
                               const sub = externalSubs.find(
                                 (s) => s.id === config.external_subscription_id
                               )
-                              return sub?.name || '未知'
+                              return sub?.name || t('proxyProvider.unknown')
                             },
                           },
                           {
-                            label: '过滤规则',
+                            label: t('proxyProvider.mobileFilterLabel'),
                             value: (config) =>
                               config.filter ||
                               config.exclude_filter ||
@@ -4649,9 +4642,9 @@ function SubscribeFilesPage() {
       >
         <DialogContent className='flex h-[90vh] max-w-4xl flex-col p-0'>
           <DialogHeader className='px-6 pt-6'>
-            <DialogTitle>{editingFile?.name || '编辑文件'}</DialogTitle>
+            <DialogTitle>{editingFile?.name || t('editFile.title')}</DialogTitle>
             <DialogDescription>
-              编辑 {editingFile?.filename} 的内容，会自动验证 YAML 格式
+              {t('editFile.editFilename', { filename: editingFile?.filename })}
             </DialogDescription>
           </DialogHeader>
 
@@ -4667,7 +4660,7 @@ function SubscribeFilesPage() {
                   fileContentQuery.isLoading
                 }
               >
-                {saveMutation.isPending ? '保存中...' : '保存修改'}
+                {saveMutation.isPending ? t('editFile.saving') : t('editFile.saveChanges')}
               </Button>
               <Button
                 size='sm'
@@ -4679,11 +4672,11 @@ function SubscribeFilesPage() {
                 }
                 onClick={handleReset}
               >
-                还原修改
+                {t('editFile.revertChanges')}
               </Button>
               {fileContentQuery.data?.latest_version ? (
                 <Badge variant='secondary'>
-                  版本 v{fileContentQuery.data.latest_version}
+                  {t('editFile.version', { version: fileContentQuery.data.latest_version })}
                 </Badge>
               ) : null}
             </div>
@@ -4697,7 +4690,7 @@ function SubscribeFilesPage() {
             <div className='bg-muted/20 mb-4 flex-1 overflow-hidden rounded-lg border'>
               {fileContentQuery.isLoading ? (
                 <div className='text-muted-foreground p-4 text-center'>
-                  加载中...
+                  {t('actions.loading', { ns: 'common' })}
                 </div>
               ) : (
                 <Textarea
@@ -4722,7 +4715,7 @@ function SubscribeFilesPage() {
 
           <DialogFooter className='px-6 pb-6'>
             <Button variant='outline' onClick={() => setEditDialogOpen(false)}>
-              关闭
+              {t('actions.close', { ns: 'common' })}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -4746,23 +4739,23 @@ function SubscribeFilesPage() {
       >
         <DialogContent className='sm:max-w-lg'>
           <DialogHeader>
-            <DialogTitle>编辑订阅信息</DialogTitle>
-            <DialogDescription>修改订阅名称、说明和文件名</DialogDescription>
+            <DialogTitle>{t('editMetadata.title')}</DialogTitle>
+            <DialogDescription>{t('editMetadata.description')}</DialogDescription>
           </DialogHeader>
           <div className='space-y-4 py-4'>
             <div className='space-y-2'>
-              <Label htmlFor='metadata-name'>订阅名称 *</Label>
+              <Label htmlFor='metadata-name'>{t('form.subscriptionName')} *</Label>
               <Input
                 id='metadata-name'
                 value={metadataForm.name}
                 onChange={(e) =>
                   setMetadataForm({ ...metadataForm, name: e.target.value })
                 }
-                placeholder='例如：机场A'
+                placeholder={t('editMetadata.namePlaceholder')}
               />
             </div>
             <div className='space-y-2'>
-              <Label htmlFor='metadata-description'>说明（可选）</Label>
+              <Label htmlFor='metadata-description'>{t('form.description')} ({t('actions.optional', { ns: 'common' })})</Label>
               <Textarea
                 id='metadata-description'
                 value={metadataForm.description}
@@ -4772,26 +4765,26 @@ function SubscribeFilesPage() {
                     description: e.target.value,
                   })
                 }
-                placeholder='订阅说明信息'
+                placeholder={t('editMetadata.descriptionPlaceholder')}
                 rows={3}
               />
             </div>
             <div className='space-y-2'>
-              <Label htmlFor='metadata-filename'>文件名 *</Label>
+              <Label htmlFor='metadata-filename'>{t('form.filename')} *</Label>
               <Input
                 id='metadata-filename'
                 value={metadataForm.filename}
                 onChange={(e) =>
                   setMetadataForm({ ...metadataForm, filename: e.target.value })
                 }
-                placeholder='例如：subscription.yaml'
+                placeholder={t('editMetadata.filenamePlaceholder')}
               />
               <p className='text-muted-foreground text-xs'>
-                修改文件名后需确保该文件在 subscribes 目录中存在
+                {t('editMetadata.filenameHint')}
               </p>
             </div>
             <div className='space-y-2'>
-              <Label>过期时间（可选）</Label>
+              <Label>{t('editMetadata.expireDateLabel')}</Label>
               <Popover>
                 <PopoverTrigger asChild>
                   <Button
@@ -4805,7 +4798,7 @@ function SubscribeFilesPage() {
                     {metadataForm.expire ? (
                       format(metadataForm.expire, 'PPP')
                     ) : (
-                      <span>无过期时间</span>
+                      <span>{t('editMetadata.noExpireDate')}</span>
                     )}
                   </Button>
                 </PopoverTrigger>
@@ -4821,7 +4814,7 @@ function SubscribeFilesPage() {
                 </PopoverContent>
               </Popover>
               <p className='text-muted-foreground text-xs'>
-                设置订阅链接的过期时间，过期后链接将失效
+                {t('editMetadata.expireDateHint')}
               </p>
             </div>
           </div>
@@ -4831,13 +4824,13 @@ function SubscribeFilesPage() {
               onClick={() => setEditMetadataDialogOpen(false)}
               disabled={updateMetadataMutation.isPending}
             >
-              取消
+              {t('actions.cancel', { ns: 'common' })}
             </Button>
             <Button
               onClick={handleUpdateMetadata}
               disabled={updateMetadataMutation.isPending}
             >
-              {updateMetadataMutation.isPending ? '保存中...' : '保存'}
+              {updateMetadataMutation.isPending ? t('actions.saving', { ns: 'common' }) : t('actions.save', { ns: 'common' })}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -4856,7 +4849,7 @@ function SubscribeFilesPage() {
       >
         <DialogContent className='flex max-h-[90vh] w-[95vw] flex-col sm:w-[80vw] sm:!max-w-[80vw]'>
           <DialogHeader>
-            <DialogTitle>编辑配置 - {editingConfigFile?.name}</DialogTitle>
+            <DialogTitle>{t('editConfig.title', { name: editingConfigFile?.name })}</DialogTitle>
             <DialogDescription>{editingConfigFile?.filename}</DialogDescription>
             <div className='flex justify-center gap-2 md:justify-end'>
               <Button
@@ -4866,7 +4859,7 @@ function SubscribeFilesPage() {
                 onClick={() => handleEditNodes(editingConfigFile!)}
               >
                 <Edit className='mr-2 h-4 w-4' />
-                编辑节点
+                {t('editConfig.editNodes')}
               </Button>
               <Button
                 size='sm'
@@ -4875,7 +4868,7 @@ function SubscribeFilesPage() {
                 disabled={saveConfigMutation.isPending}
               >
                 <Save className='mr-2 h-4 w-4' />
-                {saveConfigMutation.isPending ? '保存中...' : '保存'}
+                {saveConfigMutation.isPending ? t('editFile.saving') : t('actions.save', { ns: 'common' })}
               </Button>
             </div>
           </DialogHeader>
@@ -4885,7 +4878,7 @@ function SubscribeFilesPage() {
                 value={configContent}
                 onChange={(e) => setConfigContent(e.target.value)}
                 className='min-h-[400px] resize-none border-0 bg-transparent font-mono text-xs'
-                placeholder='加载配置中...'
+                placeholder={t('editConfig.loadingConfig')}
               />
             </div>
             <div className='flex justify-end gap-2'>
@@ -4894,16 +4887,16 @@ function SubscribeFilesPage() {
                 disabled={saveConfigMutation.isPending}
               >
                 <Save className='mr-2 h-4 max-w-md' />
-                {saveConfigMutation.isPending ? '保存中...' : '保存'}
+                {saveConfigMutation.isPending ? t('editFile.saving') : t('actions.save', { ns: 'common' })}
               </Button>
             </div>
             <div className='bg-muted/50 rounded-lg border p-4'>
-              <h3 className='mb-2 font-semibold'>使用说明</h3>
+              <h3 className='mb-2 font-semibold'>{t('editConfig.usageTitle')}</h3>
               <ul className='text-muted-foreground space-y-1 text-sm'>
-                <li>• 点击"保存"按钮将修改保存到配置文件</li>
-                <li>• 支持直接编辑 YAML 内容</li>
-                <li>• 保存前会自动验证 YAML 格式</li>
-                <li>• 支持 Clash、Clash Meta、Mihomo 等客户端</li>
+                <li>• {t('editConfig.usageStep1')}</li>
+                <li>• {t('editConfig.usageStep2')}</li>
+                <li>• {t('editConfig.usageStep3')}</li>
+                <li>• {t('editConfig.usageStep4')}</li>
               </ul>
             </div>
           </div>
@@ -4915,7 +4908,7 @@ function SubscribeFilesPage() {
         <EditNodesDialog
           open={editNodesDialogOpen}
           onOpenChange={handleEditNodesDialogOpenChange}
-          title={`编辑节点 - ${editingNodesFile?.name}`}
+          title={t('editConfig.editNodesTitle', { name: editingNodesFile?.name })}
           proxyGroups={proxyGroups}
           availableNodes={availableNodes}
           allNodes={nodesQuery.data?.nodes || []}
@@ -4927,7 +4920,7 @@ function SubscribeFilesPage() {
           onRemoveNodeFromGroup={handleRemoveNodeFromGroup}
           onRemoveGroup={handleRemoveGroup}
           onRenameGroup={handleRenameGroup}
-          saveButtonText='应用并保存'
+          saveButtonText={t('editConfig.applyAndSave')}
           showSpecialNodesAtBottom={true}
           proxyProviderConfigs={enableProxyProvider ? proxyProviderConfigs : []}
         />
@@ -4955,14 +4948,13 @@ function SubscribeFilesPage() {
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>确认批量删除</AlertDialogTitle>
+            <AlertDialogTitle>{t('proxyProvider.batchDeleteConfirmTitle')}</AlertDialogTitle>
             <AlertDialogDescription>
-              确定要删除选中的 {selectedProxyProviderIds.size}{' '}
-              个代理集合配置吗？此操作无法撤销。
+              {t('proxyProvider.batchDeleteConfirmDesc', { count: selectedProxyProviderIds.size })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>取消</AlertDialogCancel>
+            <AlertDialogCancel>{t('actions.cancel', { ns: 'common' })}</AlertDialogCancel>
             <AlertDialogAction
               onClick={() =>
                 batchDeleteProxyProviderMutation.mutate(
@@ -4972,8 +4964,8 @@ function SubscribeFilesPage() {
               disabled={batchDeleteProxyProviderMutation.isPending}
             >
               {batchDeleteProxyProviderMutation.isPending
-                ? '删除中...'
-                : '确认删除'}
+                ? t('proxyProvider.deleting')
+                : t('proxyProvider.confirmDelete')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -4993,26 +4985,26 @@ function SubscribeFilesPage() {
         <DialogContent className='max-h-[85vh] w-[95vw] overflow-y-auto sm:w-auto sm:!max-w-fit'>
           <DialogHeader>
             <DialogTitle>
-              {editingProxyProvider ? '编辑代理集合配置' : '创建代理集合配置'}
+              {editingProxyProvider ? t('proxyProvider.dialog.editTitle') : t('proxyProvider.dialog.createTitle')}
             </DialogTitle>
             <DialogDescription>
               {editingProxyProvider
-                ? `编辑代理集合 "${editingProxyProvider.name}" 的配置`
+                ? t('proxyProvider.dialog.editDesc', { name: editingProxyProvider.name })
                 : selectedExternalSub
-                  ? `为外部订阅 "${selectedExternalSub.name}" 创建 proxy-provider 配置`
-                  : '创建新的 proxy-provider 配置'}
+                  ? t('proxyProvider.dialog.createForSubDesc', { name: selectedExternalSub.name })
+                  : t('proxyProvider.dialog.createNewDesc')}
             </DialogDescription>
           </DialogHeader>
           <div className='w-full sm:w-[600px] sm:max-w-[80vw]'>
             <div className='space-y-6'>
               {/* 基础配置 */}
               <div className='space-y-4'>
-                <h4 className='text-sm font-medium'>基础配置</h4>
+                <h4 className='text-sm font-medium'>{t('proxyProvider.dialog.basicConfig')}</h4>
                 <div className='grid grid-cols-1 gap-4 sm:grid-cols-2'>
                   {/* 外部订阅选择器 - 仅在创建模式下显示 */}
                   {!editingProxyProvider && (
                     <div className='space-y-2 sm:col-span-2'>
-                      <Label htmlFor='pp-subscription'>外部订阅 *</Label>
+                      <Label htmlFor='pp-subscription'>{t('proxyProvider.dialog.externalSubLabel')} *</Label>
                       <select
                         id='pp-subscription'
                         className='border-input flex h-9 w-full rounded-md border bg-transparent px-3 py-1 text-sm shadow-sm transition-colors'
@@ -5024,7 +5016,7 @@ function SubscribeFilesPage() {
                           setSelectedExternalSub(sub || null)
                         }}
                       >
-                        <option value=''>请选择外部订阅</option>
+                        <option value=''>{t('proxyProvider.dialog.selectExternalSub')}</option>
                         {externalSubs.map((sub) => (
                           <option key={sub.id} value={sub.id}>
                             {sub.name}
@@ -5034,7 +5026,7 @@ function SubscribeFilesPage() {
                     </div>
                   )}
                   <div className='space-y-2'>
-                    <Label htmlFor='pp-name'>代理集合名称</Label>
+                    <Label htmlFor='pp-name'>{t('proxyProvider.dialog.providerName')}</Label>
                     <Input
                       id='pp-name'
                       value={proxyProviderForm.name}
@@ -5044,13 +5036,13 @@ function SubscribeFilesPage() {
                           name: e.target.value,
                         }))
                       }
-                      placeholder='例如: 机场A'
+                      placeholder={t('proxyProvider.dialog.providerNamePlaceholder')}
                     />
                   </div>
                   {/* 妙妙屋处理模式显示 URL */}
                   {proxyProviderForm.process_mode === 'mmw' && (
                     <div className='space-y-2'>
-                      <Label>订阅 URL</Label>
+                      <Label>{t('proxyProvider.dialog.subscriptionUrl')}</Label>
                       <div className='flex items-center gap-2'>
                         <Input
                           value={(() => {
@@ -5078,7 +5070,7 @@ function SubscribeFilesPage() {
                               editingProxyProvider?.id || '{config_id}'
                             const url = `${baseUrl}/api/proxy-provider/${configId}?token=${userToken || '{user_token}'}`
                             navigator.clipboard.writeText(url)
-                            toast.success('URL 已复制')
+                            toast.success(t('proxyProvider.dialog.urlCopied'))
                           }}
                         >
                           <Copy className='h-4 w-4' />
@@ -5086,13 +5078,13 @@ function SubscribeFilesPage() {
                       </div>
                       {!editingProxyProvider && (
                         <p className='text-muted-foreground text-xs'>
-                          保存后将生成实际的 config_id
+                          {t('proxyProvider.dialog.configIdHint')}
                         </p>
                       )}
                     </div>
                   )}
                   <div className='space-y-2'>
-                    <Label htmlFor='pp-type'>类型</Label>
+                    <Label htmlFor='pp-type'>{t('proxyProvider.dialog.type')}</Label>
                     <select
                       id='pp-type'
                       className='border-input flex h-9 w-full rounded-md border bg-transparent px-3 py-1 text-sm shadow-sm transition-colors'
@@ -5109,7 +5101,7 @@ function SubscribeFilesPage() {
                     </select>
                   </div>
                   <div className='space-y-2'>
-                    <Label htmlFor='pp-interval'>更新间隔(秒)</Label>
+                    <Label htmlFor='pp-interval'>{t('proxyProvider.dialog.updateInterval')}</Label>
                     <Input
                       id='pp-interval'
                       type='number'
@@ -5123,7 +5115,7 @@ function SubscribeFilesPage() {
                     />
                   </div>
                   <div className='space-y-2'>
-                    <Label htmlFor='pp-proxy'>下载代理</Label>
+                    <Label htmlFor='pp-proxy'>{t('proxyProvider.dialog.downloadProxy')}</Label>
                     <Input
                       id='pp-proxy'
                       value={proxyProviderForm.proxy}
@@ -5137,7 +5129,7 @@ function SubscribeFilesPage() {
                     />
                   </div>
                   <div className='space-y-2'>
-                    <Label htmlFor='pp-size-limit'>文件大小限制</Label>
+                    <Label htmlFor='pp-size-limit'>{t('proxyProvider.dialog.fileSizeLimit')}</Label>
                     <Input
                       id='pp-size-limit'
                       type='number'
@@ -5155,7 +5147,7 @@ function SubscribeFilesPage() {
 
               {/* 请求头配置 */}
               <div className='space-y-4'>
-                <h4 className='text-sm font-medium'>请求头</h4>
+                <h4 className='text-sm font-medium'>{t('proxyProvider.dialog.requestHeaders')}</h4>
                 <div className='grid grid-cols-1 gap-4 sm:grid-cols-2'>
                   <div className='space-y-2'>
                     <Label htmlFor='pp-user-agent'>User-Agent</Label>
@@ -5182,7 +5174,7 @@ function SubscribeFilesPage() {
                           header_authorization: e.target.value,
                         }))
                       }
-                      placeholder='鉴权token，如有则必填'
+                      placeholder={t('proxyProvider.dialog.authTokenPlaceholder')}
                     />
                   </div>
                 </div>
@@ -5191,7 +5183,7 @@ function SubscribeFilesPage() {
               {/* 健康检查配置 */}
               <div className='space-y-4'>
                 <div className='flex items-center justify-between'>
-                  <h4 className='text-sm font-medium'>健康检查</h4>
+                  <h4 className='text-sm font-medium'>{t('proxyProvider.dialog.healthCheck')}</h4>
                   <Switch
                     checked={proxyProviderForm.health_check_enabled}
                     onCheckedChange={(checked) =>
@@ -5205,7 +5197,7 @@ function SubscribeFilesPage() {
                 {proxyProviderForm.health_check_enabled && (
                   <div className='grid grid-cols-1 gap-4 sm:grid-cols-2'>
                     <div className='space-y-2 sm:col-span-2'>
-                      <Label htmlFor='pp-hc-url'>检查URL</Label>
+                      <Label htmlFor='pp-hc-url'>{t('proxyProvider.dialog.healthCheckUrl')}</Label>
                       <Input
                         id='pp-hc-url'
                         value={proxyProviderForm.health_check_url}
@@ -5218,7 +5210,7 @@ function SubscribeFilesPage() {
                       />
                     </div>
                     <div className='space-y-2'>
-                      <Label htmlFor='pp-hc-interval'>检查间隔(秒)</Label>
+                      <Label htmlFor='pp-hc-interval'>{t('proxyProvider.dialog.healthCheckInterval')}</Label>
                       <Input
                         id='pp-hc-interval'
                         type='number'
@@ -5233,7 +5225,7 @@ function SubscribeFilesPage() {
                       />
                     </div>
                     <div className='space-y-2'>
-                      <Label htmlFor='pp-hc-timeout'>超时(ms)</Label>
+                      <Label htmlFor='pp-hc-timeout'>{t('proxyProvider.dialog.healthCheckTimeout')}</Label>
                       <Input
                         id='pp-hc-timeout'
                         type='number'
@@ -5248,7 +5240,7 @@ function SubscribeFilesPage() {
                       />
                     </div>
                     <div className='space-y-2'>
-                      <Label htmlFor='pp-hc-status'>期望状态码</Label>
+                      <Label htmlFor='pp-hc-status'>{t('proxyProvider.dialog.healthCheckExpectedStatus')}</Label>
                       <Input
                         id='pp-hc-status'
                         type='number'
@@ -5274,7 +5266,7 @@ function SubscribeFilesPage() {
                         }
                       />
                       <Label htmlFor='pp-hc-lazy' className='text-sm'>
-                        懒惰模式
+                        {t('proxyProvider.dialog.lazyMode')}
                       </Label>
                     </div>
                   </div>
@@ -5283,7 +5275,7 @@ function SubscribeFilesPage() {
 
               {/* 高级配置处理方式 */}
               <div className='space-y-3'>
-                <h4 className='text-sm font-medium'>高级配置处理方式</h4>
+                <h4 className='text-sm font-medium'>{t('proxyProvider.dialog.advancedProcessMode')}</h4>
                 <div className='grid grid-cols-1 gap-2 sm:grid-cols-2'>
                   <Button
                     type='button'
@@ -5300,9 +5292,9 @@ function SubscribeFilesPage() {
                       }))
                     }
                   >
-                    <span className='font-medium'>由客户端处理</span>
+                    <span className='font-medium'>{t('proxyProvider.dialog.clientProcessLabel')}</span>
                     <span className='text-xs font-normal opacity-70'>
-                      高级配置输出到订阅配置中
+                      {t('proxyProvider.dialog.clientProcessDesc')}
                     </span>
                   </Button>
                   <Button
@@ -5320,9 +5312,9 @@ function SubscribeFilesPage() {
                       }))
                     }
                   >
-                    <span className='font-medium'>由妙妙屋处理</span>
+                    <span className='font-medium'>{t('proxyProvider.dialog.mmwProcessLabel')}</span>
                     <span className='text-xs font-normal opacity-70'>
-                      URL 指向妙妙屋接口
+                      {t('proxyProvider.dialog.mmwProcessDesc')}
                     </span>
                   </Button>
                 </div>
@@ -5331,14 +5323,14 @@ function SubscribeFilesPage() {
               {/* 高级配置 */}
               <div className='space-y-4'>
                 <h4 className='text-sm font-medium'>
-                  高级配置{' '}
+                  {t('proxyProvider.dialog.advancedConfig')}{' '}
                   {proxyProviderForm.process_mode === 'client'
-                    ? '(输出到配置)'
-                    : '(由妙妙屋处理)'}
+                    ? t('proxyProvider.dialog.advancedConfigOutput')
+                    : t('proxyProvider.dialog.advancedConfigMmw')}
                 </h4>
                 <div className='grid grid-cols-1 gap-4 sm:grid-cols-2'>
                   <div className='space-y-2'>
-                    <Label htmlFor='pp-filter'>节点过滤(正则)</Label>
+                    <Label htmlFor='pp-filter'>{t('proxyProvider.dialog.nodeFilter')}</Label>
                     <Input
                       id='pp-filter'
                       value={proxyProviderForm.filter}
@@ -5348,14 +5340,14 @@ function SubscribeFilesPage() {
                           filter: e.target.value,
                         }))
                       }
-                      placeholder='例如: 香港|日本'
+                      placeholder={t('proxyProvider.dialog.nodeFilterPlaceholder')}
                     />
                     <p className='text-muted-foreground text-xs'>
-                      保留匹配的节点
+                      {t('proxyProvider.dialog.nodeFilterHint')}
                     </p>
                   </div>
                   <div className='space-y-2'>
-                    <Label htmlFor='pp-exclude-filter'>节点排除(正则)</Label>
+                    <Label htmlFor='pp-exclude-filter'>{t('proxyProvider.dialog.nodeExclude')}</Label>
                     <Input
                       id='pp-exclude-filter'
                       value={proxyProviderForm.exclude_filter}
@@ -5365,15 +5357,15 @@ function SubscribeFilesPage() {
                           exclude_filter: e.target.value,
                         }))
                       }
-                      placeholder='例如: 过期|剩余'
+                      placeholder={t('proxyProvider.dialog.nodeExcludePlaceholder')}
                     />
                     <p className='text-muted-foreground text-xs'>
-                      排除匹配的节点
+                      {t('proxyProvider.dialog.nodeExcludeHint')}
                     </p>
                   </div>
                 </div>
                 <div className='space-y-2'>
-                  <Label>排除协议类型</Label>
+                  <Label>{t('proxyProvider.dialog.excludeProtocolType')}</Label>
                   <div className='flex flex-wrap gap-1.5'>
                     {PROXY_TYPES.map((type) => {
                       const isSelected =
@@ -5409,12 +5401,12 @@ function SubscribeFilesPage() {
                 </div>
                 {/* 覆写配置 */}
                 <div className='space-y-3'>
-                  <h4 className='text-sm font-medium'>覆写配置</h4>
+                  <h4 className='text-sm font-medium'>{t('proxyProvider.dialog.overrideConfig')}</h4>
 
                   {/* 连接设置 */}
                   <div className='space-y-2'>
                     <Label className='text-muted-foreground text-xs'>
-                      连接设置
+                      {t('proxyProvider.dialog.connectionSettings')}
                     </Label>
                     <div className='grid grid-cols-1 gap-3 sm:grid-cols-2'>
                       <div className='flex items-center justify-between'>
@@ -5449,7 +5441,7 @@ function SubscribeFilesPage() {
                       </div>
                       <div className='flex items-center justify-between'>
                         <Label htmlFor='pp-override-udp' className='text-xs'>
-                          启用 UDP
+                          {t('proxyProvider.dialog.enableUdp')}
                         </Label>
                         <Switch
                           id='pp-override-udp'
@@ -5485,7 +5477,7 @@ function SubscribeFilesPage() {
                           htmlFor='pp-override-skip-cert'
                           className='text-xs'
                         >
-                          跳过证书验证
+                          {t('proxyProvider.dialog.skipCertVerify')}
                         </Label>
                         <Switch
                           id='pp-override-skip-cert'
@@ -5510,7 +5502,7 @@ function SubscribeFilesPage() {
                       htmlFor='pp-override-dialer-proxy'
                       className='text-muted-foreground text-xs'
                     >
-                      链式代理 (dialer-proxy)
+                      {t('proxyProvider.dialog.chainProxy')}
                     </Label>
                     <Input
                       id='pp-override-dialer-proxy'
@@ -5524,7 +5516,7 @@ function SubscribeFilesPage() {
                           },
                         }))
                       }
-                      placeholder='例如: 节点选择'
+                      placeholder={t('proxyProvider.dialog.chainProxyPlaceholder')}
                       className='h-8 text-sm'
                     />
                   </div>
@@ -5532,7 +5524,7 @@ function SubscribeFilesPage() {
                   {/* 网络设置 */}
                   <div className='space-y-2'>
                     <Label className='text-muted-foreground text-xs'>
-                      网络设置
+                      {t('proxyProvider.dialog.networkSettings')}
                     </Label>
                     <div className='grid grid-cols-1 gap-3 sm:grid-cols-2'>
                       <div className='space-y-1'>
@@ -5540,7 +5532,7 @@ function SubscribeFilesPage() {
                           htmlFor='pp-override-interface'
                           className='text-xs'
                         >
-                          出站接口
+                          {t('proxyProvider.dialog.outboundInterface')}
                         </Label>
                         <Input
                           id='pp-override-interface'
@@ -5554,7 +5546,7 @@ function SubscribeFilesPage() {
                               },
                             }))
                           }
-                          placeholder='例如: eth0'
+                          placeholder={t('proxyProvider.dialog.outboundInterfacePlaceholder')}
                           className='h-8 text-sm'
                         />
                       </div>
@@ -5563,7 +5555,7 @@ function SubscribeFilesPage() {
                           htmlFor='pp-override-routing-mark'
                           className='text-xs'
                         >
-                          路由标记
+                          {t('proxyProvider.dialog.routingMark')}
                         </Label>
                         <Input
                           id='pp-override-routing-mark'
@@ -5577,7 +5569,7 @@ function SubscribeFilesPage() {
                               },
                             }))
                           }
-                          placeholder='例如: 255'
+                          placeholder={t('proxyProvider.dialog.routingMarkPlaceholder')}
                           className='h-8 text-sm'
                         />
                       </div>
@@ -5587,7 +5579,7 @@ function SubscribeFilesPage() {
                         htmlFor='pp-override-ip-version'
                         className='text-xs'
                       >
-                        IP 版本
+                        {t('proxyProvider.dialog.ipVersionLabel')}
                       </Label>
                       <Select
                         value={proxyProviderForm.override.ip_version}
@@ -5605,7 +5597,7 @@ function SubscribeFilesPage() {
                           id='pp-override-ip-version'
                           className='h-8 text-sm'
                         >
-                          <SelectValue placeholder='选择 IP 版本' />
+                          <SelectValue placeholder={t('proxyProvider.dialog.ipVersionPlaceholder')} />
                         </SelectTrigger>
                         <SelectContent>
                           {IP_VERSION_OPTIONS.map((opt) => (
@@ -5613,7 +5605,7 @@ function SubscribeFilesPage() {
                               key={opt.value}
                               value={opt.value || '_default'}
                             >
-                              {opt.label}
+                              {t(`ipVersion.${opt.labelKey}`, { defaultValue: opt.labelKey })}
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -5624,12 +5616,12 @@ function SubscribeFilesPage() {
                   {/* 节点名称修改 */}
                   <div className='space-y-2'>
                     <Label className='text-muted-foreground text-xs'>
-                      节点名称修改
+                      {t('proxyProvider.dialog.nodeNameModify')}
                     </Label>
                     <div className='grid grid-cols-1 gap-3 sm:grid-cols-2'>
                       <div className='space-y-1'>
                         <Label htmlFor='pp-override-prefix' className='text-xs'>
-                          名称前缀
+                          {t('proxyProvider.dialog.namePrefix')}
                         </Label>
                         <Input
                           id='pp-override-prefix'
@@ -5643,13 +5635,13 @@ function SubscribeFilesPage() {
                               },
                             }))
                           }
-                          placeholder='例如: [机场A]'
+                          placeholder={t('proxyProvider.dialog.namePrefixPlaceholder')}
                           className='h-8 text-sm'
                         />
                       </div>
                       <div className='space-y-1'>
                         <Label htmlFor='pp-override-suffix' className='text-xs'>
-                          名称后缀
+                          {t('proxyProvider.dialog.nameSuffix')}
                         </Label>
                         <Input
                           id='pp-override-suffix'
@@ -5663,7 +5655,7 @@ function SubscribeFilesPage() {
                               },
                             }))
                           }
-                          placeholder='例如: -Premium'
+                          placeholder={t('proxyProvider.dialog.nameSuffixPlaceholder')}
                           className='h-8 text-sm'
                         />
                       </div>
@@ -5675,18 +5667,18 @@ function SubscribeFilesPage() {
               {/* 生成的配置预览 */}
               <div className='space-y-2'>
                 <div className='flex items-center justify-between'>
-                  <h4 className='text-sm font-medium'>生成的配置预览</h4>
+                  <h4 className='text-sm font-medium'>{t('proxyProvider.dialog.configPreview')}</h4>
                   <Button
                     variant='outline'
                     size='sm'
                     onClick={() => {
                       const preview = generateProxyProviderYAML()
                       navigator.clipboard.writeText(preview)
-                      toast.success('配置已复制到剪贴板')
+                      toast.success(t('proxyProvider.configCopied'))
                     }}
                   >
                     <Copy className='mr-1 h-4 w-4' />
-                    复制
+                    {t('proxyProvider.dialog.copyBtn')}
                   </Button>
                 </div>
                 <pre className='bg-muted overflow-x-auto rounded-md p-3 text-xs whitespace-pre-wrap'>
@@ -5700,7 +5692,7 @@ function SubscribeFilesPage() {
               variant='outline'
               onClick={() => setProxyProviderDialogOpen(false)}
             >
-              取消
+              {t('actions.cancel', { ns: 'common' })}
             </Button>
             <Button
               onClick={() => {
@@ -5753,7 +5745,7 @@ function SubscribeFilesPage() {
                 } else {
                   // 创建模式
                   if (!selectedExternalSub) {
-                    toast.error('请选择外部订阅')
+                    toast.error(t('proxyProvider.dialog.selectExternalSubFirst'))
                     return
                   }
                   createProxyProviderMutation.mutate({
@@ -5769,7 +5761,7 @@ function SubscribeFilesPage() {
                 updateProxyProviderMutation.isPending
               }
             >
-              {editingProxyProvider ? '更新配置' : '保存配置'}
+              {editingProxyProvider ? t('proxyProvider.dialog.updateConfig') : t('proxyProvider.dialog.saveConfig')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -5783,7 +5775,7 @@ function SubscribeFilesPage() {
         onReplacementChoiceChange={setReplacementChoice}
         replacementOptions={missingNodeReplacementOptions}
         onConfirm={handleApplyReplacement}
-        confirmText='应用替换'
+        confirmText={t('editConfig.applyReplace')}
       />
 
       {/* 代理集合Pro对话框 */}
@@ -5793,16 +5785,16 @@ function SubscribeFilesPage() {
       >
         <DialogContent className='max-w-md'>
           <DialogHeader>
-            <DialogTitle>创建代理集合(初级)</DialogTitle>
+            <DialogTitle>{t('proxyProvider.basicDialog.title')}</DialogTitle>
             <DialogDescription>
-              批量创建代理集合，支持按地域或协议分裂
+              {t('proxyProvider.basicDialog.description')}
             </DialogDescription>
           </DialogHeader>
 
           <div className='space-y-4'>
             {/* 选择外部订阅 */}
             <div className='space-y-2'>
-              <Label>选择外部订阅</Label>
+              <Label>{t('proxyProvider.basicDialog.selectExternalSub')}</Label>
               <Select
                 value={proSelectedExternalSub?.id?.toString() || ''}
                 onValueChange={(v) => {
@@ -5813,7 +5805,7 @@ function SubscribeFilesPage() {
                 }}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder='请选择外部订阅' />
+                  <SelectValue placeholder={t('proxyProvider.basicDialog.selectExternalSubPlaceholder')} />
                 </SelectTrigger>
                 <SelectContent>
                   {externalSubs.map((sub) => (
@@ -5827,23 +5819,23 @@ function SubscribeFilesPage() {
 
             {/* 名称前缀输入框 */}
             <div className='space-y-2'>
-              <Label>名称前缀</Label>
+              <Label>{t('proxyProvider.basicDialog.namePrefix')}</Label>
               <Input
-                placeholder='输入名称前缀'
+                placeholder={t('proxyProvider.basicDialog.namePrefixPlaceholder')}
                 value={proNamePrefix}
                 onChange={(e) => setProNamePrefix(e.target.value)}
               />
               <p className='text-muted-foreground text-xs'>
-                生成的代理集合名称格式: 前缀-地域/协议
+                {t('proxyProvider.basicDialog.namePrefixHint')}
               </p>
             </div>
 
             {/* 根据IP位置分组开关 */}
             <div className='flex items-center justify-between'>
               <div className='space-y-0.5'>
-                <Label>根据IP位置分组</Label>
+                <Label>{t('proxyProvider.basicDialog.groupByIp')}</Label>
                 <p className='text-muted-foreground text-xs'>
-                  开启后，节点名称匹配不到时会根据服务器IP位置匹配
+                  {t('proxyProvider.basicDialog.groupByIpHint')}
                 </p>
               </div>
               <Switch
@@ -5867,7 +5859,7 @@ function SubscribeFilesPage() {
                 {proCreatingRegion && (
                   <RefreshCw className='mr-2 h-4 w-4 animate-spin' />
                 )}
-                按地域分裂
+                {t('proxyProvider.basicDialog.splitByRegion')}
               </Button>
               <Button
                 className='flex-1'
@@ -5883,7 +5875,7 @@ function SubscribeFilesPage() {
                 {proCreatingProtocol && (
                   <RefreshCw className='mr-2 h-4 w-4 animate-spin' />
                 )}
-                按代理协议分裂
+                {t('proxyProvider.basicDialog.splitByProtocol')}
               </Button>
             </div>
 
@@ -5891,7 +5883,7 @@ function SubscribeFilesPage() {
             {proCreationResults.length > 0 && (
               <div className='space-y-2'>
                 <Label>
-                  创建结果 ({proCreationResults.filter((r) => r.success).length}
+                  {t('proxyProvider.basicDialog.creationResults')} ({proCreationResults.filter((r) => r.success).length}
                   /{proCreationResults.length})
                 </Label>
                 <ScrollArea className='h-[200px] rounded-md border p-2'>
@@ -5902,10 +5894,10 @@ function SubscribeFilesPage() {
                     >
                       {result.success ? (
                         <Badge variant='default' className='bg-green-500'>
-                          成功
+                          {t('proxyProvider.basicDialog.success')}
                         </Badge>
                       ) : (
-                        <Badge variant='destructive'>失败</Badge>
+                        <Badge variant='destructive'>{t('proxyProvider.basicDialog.failed')}</Badge>
                       )}
                       <span className='flex-1 truncate'>{result.name}</span>
                       {result.error && (
@@ -5925,7 +5917,7 @@ function SubscribeFilesPage() {
               variant='outline'
               onClick={() => setProxyProviderProDialogOpen(false)}
             >
-              关闭
+              {t('actions.close', { ns: 'common' })}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -5935,15 +5927,15 @@ function SubscribeFilesPage() {
       <Dialog open={previewDialogOpen} onOpenChange={setPreviewDialogOpen}>
         <DialogContent className='max-h-[80vh] max-w-3xl'>
           <DialogHeader>
-            <DialogTitle>预览处理结果 - {previewConfigName}</DialogTitle>
-            <DialogDescription>妙妙屋处理后的代理节点配置</DialogDescription>
+            <DialogTitle>{t('proxyProvider.previewTitle', { name: previewConfigName })}</DialogTitle>
+            <DialogDescription>{t('proxyProvider.previewDesc')}</DialogDescription>
           </DialogHeader>
 
           <div className='relative'>
             {previewLoading ? (
               <div className='flex items-center justify-center py-8'>
                 <RefreshCw className='text-muted-foreground h-6 w-6 animate-spin' />
-                <span className='text-muted-foreground ml-2'>加载中...</span>
+                <span className='text-muted-foreground ml-2'>{t('actions.loading', { ns: 'common' })}</span>
               </div>
             ) : (
               <ScrollArea className='h-[50vh] rounded-md border'>
@@ -5960,18 +5952,18 @@ function SubscribeFilesPage() {
               size='sm'
               onClick={() => {
                 navigator.clipboard.writeText(previewContent)
-                toast.success('已复制到剪贴板')
+                toast.success(t('proxyProvider.copiedToClipboard'))
               }}
               disabled={previewLoading || !previewContent}
             >
               <Copy className='mr-2 h-4 w-4' />
-              复制
+              {t('actions.copy', { ns: 'common' })}
             </Button>
             <Button
               variant='outline'
               onClick={() => setPreviewDialogOpen(false)}
             >
-              关闭
+              {t('actions.close', { ns: 'common' })}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -5989,14 +5981,14 @@ function SubscribeFilesPage() {
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>编辑外部订阅</DialogTitle>
+            <DialogTitle>{t('externalSub.editTitle')}</DialogTitle>
             <DialogDescription>
-              修改外部订阅的地址和流量统计方式
+              {t('externalSub.editDescription')}
             </DialogDescription>
           </DialogHeader>
           <div className='space-y-4'>
             <div className='space-y-2'>
-              <Label>订阅地址</Label>
+              <Label>{t('externalSub.addressLabel')}</Label>
               <Input
                 value={editExternalSubForm.url}
                 onChange={(e) =>
@@ -6009,7 +6001,7 @@ function SubscribeFilesPage() {
               />
             </div>
             <div className='space-y-2'>
-              <Label>流量统计方式</Label>
+              <Label>{t('externalSub.trafficStatsMode')}</Label>
               <Select
                 value={editExternalSubForm.traffic_mode}
                 onValueChange={(value: 'download' | 'upload' | 'both') =>
@@ -6024,14 +6016,14 @@ function SubscribeFilesPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value='both'>
-                    上下行 (download + upload)
+                    {t('externalSub.trafficStatsModeDownloadUpload')}
                   </SelectItem>
-                  <SelectItem value='download'>仅下行 (download)</SelectItem>
-                  <SelectItem value='upload'>仅上行 (upload)</SelectItem>
+                  <SelectItem value='download'>{t('externalSub.trafficStatsModeDownload')}</SelectItem>
+                  <SelectItem value='upload'>{t('externalSub.trafficStatsModeUpload')}</SelectItem>
                 </SelectContent>
               </Select>
               <p className='text-muted-foreground text-xs'>
-                选择如何计算已用流量：上下行为两者相加，仅下行或仅上行则只计算对应流量
+                {t('externalSub.trafficStatsModeHint')}
               </p>
             </div>
           </div>
@@ -6040,7 +6032,7 @@ function SubscribeFilesPage() {
               variant='outline'
               onClick={() => setEditExternalSubDialogOpen(false)}
             >
-              取消
+              {t('actions.cancel', { ns: 'common' })}
             </Button>
             <Button
               onClick={() => {
@@ -6060,7 +6052,7 @@ function SubscribeFilesPage() {
                 updateExternalSubMutation.isPending || !editExternalSubForm.url
               }
             >
-              保存
+              {t('actions.save', { ns: 'common' })}
             </Button>
           </DialogFooter>
         </DialogContent>

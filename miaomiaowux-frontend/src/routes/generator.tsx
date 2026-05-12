@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { createFileRoute, redirect } from '@tanstack/react-router'
 import yaml from 'js-yaml'
@@ -271,6 +272,7 @@ export const Route = createFileRoute('/generator')({
 })
 
 function SubscriptionGeneratorPage() {
+  const { t } = useTranslation('subscribe')
   const { auth } = useAuthStore()
   const queryClient = useQueryClient()
   const isMobile = useMediaQuery('(max-width: 640px)')
@@ -505,10 +507,10 @@ function SubscriptionGeneratorPage() {
       queryClient.invalidateQueries({ queryKey: ['templates'] })
       setIsTemplateFormDialogOpen(false)
       resetTemplateForm()
-      toast.success('模板已创建')
+      toast.success(t('templateManage.toast.created'))
     },
     onError: (error: any) => {
-      toast.error(error.response?.data?.error || '创建模板时出错')
+      toast.error(error.response?.data?.error || t('templateManage.toast.createError'))
     },
   })
 
@@ -525,10 +527,10 @@ function SubscriptionGeneratorPage() {
       queryClient.invalidateQueries({ queryKey: ['templates'] })
       setIsTemplateFormDialogOpen(false)
       resetTemplateForm()
-      toast.success('模板已更新')
+      toast.success(t('templateManage.toast.updated'))
     },
     onError: (error: any) => {
-      toast.error(error.response?.data?.error || '更新模板时出错')
+      toast.error(error.response?.data?.error || t('templateManage.toast.updateError'))
     },
   })
 
@@ -541,10 +543,10 @@ function SubscriptionGeneratorPage() {
       queryClient.invalidateQueries({ queryKey: ['templates'] })
       setIsTemplateDeleteDialogOpen(false)
       setDeletingTemplateId(null)
-      toast.success('模板已删除')
+      toast.success(t('templateManage.toast.deleted'))
     },
     onError: (error: any) => {
-      toast.error(error.response?.data?.error || '删除模板时出错')
+      toast.error(error.response?.data?.error || t('templateManage.toast.deleteError'))
     },
   })
 
@@ -563,10 +565,10 @@ function SubscriptionGeneratorPage() {
       setOldTemplateEditDialogOpen(false)
       setEditingOldTemplate(null)
       setOldTemplateContent('')
-      toast.success('模板已保存')
+      toast.success(t('templateManage.toast.saved'))
     },
     onError: (error: any) => {
-      toast.error(error.response?.data?.error || '保存模板时出错')
+      toast.error(error.response?.data?.error || t('templateManage.toast.saveError'))
     },
   })
 
@@ -579,10 +581,10 @@ function SubscriptionGeneratorPage() {
       queryClient.invalidateQueries({ queryKey: ['rule-templates'] })
       setIsOldTemplateDeleteDialogOpen(false)
       setDeletingOldTemplate(null)
-      toast.success('模板已删除')
+      toast.success(t('templateManage.toast.deleted'))
     },
     onError: (error: any) => {
-      toast.error(error.response?.data?.error || '删除模板时出错')
+      toast.error(error.response?.data?.error || t('templateManage.toast.deleteError'))
     },
   })
 
@@ -599,10 +601,10 @@ function SubscriptionGeneratorPage() {
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['rule-templates'] })
-      toast.success(`模板 ${data.filename} 上传成功`)
+      toast.success(t('templateManage.toast.uploaded', { name: data.filename }))
     },
     onError: (error: any) => {
-      toast.error(error.response?.data?.error || '上传模板时出错')
+      toast.error(error.response?.data?.error || t('templateManage.toast.uploadError'))
     },
   })
 
@@ -626,10 +628,10 @@ function SubscriptionGeneratorPage() {
       setIsOldTemplateRenameDialogOpen(false)
       setRenamingOldTemplate(null)
       setNewOldTemplateName('')
-      toast.success(`模板已重命名为 ${data.filename}`)
+      toast.success(t('templateManage.toast.renamed', { name: data.filename }))
     },
     onError: (error: any) => {
-      toast.error(error.response?.data?.error || '重命名模板时出错')
+      toast.error(error.response?.data?.error || t('templateManage.toast.renameError'))
     },
   })
 
@@ -680,7 +682,7 @@ function SubscriptionGeneratorPage() {
       const response = await api.get(`/api/admin/rule-templates/${filename}`)
       setOldTemplateContent(response.data.content || '')
     } catch (error: any) {
-      toast.error(error.response?.data?.error || '获取模板内容失败')
+      toast.error(error.response?.data?.error || t('templateManage.toast.getContentFailed'))
       setOldTemplateEditDialogOpen(false)
     } finally {
       setIsOldTemplateLoading(false)
@@ -730,7 +732,7 @@ function SubscriptionGeneratorPage() {
 
   const handlePreviewTemplate = async (template: Template) => {
     if (!template.rule_source) {
-      toast.error('请先配置规则源')
+      toast.error(t('templateManage.toast.configureRuleSource'))
       return
     }
 
@@ -747,7 +749,7 @@ function SubscriptionGeneratorPage() {
       })
       setTemplatePreviewContent(response.data.content)
     } catch (error: any) {
-      toast.error(error.response?.data?.error || '生成预览时出错')
+      toast.error(error.response?.data?.error || t('templateManage.toast.previewError'))
       setIsTemplatePreviewDialogOpen(false)
     } finally {
       setIsTemplatePreviewLoading(false)
@@ -756,7 +758,7 @@ function SubscriptionGeneratorPage() {
 
   const handlePreviewSource = async (template: Template) => {
     if (!template.rule_source) {
-      toast.error('请先配置规则源')
+      toast.error(t('templateManage.toast.configureRuleSource'))
       return
     }
 
@@ -772,7 +774,7 @@ function SubscriptionGeneratorPage() {
       })
       setSourcePreviewContent(response.data.content)
     } catch (error: any) {
-      toast.error(error.response?.data?.error || '获取源文件时出错')
+      toast.error(error.response?.data?.error || t('templateManage.toast.fetchSourceError'))
       setIsSourcePreviewDialogOpen(false)
     } finally {
       setIsSourcePreviewLoading(false)
@@ -781,15 +783,15 @@ function SubscriptionGeneratorPage() {
 
   const handlePreviewSelectedSource = async () => {
     if (!selectedTemplateUrl) {
-      toast.error('请先选择模板')
+      toast.error(t('templateManage.toast.selectTemplateFirst'))
       return
     }
 
     // 找到当前选中的模板名称
     const selectedTemplate = allTemplates.find(
-      (t) => t.url === selectedTemplateUrl
+      (tmpl) => tmpl.url === selectedTemplateUrl
     )
-    const templateName = selectedTemplate?.label || '模板源文件'
+    const templateName = selectedTemplate?.label || t('oldTemplate.sourceFile')
 
     // 旧模板系统：直接打开编辑对话框
     if (!useNewTemplateSystem && selectedTemplate) {
@@ -809,7 +811,7 @@ function SubscriptionGeneratorPage() {
       })
       setSourcePreviewContent(response.data.content)
     } catch (error: any) {
-      toast.error(error.response?.data?.error || '获取源文件时出错')
+      toast.error(error.response?.data?.error || t('templateManage.toast.fetchSourceError'))
       setIsSourcePreviewDialogOpen(false)
     } finally {
       setIsSourcePreviewLoading(false)
@@ -818,12 +820,12 @@ function SubscriptionGeneratorPage() {
 
   const handleSubmitTemplate = () => {
     if (!templateFormData.name.trim()) {
-      toast.error('请输入模板名称')
+      toast.error(t('templateManage.toast.enterName'))
       return
     }
 
     if (!templateFormData.rule_source.trim()) {
-      toast.error('请输入规则源地址')
+      toast.error(t('templateManage.toast.enterRuleSource'))
       return
     }
 
@@ -952,12 +954,12 @@ function SubscriptionGeneratorPage() {
   // 加载模板（根据模板系统选择不同的加载方式）
   const handleLoadTemplate = async () => {
     if (selectedNodeIds.size === 0) {
-      toast.error('请选择至少一个节点')
+      toast.error(t('generator.toast.selectAtLeastOneNode'))
       return
     }
 
     if (!selectedTemplateUrl) {
-      toast.error('请选择一个模板')
+      toast.error(t('generator.toast.selectTemplate'))
       return
     }
 
@@ -983,7 +985,7 @@ function SubscriptionGeneratorPage() {
         .filter((p): p is ProxyConfig => p !== null)
 
       if (proxies.length === 0) {
-        toast.error('未能解析到任何有效节点')
+        toast.error(t('generator.toast.noValidNodes'))
         return
       }
 
@@ -1064,7 +1066,7 @@ function SubscriptionGeneratorPage() {
           if (!validationResult.valid) {
             // 有错误级别的问题，阻止保存
             const errorMessage = formatValidationIssues(validationResult.issues)
-            toast.error('配置校验失败', {
+            toast.error(t('generator.toast.configValidationFailed'), {
               description: errorMessage,
               duration: 10000,
             })
@@ -1085,7 +1087,7 @@ function SubscriptionGeneratorPage() {
               (i) => i.level === 'warning'
             )
             if (warningIssues.length > 0) {
-              toast.warning('配置已自动修复', {
+              toast.warning(t('generator.toast.configAutoFixed'), {
                 description: formatValidationIssues(warningIssues),
                 duration: 8000,
               })
@@ -1094,8 +1096,8 @@ function SubscriptionGeneratorPage() {
         } catch (error) {
           console.error('配置校验异常:', error)
           toast.error(
-            '配置校验时发生错误: ' +
-              (error instanceof Error ? error.message : '未知错误')
+            t('generator.toast.validationError') +
+              (error instanceof Error ? error.message : 'Unknown error')
           )
           return
         }
@@ -1105,10 +1107,10 @@ function SubscriptionGeneratorPage() {
 
       setClashConfig(finalConfig)
       setHasManuallyGrouped(false) // 加载模板后重置手动分组状态
-      toast.success(`成功加载模板并插入 ${proxies.length} 个节点`)
+      toast.success(t('generator.toast.templateLoadSuccess', { count: proxies.length }))
     } catch (error: any) {
       console.error('Load template error:', error)
-      toast.error(error.response?.data?.error || '加载模板失败')
+      toast.error(error.response?.data?.error || t('generator.toast.templateLoadFailed'))
     } finally {
       setLoading(false)
     }
@@ -1116,7 +1118,7 @@ function SubscriptionGeneratorPage() {
 
   const handleGenerate = async () => {
     if (selectedNodeIds.size === 0) {
-      toast.error('请选择至少一个节点')
+      toast.error(t('generator.toast.selectAtLeastOneNode'))
       return
     }
 
@@ -1142,23 +1144,23 @@ function SubscriptionGeneratorPage() {
         .filter((p): p is ProxyConfig => p !== null)
 
       if (proxies.length === 0) {
-        toast.error('未能解析到任何有效节点')
+        toast.error(t('generator.toast.noValidNodes'))
         return
       }
 
-      toast.success(`成功加载 ${proxies.length} 个节点`)
+      toast.success(t('generator.toast.nodesLoadSuccess', { count: proxies.length }))
 
       // Validate custom rules
       const validCustomRules = customRules.filter(
         (rule) => rule.name.trim() !== ''
       )
       if (validCustomRules.length > 0) {
-        toast.info(`应用 ${validCustomRules.length} 条自定义规则`)
+        toast.info(t('generator.toast.applyingCustomRules', { count: validCustomRules.length }))
       }
 
       // All rule sets now use selected categories
       if (selectedCategories.length > 0) {
-        toast.info(`应用 ${selectedCategories.length} 个规则类别`)
+        toast.info(t('generator.toast.applyingCategories', { count: selectedCategories.length }))
       }
 
       // Build Clash config using new builder with dynamic categories
@@ -1194,7 +1196,7 @@ function SubscriptionGeneratorPage() {
         if (!validationResult.valid) {
           // 有错误级别的问题，阻止保存
           const errorMessage = formatValidationIssues(validationResult.issues)
-          toast.error('配置校验失败', {
+          toast.error(t('generator.toast.configValidationFailed'), {
             description: errorMessage,
             duration: 10000,
           })
@@ -1215,7 +1217,7 @@ function SubscriptionGeneratorPage() {
             (i) => i.level === 'warning'
           )
           if (warningIssues.length > 0) {
-            toast.warning('配置已自动修复', {
+            toast.warning(t('generator.toast.configAutoFixed'), {
               description: formatValidationIssues(warningIssues),
               duration: 8000,
             })
@@ -1224,8 +1226,8 @@ function SubscriptionGeneratorPage() {
       } catch (error) {
         console.error('配置校验异常:', error)
         toast.error(
-          '配置校验时发生错误: ' +
-            (error instanceof Error ? error.message : '未知错误')
+          t('generator.toast.validationError') +
+            (error instanceof Error ? error.message : 'Unknown error')
         )
         return
       }
@@ -1236,15 +1238,15 @@ function SubscriptionGeneratorPage() {
       // 显示生成成功通知，如果有新增代理组则包含提示
       if (addedProxyGroups.length > 0) {
         toast.success(
-          `Clash 配置生成成功！已应用自定义规则，新增了以下代理组：${addedProxyGroups.join('、')}，默认节点：🚀 节点选择、DIRECT`,
+          t('generator.toast.generateSuccessWithGroups', { groups: addedProxyGroups.join(', ') }),
           { duration: 8000 }
         )
       } else {
-        toast.success('Clash 配置生成成功！')
+        toast.success(t('generator.toast.generateSuccess'))
       }
     } catch (error) {
       console.error('Generation error:', error)
-      toast.error('生成订阅链接失败')
+      toast.error(t('generator.toast.generateFailed'))
     } finally {
       setLoading(false)
     }
@@ -1255,7 +1257,7 @@ function SubscriptionGeneratorPage() {
     setSelectedCategories([])
     setCustomRules([])
     setClashConfig('')
-    toast.info('已清空所有内容')
+    toast.info(t('generator.toast.cleared'))
   }
 
   // 保存订阅 mutation
@@ -1273,8 +1275,8 @@ function SubscriptionGeneratorPage() {
       return response.data
     },
     onSuccess: () => {
-      toast.success('订阅保存成功！')
-      toast.info('请前往"订阅文件"页面查看')
+      toast.success(t('generator.toast.saveSuccess'))
+      toast.info(t('generator.toast.saveSuccessHint'))
       setSaveDialogOpen(false)
       setSubscribeName('')
       setSubscribeFilename('')
@@ -1283,14 +1285,14 @@ function SubscriptionGeneratorPage() {
       queryClient.invalidateQueries({ queryKey: ['user-subscriptions'] })
     },
     onError: (error: any) => {
-      const message = error.response?.data?.error || '保存订阅失败'
+      const message = error.response?.data?.error || t('generator.toast.saveFailed')
       toast.error(message)
     },
   })
 
   const handleOpenSaveDialog = () => {
     if (!clashConfig) {
-      toast.error('请先生成配置')
+      toast.error(t('generator.toast.generateConfigFirst'))
       return
     }
     // 使用旧模板系统时，必须先手动分组
@@ -1299,7 +1301,7 @@ function SubscriptionGeneratorPage() {
       !hasManuallyGrouped &&
       !useNewTemplateSystem
     ) {
-      toast.error('请先手动分组节点')
+      toast.error(t('generator.toast.manualGroupFirst'))
       return
     }
     setSaveDialogOpen(true)
@@ -1307,7 +1309,7 @@ function SubscriptionGeneratorPage() {
 
   const handleSaveSubscribe = () => {
     if (!subscribeName.trim()) {
-      toast.error('请输入订阅名称')
+      toast.error(t('generator.toast.enterSubscribeName'))
       return
     }
 
@@ -1322,7 +1324,7 @@ function SubscriptionGeneratorPage() {
   // 手动分组功能
   const handleOpenGroupDialog = () => {
     if (!clashConfig) {
-      toast.error('请先生成配置')
+      toast.error(t('generator.toast.generateConfigFirst'))
       return
     }
 
@@ -1331,7 +1333,7 @@ function SubscriptionGeneratorPage() {
       const parsedConfig = yaml.load(preprocessYaml(clashConfig)) as any
 
       if (!parsedConfig['proxy-groups']) {
-        toast.error('配置中没有找到代理组')
+        toast.error(t('generator.toast.noProxyGroups'))
         return
       }
 
@@ -1354,7 +1356,7 @@ function SubscriptionGeneratorPage() {
       setGroupDialogOpen(true)
     } catch (error) {
       console.error('解析配置失败:', error)
-      toast.error('解析配置失败，请检查配置格式')
+      toast.error(t('generator.toast.parseConfigFailed'))
     }
   }
 
@@ -1655,11 +1657,11 @@ function SubscriptionGeneratorPage() {
         setClashConfig(newConfig)
         setGroupDialogOpen(false)
         setHasManuallyGrouped(true)
-        toast.success('分组已应用到配置')
+        toast.success(t('generator.toast.groupApplied'))
       }
     } catch (error) {
       console.error('应用分组失败:', error)
-      toast.error('应用分组失败，请检查配置')
+      toast.error(t('generator.toast.applyGroupFailed'))
     }
   }
 
@@ -1667,7 +1669,7 @@ function SubscriptionGeneratorPage() {
   const validateRulesNodes = (parsedConfig: any) => {
     const missingNodeNames = collectMissingRuleTargets(parsedConfig, 'node')
     missingNodeNames.forEach((nodeName) => {
-      toast(`[validateRulesNodes] 发现缺失节点: "${nodeName}"`)
+      console.log(`[validateRulesNodes] Missing node: "${nodeName}"`)
     })
 
     return {
@@ -1705,10 +1707,10 @@ function SubscriptionGeneratorPage() {
       setHasManuallyGrouped(true)
       setPendingConfigAfterGrouping('')
       setMissingNodes([])
-      toast.success(`已将缺失节点替换为 ${replacementChoice}`)
+      toast.success(t('generator.toast.replacementApplied', { choice: replacementChoice }))
     } catch (error) {
       console.error('应用替换失败:', error)
-      toast.error('应用替换失败，请检查配置')
+      toast.error(t('generator.toast.applyReplaceFailed'))
     }
   }
 
@@ -1776,9 +1778,9 @@ function SubscriptionGeneratorPage() {
 
         return updatedGroups
       })
-      toast.success(`已添加 ${newGroups.map((g) => g.name).join('、')}`)
+      toast.success(t('generator.toast.chainProxyAdded', { groups: newGroups.map((g) => g.name).join(', ') }))
     } else {
-      toast.info('链式代理节点已存在')
+      toast.info(t('generator.toast.chainProxyExists'))
     }
   }
 
@@ -1936,7 +1938,7 @@ function SubscriptionGeneratorPage() {
   // 自动按地区分组（保留原始格式）
   const handleAutoGroupByRegion = () => {
     if (!clashConfig) {
-      toast.error('请先生成配置')
+      toast.error(t('generator.toast.generateConfigFirst'))
       return
     }
 
@@ -1946,7 +1948,7 @@ function SubscriptionGeneratorPage() {
       const groups = parsedConfig['proxy-groups'] as any[]
 
       if (!groups || groups.length === 0) {
-        toast.error('配置中没有找到代理组')
+        toast.error(t('generator.toast.noProxyGroups'))
         return
       }
 
@@ -2112,14 +2114,14 @@ function SubscriptionGeneratorPage() {
       // 显示结果
       if (createdGroupNames.length > 0) {
         toast.success(
-          `自动分组完成，新建代理组：${createdGroupNames.join('、')}`
+          t('generator.toast.autoGroupComplete', { groups: createdGroupNames.join(', ') })
         )
       } else {
-        toast.success(`自动分组完成：${stats.join('、')}`)
+        toast.success(t('generator.toast.autoGroupCompleteStats', { stats: stats.join(', ') }))
       }
     } catch (error) {
       console.error('自动分组失败:', error)
-      toast.error('自动分组失败')
+      toast.error(t('generator.toast.autoGroupFailed'))
     }
   }
 
@@ -2310,25 +2312,24 @@ function SubscriptionGeneratorPage() {
         <div className='mx-auto space-y-6'>
           <div className='space-y-2'>
             <h1 className='text-3xl font-bold tracking-tight'>
-              订阅链接生成器
+              {t('generator.title')}
             </h1>
             <p className='text-muted-foreground'>
-              从节点管理中选择节点，快速生成 Clash 订阅配置
+              {t('generator.description')}
             </p>
           </div>
 
           <Card>
             <CardHeader>
-              <CardTitle>选择节点</CardTitle>
+              <CardTitle>{t('generator.selectNodes')}</CardTitle>
               <CardDescription>
-                从已保存的节点中选择需要添加到订阅的节点（已选择{' '}
-                {selectedNodeIds.size} 个）
+                {t('generator.selectNodesDesc', { count: selectedNodeIds.size })}
               </CardDescription>
             </CardHeader>
             <CardContent className='space-y-4'>
               {sortedEnabledNodes.length === 0 ? (
                 <div className='text-muted-foreground py-8 text-center'>
-                  暂无可用节点，请先在节点管理中添加节点
+                  {t('generator.noNodes')}
                 </div>
               ) : (
                 <>
@@ -2364,7 +2365,7 @@ function SubscriptionGeneratorPage() {
                         }
                       }}
                     >
-                      全部 ({sortedEnabledNodes.length})
+                      {t('generator.allNodes')} ({sortedEnabledNodes.length})
                     </Button>
                     {protocols.map((protocol) => {
                       const count = sortedEnabledNodes.filter(
@@ -2450,7 +2451,7 @@ function SubscriptionGeneratorPage() {
                           }
                         }}
                       >
-                        全部标签 ({sortedEnabledNodes.length})
+                        {t('generator.allTags')} ({sortedEnabledNodes.length})
                       </Button>
                       {tags.map((tag) => {
                         const count = sortedEnabledNodes.filter(
@@ -2504,7 +2505,7 @@ function SubscriptionGeneratorPage() {
                   <DataTable
                     data={filteredNodes}
                     getRowKey={(node) => node.id}
-                    emptyText='没有找到匹配的节点'
+                    emptyText={t('generator.noMatchingNodes')}
                     containerClassName='max-h-[440px] overflow-y-auto'
                     onRowClick={(node) => handleToggleNode(node.id)}
                     rowClassName={(node) =>
@@ -2533,12 +2534,12 @@ function SubscriptionGeneratorPage() {
                           width: '50px',
                         },
                         {
-                          header: '节点名称',
+                          header: t('generator.columns.nodeName'),
                           cell: (node) => <Twemoji>{node.node_name}</Twemoji>,
                           cellClassName: 'font-medium',
                         },
                         {
-                          header: '协议',
+                          header: t('generator.columns.protocol'),
                           cell: (node) => (
                             <Badge
                               variant='outline'
@@ -2550,7 +2551,7 @@ function SubscriptionGeneratorPage() {
                           width: '100px',
                         },
                         {
-                          header: '服务器地址',
+                          header: t('generator.columns.serverAddress'),
                           cell: (node) => {
                             let serverAddress = '-'
                             try {
@@ -2577,7 +2578,7 @@ function SubscriptionGeneratorPage() {
                           headerClassName: 'min-w-[150px]',
                         },
                         {
-                          header: '标签',
+                          header: t('generator.columns.tag'),
                           cell: (node) => (
                             <div className='flex flex-wrap gap-1'>
                               {node.tag && (
@@ -2656,21 +2657,21 @@ function SubscriptionGeneratorPage() {
 
               {/* 规则模式选择 */}
               <div className='space-y-4'>
-                <Label>规则模式</Label>
+                <Label>{t('generator.ruleMode')}</Label>
                 <div className='flex gap-2'>
                   <Button
                     variant={ruleMode === 'custom' ? 'default' : 'outline'}
                     onClick={() => setRuleMode('custom')}
                     className='flex-1'
                   >
-                    自定义规则
+                    {t('generator.customRules')}
                   </Button>
                   <Button
                     variant={ruleMode === 'template' ? 'default' : 'outline'}
                     onClick={() => setRuleMode('template')}
                     className='flex-1'
                   >
-                    使用模板
+                    {t('generator.useTemplate')}
                   </Button>
                 </div>
               </div>
@@ -2689,9 +2690,9 @@ function SubscriptionGeneratorPage() {
               {ruleMode === 'template' && (
                 <div className='space-y-4'>
                   <div className='space-y-2'>
-                    <Label htmlFor='template-select'>选择模板</Label>
+                    <Label htmlFor='template-select'>{t('generator.selectTemplate')}</Label>
                     <p className='text-muted-foreground text-sm'>
-                      使用 ACL4SSR 规则模板生成配置，自动解析代理组和规则。
+                      {t('generator.templateDesc')}
                     </p>
                   </div>
                   <div className='space-y-2'>
@@ -2701,7 +2702,7 @@ function SubscriptionGeneratorPage() {
                         onValueChange={setSelectedTemplateUrl}
                       >
                         <SelectTrigger id='template-select' className='flex-1'>
-                          <SelectValue placeholder='请选择模板' />
+                          <SelectValue placeholder={t('generator.selectTemplatePlaceholder')} />
                         </SelectTrigger>
                         <SelectContent>
                           {allTemplates.map((template) => (
@@ -2719,7 +2720,7 @@ function SubscriptionGeneratorPage() {
                         size='icon'
                         onClick={handlePreviewSelectedSource}
                         disabled={!selectedTemplateUrl}
-                        title='查看源文件'
+                        title={t('generator.viewSource')}
                       >
                         <FileText className='h-4 w-4' />
                       </Button>
@@ -2728,7 +2729,7 @@ function SubscriptionGeneratorPage() {
                           variant='outline'
                           size='icon'
                           onClick={() => setTemplateManageDialogOpen(true)}
-                          title='模板管理'
+                          title={t('generator.templateManagement')}
                         >
                           <Settings className='h-4 w-4' />
                         </Button>
@@ -2737,7 +2738,7 @@ function SubscriptionGeneratorPage() {
                           variant='outline'
                           size='icon'
                           onClick={() => setOldTemplateManageDialogOpen(true)}
-                          title='模板管理'
+                          title={t('generator.templateManagement')}
                         >
                           <Settings className='h-4 w-4' />
                         </Button>
@@ -2748,9 +2749,9 @@ function SubscriptionGeneratorPage() {
                         className='flex-1'
                         onClick={() => {
                           if (selectedNodeIds.size === 0) {
-                            toast.error('请先选择节点')
+                            toast.error(t('generator.selectNodeFirst'))
                           } else if (!selectedTemplateUrl) {
-                            toast.error('请先选择模板')
+                            toast.error(t('generator.selectTemplateFirst'))
                           }
                         }}
                       >
@@ -2766,7 +2767,7 @@ function SubscriptionGeneratorPage() {
                           {loading && (
                             <Loader2 className='mr-2 h-4 w-4 animate-spin' />
                           )}
-                          加载
+                          {t('generator.load')}
                         </Button>
                       </div>
                     </div>
@@ -2780,7 +2781,7 @@ function SubscriptionGeneratorPage() {
                     className='flex-1'
                     onClick={() => {
                       if (selectedNodeIds.size === 0) {
-                        toast.error('请先选择节点')
+                        toast.error(t('generator.selectNodeFirst'))
                       }
                     }}
                   >
@@ -2792,11 +2793,11 @@ function SubscriptionGeneratorPage() {
                       {loading && (
                         <Loader2 className='mr-2 h-4 w-4 animate-spin' />
                       )}
-                      {loading ? '生成中...' : '生成订阅文件'}
+                      {loading ? t('generator.generating') : t('generator.generateSubscription')}
                     </Button>
                   </div>
                   <Button variant='outline' onClick={handleClear}>
-                    清空
+                    {t('generator.clear')}
                   </Button>
                 </div>
               )}
@@ -2810,8 +2811,8 @@ function SubscriptionGeneratorPage() {
               <CardHeader>
                 <div className='flex flex-col gap-2 md:flex-row md:items-center md:justify-between'>
                   <div>
-                    <CardTitle>生成的 Clash 配置</CardTitle>
-                    <CardDescription>预览生成的 YAML 配置文件</CardDescription>
+                    <CardTitle>{t('generator.generatedConfig')}</CardTitle>
+                    <CardDescription>{t('generator.previewYaml')}</CardDescription>
                   </div>
                   <ButtonGroup mode='responsive' hideIconOnMobile>
                     <Button
@@ -2820,7 +2821,7 @@ function SubscriptionGeneratorPage() {
                       onClick={handleAutoGroupByRegion}
                     >
                       <MapPin className='h-4 w-4' />
-                      地域分组
+                      {t('generator.regionGroup')}
                     </Button>
                     <Button
                       variant='outline'
@@ -2828,11 +2829,11 @@ function SubscriptionGeneratorPage() {
                       onClick={handleOpenGroupDialog}
                     >
                       <Layers className='h-4 w-4' />
-                      手动分组
+                      {t('generator.manualGroup')}
                     </Button>
                     <Button size='sm' onClick={handleOpenSaveDialog}>
                       <Save className='h-4 w-4' />
-                      保存订阅
+                      {t('generator.saveSubscription')}
                     </Button>
                   </ButtonGroup>
                 </div>
@@ -2843,29 +2844,29 @@ function SubscriptionGeneratorPage() {
                     value={clashConfig}
                     onChange={(e) => setClashConfig(e.target.value)}
                     className='min-h-[400px] resize-none border-0 bg-transparent font-mono text-xs'
-                    placeholder='生成配置后显示在这里...'
+                    placeholder={t('generator.configPlaceholder')}
                   />
                 </div>
                 <div className='mt-4 flex justify-end gap-2'>
                   <Button variant='outline' onClick={handleAutoGroupByRegion}>
                     <MapPin className='mr-2 h-4 w-4' />
-                    地域分组
+                    {t('generator.regionGroup')}
                   </Button>
                   <Button variant='outline' onClick={handleOpenGroupDialog}>
                     <Layers className='mr-2 h-4 w-4' />
-                    手动分组
+                    {t('generator.manualGroup')}
                   </Button>
                   <Button onClick={handleOpenSaveDialog}>
                     <Save className='mr-2 h-4 w-4' />
-                    保存订阅
+                    {t('generator.saveSubscription')}
                   </Button>
                 </div>
                 <div className='bg-muted/50 mt-4 rounded-lg border p-4'>
-                  <h3 className='mb-2 font-semibold'>使用说明</h3>
+                  <h3 className='mb-2 font-semibold'>{t('generator.usageTitle')}</h3>
                   <ul className='text-muted-foreground space-y-1 text-sm'>
-                    <li>• 点击"保存为订阅"按钮保存为clash yaml格式配置文件</li>
-                    <li>• 在订阅链接将订阅地址导入 Clash 客户端即可使用</li>
-                    <li>• 支持 Clash、Clash Meta、Mihomo 等客户端</li>
+                    <li>• {t('generator.usageStep1')}</li>
+                    <li>• {t('generator.usageStep2')}</li>
+                    <li>• {t('generator.usageStep3')}</li>
                   </ul>
                 </div>
               </CardContent>
@@ -2878,40 +2879,40 @@ function SubscriptionGeneratorPage() {
       <Dialog open={saveDialogOpen} onOpenChange={setSaveDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>保存为订阅</DialogTitle>
+            <DialogTitle>{t('generator.saveDialog.title')}</DialogTitle>
             <DialogDescription>
-              将生成的配置保存为订阅文件，保存后可以在订阅管理中查看和使用
+              {t('generator.saveDialog.description')}
             </DialogDescription>
           </DialogHeader>
           <div className='space-y-4 py-4'>
             <div className='space-y-2'>
               <Label htmlFor='subscribe-name'>
-                订阅名称 <span className='text-destructive'>*</span>
+                {t('generator.saveDialog.nameLabel')} <span className='text-destructive'>*</span>
               </Label>
               <Input
                 id='subscribe-name'
-                placeholder='例如：我的订阅'
+                placeholder={t('generator.saveDialog.namePlaceholder')}
                 value={subscribeName}
                 onChange={(e) => setSubscribeName(e.target.value)}
               />
             </div>
             <div className='space-y-2'>
-              <Label htmlFor='subscribe-filename'>文件名（可选）</Label>
+              <Label htmlFor='subscribe-filename'>{t('generator.saveDialog.filenameLabel')}</Label>
               <Input
                 id='subscribe-filename'
-                placeholder='默认使用订阅名称'
+                placeholder={t('generator.saveDialog.filenamePlaceholder')}
                 value={subscribeFilename}
                 onChange={(e) => setSubscribeFilename(e.target.value)}
               />
               <p className='text-muted-foreground text-xs'>
-                文件将保存到 subscribes 目录，自动添加 .yaml 扩展名
+                {t('generator.saveDialog.filenameHint')}
               </p>
             </div>
             <div className='space-y-2'>
-              <Label htmlFor='subscribe-description'>说明（可选）</Label>
+              <Label htmlFor='subscribe-description'>{t('generator.saveDialog.descriptionLabel')}</Label>
               <Textarea
                 id='subscribe-description'
-                placeholder='订阅说明...'
+                placeholder={t('generator.saveDialog.descriptionPlaceholder')}
                 value={subscribeDescription}
                 onChange={(e) => setSubscribeDescription(e.target.value)}
                 rows={3}
@@ -2920,7 +2921,7 @@ function SubscriptionGeneratorPage() {
           </div>
           <DialogFooter>
             <Button variant='outline' onClick={() => setSaveDialogOpen(false)}>
-              取消
+              {t('actions.cancel', { ns: 'common' })}
             </Button>
             <Button
               onClick={handleSaveSubscribe}
@@ -2929,7 +2930,7 @@ function SubscriptionGeneratorPage() {
               {saveSubscribeMutation.isPending && (
                 <Loader2 className='mr-2 h-4 w-4 animate-spin' />
               )}
-              保存
+              {t('actions.save', { ns: 'common' })}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -2940,7 +2941,7 @@ function SubscriptionGeneratorPage() {
         <EditNodesDialog
           open={groupDialogOpen}
           onOpenChange={handleGroupDialogOpenChange}
-          title='手动分组节点'
+          title={t('generator.manualGroupTitle')}
           proxyGroups={proxyGroups}
           availableNodes={availableProxies}
           allNodes={savedNodes.filter((n) => selectedNodeIds.has(n.id))}
@@ -2952,7 +2953,7 @@ function SubscriptionGeneratorPage() {
           onRemoveNodeFromGroup={handleRemoveProxy}
           onRemoveGroup={handleRemoveGroup}
           onRenameGroup={handleRenameGroup}
-          saveButtonText='确定'
+          saveButtonText={t('generator.confirmBtn')}
           proxyProviderConfigs={proxyProviderConfigs}
         />
       ) : (
@@ -2979,7 +2980,7 @@ function SubscriptionGeneratorPage() {
         onReplacementChoiceChange={setReplacementChoice}
         replacementOptions={missingNodeReplacementOptions}
         onConfirm={handleApplyReplacement}
-        confirmText='确认替换'
+        confirmText={t('generator.confirmReplace')}
       />
 
       {/* 模板管理主对话框 */}
@@ -2990,27 +2991,27 @@ function SubscriptionGeneratorPage() {
         <DialogContent className='max-w-2xl'>
           <DialogHeader className='flex flex-row items-center justify-between'>
             <div>
-              <DialogTitle>模板管理</DialogTitle>
-              <DialogDescription>管理 ACL4SSR 规则模板</DialogDescription>
+              <DialogTitle>{t('templateManage.title')}</DialogTitle>
+              <DialogDescription>{t('templateManage.description')}</DialogDescription>
             </div>
           </DialogHeader>
           <div className='space-y-4'>
             <div className='flex justify-end'>
               <Button onClick={handleCreateTemplate}>
                 <Plus className='mr-2 h-4 w-4' />
-                新建模板
+                {t('templateManage.createTemplate')}
               </Button>
             </div>
             <DataTable
               columns={[
                 {
-                  header: '名称',
+                  header: t('templateManage.columns.name'),
                   cell: (template: Template) => (
                     <span className='font-medium'>{template.name}</span>
                   ),
                 },
                 {
-                  header: '规则源',
+                  header: t('templateManage.columns.ruleSource'),
                   cell: (template: Template) => (
                     <span
                       className='text-muted-foreground block max-w-[180px] truncate text-sm'
@@ -3018,19 +3019,19 @@ function SubscriptionGeneratorPage() {
                     >
                       {template.rule_source
                         ? template.rule_source.split('/').pop()
-                        : '未配置'}
+                        : t('templateManage.columns.notConfigured')}
                     </span>
                   ),
                 },
                 {
-                  header: '操作',
+                  header: t('templateManage.columns.actions'),
                   cell: (template: Template) => (
                     <div className='flex items-center gap-1'>
                       <Button
                         variant='ghost'
                         size='icon'
                         onClick={() => handlePreviewSource(template)}
-                        title='查看源文件'
+                        title={t('templateManage.viewSource')}
                       >
                         <FileText className='h-4 w-4' />
                       </Button>
@@ -3038,7 +3039,7 @@ function SubscriptionGeneratorPage() {
                         variant='ghost'
                         size='icon'
                         onClick={() => handlePreviewTemplate(template)}
-                        title='预览生成结果'
+                        title={t('templateManage.previewResult')}
                       >
                         <Eye className='h-4 w-4' />
                       </Button>
@@ -3046,7 +3047,7 @@ function SubscriptionGeneratorPage() {
                         variant='ghost'
                         size='icon'
                         onClick={() => handleEditTemplate(template)}
-                        title='编辑'
+                        title={t('templateManage.edit')}
                       >
                         <Pencil className='h-4 w-4' />
                       </Button>
@@ -3054,7 +3055,7 @@ function SubscriptionGeneratorPage() {
                         variant='ghost'
                         size='icon'
                         onClick={() => handleDeleteTemplate(template.id)}
-                        title='删除'
+                        title={t('templateManage.delete')}
                       >
                         <Trash2 className='text-destructive h-4 w-4' />
                       </Button>
@@ -3064,7 +3065,7 @@ function SubscriptionGeneratorPage() {
               ]}
               data={dbTemplates}
               getRowKey={(template: Template) => template.id}
-              emptyText='暂无模板，点击上方按钮创建'
+              emptyText={t('templateManage.noTemplates')}
             />
           </div>
         </DialogContent>
@@ -3078,15 +3079,15 @@ function SubscriptionGeneratorPage() {
         <DialogContent className='max-w-md'>
           <DialogHeader>
             <DialogTitle>
-              {editingTemplate ? '编辑模板' : '新建模板'}
+              {editingTemplate ? t('templateManage.editFormTitle') : t('templateManage.formTitle')}
             </DialogTitle>
-            <DialogDescription>配置模板名称和规则源地址</DialogDescription>
+            <DialogDescription>{t('templateManage.formDescription')}</DialogDescription>
           </DialogHeader>
 
           <div className='space-y-4 py-4'>
             <div className='space-y-2'>
               <Label htmlFor='template-name'>
-                模板名称 <span className='text-destructive'>*</span>
+                {t('templateManage.templateName')} <span className='text-destructive'>*</span>
               </Label>
               <div className='flex gap-2'>
                 <Input
@@ -3098,7 +3099,7 @@ function SubscriptionGeneratorPage() {
                       name: e.target.value,
                     })
                   }
-                  placeholder='输入模板名称'
+                  placeholder={t('templateManage.templateNamePlaceholder')}
                   className='flex-1'
                 />
                 {!editingTemplate &&
@@ -3110,7 +3111,7 @@ function SubscriptionGeneratorPage() {
                     return hasPresets ? (
                       <Select onValueChange={handleTemplatePresetSelect}>
                         <SelectTrigger className='w-[140px]'>
-                          <SelectValue placeholder='选择预设' />
+                          <SelectValue placeholder={t('templateManage.selectPreset')} />
                         </SelectTrigger>
                         <SelectContent>
                           {available.aethersailor.length > 0 && (
@@ -3142,7 +3143,7 @@ function SubscriptionGeneratorPage() {
 
             <div className='space-y-2'>
               <Label htmlFor='rule-source'>
-                规则源地址 <span className='text-destructive'>*</span>
+                {t('templateManage.ruleSourceLabel')} <span className='text-destructive'>*</span>
               </Label>
               <Input
                 id='rule-source'
@@ -3153,18 +3154,18 @@ function SubscriptionGeneratorPage() {
                     rule_source: e.target.value,
                   })
                 }
-                placeholder='ACL4SSR 配置 URL'
+                placeholder={t('templateManage.ruleSourcePlaceholder')}
               />
               <p className='text-muted-foreground text-xs'>
-                ACL4SSR 格式的规则配置 URL
+                {t('templateManage.ruleSourceHint')}
               </p>
             </div>
 
             <div className='flex items-center justify-between'>
               <div className='space-y-0.5'>
-                <Label>使用代理下载</Label>
+                <Label>{t('templateManage.useProxy')}</Label>
                 <p className='text-muted-foreground text-xs'>
-                  启用后自动通过 1ms.cc 代理下载
+                  {t('templateManage.useProxyHint')}
                 </p>
               </div>
               <Switch
@@ -3184,7 +3185,7 @@ function SubscriptionGeneratorPage() {
               variant='outline'
               onClick={() => setIsTemplateFormDialogOpen(false)}
             >
-              取消
+              {t('actions.cancel', { ns: 'common' })}
             </Button>
             <Button
               onClick={handleSubmitTemplate}
@@ -3199,7 +3200,7 @@ function SubscriptionGeneratorPage() {
                 updateTemplateMutation.isPending) && (
                 <Loader2 className='mr-2 h-4 w-4 animate-spin' />
               )}
-              {editingTemplate ? '保存' : '创建'}
+              {editingTemplate ? t('templateManage.save') : t('templateManage.create')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -3212,13 +3213,13 @@ function SubscriptionGeneratorPage() {
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>确认删除</AlertDialogTitle>
+            <AlertDialogTitle>{t('templateManage.deleteConfirmTitle')}</AlertDialogTitle>
             <AlertDialogDescription>
-              确定要删除这个模板吗？此操作无法撤销。
+              {t('templateManage.deleteConfirmDesc')}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>取消</AlertDialogCancel>
+            <AlertDialogCancel>{t('actions.cancel', { ns: 'common' })}</AlertDialogCancel>
             <AlertDialogAction
               onClick={() =>
                 deletingTemplateId &&
@@ -3226,7 +3227,7 @@ function SubscriptionGeneratorPage() {
               }
               className='bg-destructive text-destructive-foreground hover:bg-destructive/90'
             >
-              删除
+              {t('actions.delete', { ns: 'common' })}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -3240,15 +3241,15 @@ function SubscriptionGeneratorPage() {
         <DialogContent className='max-h-[80vh] max-w-4xl'>
           <DialogHeader>
             <DialogTitle className='flex items-center justify-between'>
-              <span>配置预览</span>
+              <span>{t('templateManage.previewTitle')}</span>
             </DialogTitle>
-            <DialogDescription>生成的配置文件预览</DialogDescription>
+            <DialogDescription>{t('templateManage.previewDesc')}</DialogDescription>
           </DialogHeader>
 
           <div className='max-h-[60vh] overflow-auto'>
             {isTemplatePreviewLoading ? (
               <div className='flex items-center justify-center py-8'>
-                <span className='text-muted-foreground'>正在生成预览...</span>
+                <span className='text-muted-foreground'>{t('templateManage.generatingPreview')}</span>
               </div>
             ) : (
               <pre className='bg-muted rounded-md p-4 font-mono text-xs whitespace-pre-wrap'>
@@ -3266,13 +3267,13 @@ function SubscriptionGeneratorPage() {
       >
         <DialogContent className='max-h-[80vh] sm:max-w-[75vw]'>
           <DialogHeader>
-            <DialogTitle>源文件预览 - {sourcePreviewTitle}</DialogTitle>
+            <DialogTitle>{t('templateManage.sourcePreviewTitle', { name: sourcePreviewTitle })}</DialogTitle>
           </DialogHeader>
 
           <div className='max-h-[60vh] overflow-auto'>
             {isSourcePreviewLoading ? (
               <div className='flex items-center justify-center py-8'>
-                <span className='text-muted-foreground'>正在获取源文件...</span>
+                <span className='text-muted-foreground'>{t('templateManage.fetchingSource')}</span>
               </div>
             ) : (
               <pre className='bg-muted rounded-md p-4 font-mono text-xs whitespace-pre-wrap'>
@@ -3290,9 +3291,9 @@ function SubscriptionGeneratorPage() {
       >
         <DialogContent className='max-w-2xl'>
           <DialogHeader>
-            <DialogTitle>模板管理</DialogTitle>
+            <DialogTitle>{t('oldTemplate.title')}</DialogTitle>
             <DialogDescription>
-              管理 rule_templates 目录下的 YAML 模板文件
+              {t('oldTemplate.description')}
             </DialogDescription>
           </DialogHeader>
           <div className='space-y-4'>
@@ -3303,26 +3304,26 @@ function SubscriptionGeneratorPage() {
                 disabled={uploadOldTemplateMutation.isPending}
               >
                 <Upload className='mr-2 h-4 w-4' />
-                {uploadOldTemplateMutation.isPending ? '上传中...' : '上传模板'}
+                {uploadOldTemplateMutation.isPending ? t('oldTemplate.uploading') : t('oldTemplate.uploadTemplate')}
               </Button>
             </div>
             <DataTable
               columns={[
                 {
-                  header: '文件名',
+                  header: t('oldTemplate.columns.filename'),
                   cell: (filename: string) => (
                     <span className='font-medium'>{filename}</span>
                   ),
                 },
                 {
-                  header: '操作',
+                  header: t('oldTemplate.columns.actions'),
                   cell: (filename: string) => (
                     <div className='flex items-center gap-1'>
                       <Button
                         variant='ghost'
                         size='icon'
                         onClick={() => handleRenameOldTemplate(filename)}
-                        title='重命名'
+                        title={t('oldTemplate.rename')}
                       >
                         <Pencil className='h-4 w-4' />
                       </Button>
@@ -3330,7 +3331,7 @@ function SubscriptionGeneratorPage() {
                         variant='ghost'
                         size='icon'
                         onClick={() => handleDeleteOldTemplate(filename)}
-                        title='删除'
+                        title={t('actions.delete', { ns: 'common' })}
                       >
                         <Trash2 className='text-destructive h-4 w-4' />
                       </Button>
@@ -3340,7 +3341,7 @@ function SubscriptionGeneratorPage() {
               ]}
               data={oldTemplates}
               getRowKey={(filename: string) => filename}
-              emptyText='暂无模板文件'
+              emptyText={t('oldTemplate.noTemplateFiles')}
             />
           </div>
         </DialogContent>
@@ -3353,15 +3354,15 @@ function SubscriptionGeneratorPage() {
       >
         <DialogContent className='max-h-[90vh] sm:max-w-[80vw]'>
           <DialogHeader>
-            <DialogTitle>编辑模板 - {editingOldTemplate}</DialogTitle>
-            <DialogDescription>编辑 YAML 模板文件内容</DialogDescription>
+            <DialogTitle>{t('oldTemplate.editTitle', { name: editingOldTemplate })}</DialogTitle>
+            <DialogDescription>{t('oldTemplate.editDescription')}</DialogDescription>
           </DialogHeader>
 
           <div className='max-h-[60vh] overflow-auto'>
             {isOldTemplateLoading ? (
               <div className='flex items-center justify-center py-8'>
                 <span className='text-muted-foreground'>
-                  正在加载模板内容...
+                  {t('oldTemplate.loadingContent')}
                 </span>
               </div>
             ) : (
@@ -3369,7 +3370,7 @@ function SubscriptionGeneratorPage() {
                 className='min-h-[400px] font-mono text-xs'
                 value={oldTemplateContent}
                 onChange={(e) => setOldTemplateContent(e.target.value)}
-                placeholder='模板内容'
+                placeholder={t('oldTemplate.templateContent')}
               />
             )}
           </div>
@@ -3379,7 +3380,7 @@ function SubscriptionGeneratorPage() {
               variant='outline'
               onClick={() => setOldTemplateEditDialogOpen(false)}
             >
-              取消
+              {t('actions.cancel', { ns: 'common' })}
             </Button>
             <Button
               onClick={handleSaveOldTemplate}
@@ -3387,7 +3388,7 @@ function SubscriptionGeneratorPage() {
                 updateOldTemplateMutation.isPending || isOldTemplateLoading
               }
             >
-              {updateOldTemplateMutation.isPending ? '保存中...' : '保存'}
+              {updateOldTemplateMutation.isPending ? t('actions.saving', { ns: 'common' }) : t('actions.save', { ns: 'common' })}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -3400,13 +3401,13 @@ function SubscriptionGeneratorPage() {
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>确认删除</AlertDialogTitle>
+            <AlertDialogTitle>{t('oldTemplate.deleteConfirmTitle')}</AlertDialogTitle>
             <AlertDialogDescription>
-              确定要删除模板文件 "{deletingOldTemplate}" 吗？此操作不可恢复。
+              {t('oldTemplate.deleteConfirmDesc', { name: deletingOldTemplate })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>取消</AlertDialogCancel>
+            <AlertDialogCancel>{t('actions.cancel', { ns: 'common' })}</AlertDialogCancel>
             <AlertDialogAction
               onClick={() =>
                 deletingOldTemplate &&
@@ -3414,7 +3415,7 @@ function SubscriptionGeneratorPage() {
               }
               className='bg-destructive hover:bg-destructive/90 text-white'
             >
-              删除
+              {t('actions.delete', { ns: 'common' })}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -3427,20 +3428,20 @@ function SubscriptionGeneratorPage() {
       >
         <DialogContent className='sm:max-w-md'>
           <DialogHeader>
-            <DialogTitle>重命名模板</DialogTitle>
+            <DialogTitle>{t('oldTemplate.renameTitle')}</DialogTitle>
             <DialogDescription>
-              将 "{renamingOldTemplate}" 重命名为新文件名
+              {t('oldTemplate.renameDesc', { name: renamingOldTemplate })}
             </DialogDescription>
           </DialogHeader>
           <div className='space-y-4 py-4'>
             <div className='space-y-2'>
-              <Label htmlFor='new-template-name'>新文件名</Label>
+              <Label htmlFor='new-template-name'>{t('oldTemplate.newFilename')}</Label>
               <div className='flex items-center gap-2'>
                 <Input
                   id='new-template-name'
                   value={newOldTemplateName}
                   onChange={(e) => setNewOldTemplateName(e.target.value)}
-                  placeholder='输入新的模板名称'
+                  placeholder={t('oldTemplate.newFilenamePlaceholder')}
                 />
                 <span className='text-muted-foreground'>.yaml</span>
               </div>
@@ -3451,7 +3452,7 @@ function SubscriptionGeneratorPage() {
               variant='outline'
               onClick={() => setIsOldTemplateRenameDialogOpen(false)}
             >
-              取消
+              {t('actions.cancel', { ns: 'common' })}
             </Button>
             <Button
               onClick={handleConfirmRenameOldTemplate}
@@ -3460,7 +3461,7 @@ function SubscriptionGeneratorPage() {
                 renameOldTemplateMutation.isPending
               }
             >
-              {renameOldTemplateMutation.isPending ? '重命名中...' : '确认'}
+              {renameOldTemplateMutation.isPending ? t('oldTemplate.renaming') : t('actions.confirm', { ns: 'common' })}
             </Button>
           </DialogFooter>
         </DialogContent>

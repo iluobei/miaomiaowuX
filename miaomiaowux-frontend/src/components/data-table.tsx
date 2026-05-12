@@ -1,4 +1,5 @@
 import { ReactNode } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Card, CardContent } from '@/components/ui/card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 
@@ -104,11 +105,13 @@ export function DataTable<T>({
   columns,
   mobileCard,
   getRowKey,
-  emptyText = '暂无数据',
+  emptyText,
   containerClassName = '',
   onRowClick,
   rowClassName
 }: DataTableProps<T>) {
+  const { t } = useTranslation('common')
+  const emptyMessage = emptyText ?? t('dataTable.noData')
 
   const renderCellContent = (column: DataTableColumn<T>, item: T) => {
     // 优先使用 cell 函数
@@ -137,7 +140,7 @@ export function DataTable<T>({
           {data.length === 0 ? (
             <Card>
               <CardContent className='text-center text-muted-foreground py-8'>
-                {emptyText}
+                {emptyMessage}
               </CardContent>
             </Card>
           ) : (
@@ -206,7 +209,7 @@ export function DataTable<T>({
                   colSpan={columns.length}
                   className='text-center text-muted-foreground py-8'
                 >
-                  {emptyText}
+                  {emptyMessage}
                 </TableCell>
               </TableRow>
             ) : (

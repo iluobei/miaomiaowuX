@@ -1,0 +1,165 @@
+{
+  "nav": {
+    "trafficInfo": "Traffic",
+    "nodeManagement": "Nodes",
+    "serviceManagement": "Services",
+    "userManagement": "Users",
+    "packageManagement": "Packages",
+    "certificateManagement": "Certificates",
+    "templateManagement": "Templates",
+    "systemSettings": "System Settings"
+  },
+  "actions": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "confirm": "Confirm",
+    "delete": "Delete",
+    "copy": "Copy",
+    "reset": "Reset",
+    "close": "Close",
+    "back": "Back",
+    "next": "Next",
+    "edit": "Edit",
+    "add": "Add",
+    "search": "Search",
+    "enable": "Enable",
+    "disable": "Disable",
+    "refresh": "Refresh",
+    "download": "Download",
+    "upload": "Upload",
+    "import": "Import",
+    "export": "Export",
+    "view": "View",
+    "confirmDelete": "Confirm Delete",
+    "loading": "Loading...",
+    "saving": "Saving...",
+    "creating": "Creating...",
+    "verifying": "Verifying...",
+    "resetting": "Resetting...",
+    "sending": "Sending...",
+    "disabling": "Disabling...",
+    "deleting": "Deleting...",
+    "or": "or",
+    "optional": "Optional",
+    "required": "Required",
+    "copySuccess": "Copied to clipboard",
+    "copyFailed": "Copy failed (HTTPS required), please copy manually"
+  },
+  "theme": {
+    "light": "Light",
+    "dark": "Dark",
+    "system": "System"
+  },
+  "brand": "MiaomiaowuX",
+  "signOut": {
+    "title": "Sign Out",
+    "description": "Are you sure you want to sign out? You will need to log in again to access the console.",
+    "confirm": "Sign Out",
+    "cancel": "Cancel"
+  },
+  "feedback": {
+    "ariaLabel": "Report Issue",
+    "title": "Report Issue",
+    "telegram": "Telegram Group",
+    "github": "GitHub Issues"
+  },
+  "error": {
+    "notFoundTitle": "Page Not Found",
+    "notFoundDesc": "Please check the URL or return to home.",
+    "errorTitle": "Something Went Wrong",
+    "errorDesc": "Please try again later."
+  },
+  "sidebar": {
+    "expand": "Expand Sidebar",
+    "collapse": "Collapse Sidebar",
+    "switchToSidebar": "Switch to Sidebar",
+    "switchToTopMenu": "Switch to Top Menu",
+    "moreMenu": "More Menu",
+    "openMenu": "Open Menu"
+  },
+  "backup": {
+    "title": "Data Backup",
+    "description": "Backup includes database and subscription files. Page will refresh after restore.",
+    "downloadLabel": "Download Backup",
+    "downloading": "Generating backup...",
+    "downloadButton": "Download Current Backup",
+    "downloadSuccess": "Backup downloaded",
+    "downloadFailed": "Backup download failed",
+    "restoreLabel": "Restore Backup",
+    "restoreButton": "Restore Backup",
+    "restoring": "Restoring...",
+    "restoreSuccess": "Backup restored, please refresh the page",
+    "restoreFailed": "Backup restore failed",
+    "restoreWarning": "Restoring will overwrite all current data. Please proceed with caution."
+  },
+  "update": {
+    "title": "Check for Updates",
+    "description": "Check if a new version is available",
+    "checking": "Checking for updates...",
+    "newVersion": "New version available!",
+    "currentVersion": "Current Version",
+    "latestVersion": "Latest Version",
+    "releaseNotes": "Release Notes:",
+    "updateNow": "Update Now",
+    "noDownload": "No download found for your system",
+    "viewRelease": "View GitHub Release",
+    "upToDate": "Up to Date",
+    "currentVersionLabel": "Current version: v{{version}}",
+    "forceReinstall": "Force Reinstall",
+    "recheck": "Check Again",
+    "preparing": "Preparing update...",
+    "updateSuccess": "Update successful, page will refresh in 3 seconds",
+    "updateFailed": "Update failed: {{error}}",
+    "unknownError": "Unknown error",
+    "connectionClosed": "Connection closed unexpectedly",
+    "cannotReadStream": "Cannot read response stream",
+    "steps": {
+      "checking": "Checking version",
+      "downloading": "Downloading update",
+      "backingUp": "Backing up current version",
+      "replacing": "Replacing files",
+      "restarting": "Restarting service"
+    }
+  },
+  "userMenu": {
+    "settings": "Settings",
+    "debugLog": "Debug Log",
+    "help": "Help",
+    "backup": "Backup Data",
+    "checkUpdate": "Check Update",
+    "version": "Version",
+    "signOut": "Sign Out",
+    "notLoggedIn": "Not Logged In",
+    "noEmail": "No Email",
+    "user": "User",
+    "themeStyle": "Theme Style",
+    "themeMiaomiaowu": "Miaomiaowu",
+    "themeFlat": "Flat",
+    "language": "Language",
+    "debugEnabled": "Debug log enabled",
+    "debugDisabled": "Debug log disabled",
+    "debugEnableFailed": "Failed to enable debug log",
+    "debugDisableFailed": "Failed to disable debug log",
+    "logDownloaded": "Log file downloaded",
+    "logDownloadFailed": "Failed to download log file"
+  },
+  "noData": "No data",
+  "cardView": "Card View",
+  "listView": "List View",
+  "dataTable": {
+    "noData": "No data"
+  },
+  "viewToggle": {
+    "card": "Card View",
+    "list": "List View"
+  },
+  "serverSelector": {
+    "selectServer": "Select Server",
+    "noServers": "No Remote Servers",
+    "pending": "Pending",
+    "offline": "Offline"
+  },
+  "flagPicker": {
+    "autoDetect": "Auto Detect Region"
+  }
+}

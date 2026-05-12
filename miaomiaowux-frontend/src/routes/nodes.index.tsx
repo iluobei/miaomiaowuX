@@ -4,6 +4,7 @@ import { createPortal } from 'react-dom'
 import { createFileRoute, redirect } from '@tanstack/react-router'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
+import { useTranslation } from 'react-i18next'
 import { Topbar } from '@/components/layout/topbar'
 import { useAuthStore } from '@/stores/auth-store'
 import { api } from '@/lib/api'
@@ -274,6 +275,7 @@ const SortableCard = React.memo(function SortableCard({ id, isSaved, isBatchDrag
 
 // DragOverlay 内容组件
 function DragOverlayContent({ nodes, protocolColors }: { nodes: TempNode[]; protocolColors: Record<string, string> }) {
+  const { t } = useTranslation('nodes')
   if (nodes.length === 0) return null
 
   if (nodes.length === 1) {
@@ -312,7 +314,7 @@ function DragOverlayContent({ nodes, protocolColors }: { nodes: TempNode[]; prot
 
         {/* 数量标记 */}
         <Badge className='absolute -top-2 -right-2 bg-primary text-primary-foreground'>
-          {nodes.length} 个节点
+          {t('label.nodeCount', { count: nodes.length })}
         </Badge>
       </div>
     </div>
@@ -349,6 +351,7 @@ function getStoredSelectedIds(): Set<number> {
 }
 
 function NodesPage() {
+  const { t } = useTranslation('nodes')
   const { auth } = useAuthStore()
   const queryClient = useQueryClient()
 
@@ -382,7 +385,7 @@ function NodesPage() {
   const [routingServerName, setRoutingServerName] = useState<string>('')
 
   // 自定义标签状态
-  const [manualTag, setManualTag] = useState<string>('手动输入')
+  const [manualTag, setManualTag] = useState<string>(() => t('filter.manualInput'))
   const [subscriptionTag, setSubscriptionTag] = useState<string>('')
 
   // 导入节点卡片折叠状态 - 默认折叠
@@ -548,7 +551,7 @@ function NodesPage() {
       queryClient.invalidateQueries({ queryKey: ['user-config'] })
     },
     onError: (error: any) => {
-      toast.error('保存排序失败: ' + (error.response?.data?.error || error.message))
+      toast.error(t('toast.saveOrderFailed', { error: error.response?.data?.error || error.message }))
     }
   })
 
@@ -578,12 +581,12 @@ function NodesPage() {
   // 添加节点：提交入站 → 创建 freedom 出站（单服务器）
   const handleQuickCreateSubmit = async (serverIds: number[], inbound: any, tag: string, nodeName?: string) => {
     if (serverIds.length === 0) {
-      toast.error('请选择至少一台服务器')
+      toast.error(t('toast.selectServer'))
       return
     }
     const trimmedTag = tag?.trim() || inbound.tag || ''
     if (!trimmedTag) {
-      toast.error('请填写标签')
+      toast.error(t('toast.enterTag'))
       return
     }
 
@@ -602,7 +605,7 @@ function NodesPage() {
         const inboundRes = await api.post(`/api/admin/remote/inbounds?server_id=${serverId}`, inboundPayload)
         if (!inboundRes.data.success) {
           const serverName = remoteServers.find(s => s.id === serverId)?.name || serverId
-          toast.error(`服务器 ${serverName} 入站创建失败: ${inboundRes.data.message || '未知错误'}`)
+          toast.error(t('toast.serverInboundFailed', { name: serverName, error: inboundRes.data.message || 'unknown' }))
           continue
         }
 
@@ -616,7 +619,7 @@ function NodesPage() {
       }
 
       if (successCount === 0) {
-        toast.error('所有服务器创建失败')
+        toast.error(t('toast.allServersFailed'))
         return
       }
 
@@ -626,10 +629,10 @@ function NodesPage() {
       setQuickCreateResult({ serverCount: successCount, inboundTag: trimmedTag, outboundTag: `direct-${trimmedTag}` })
       setQuickCreateStep('done')
       toast.success(successCount === serverIds.length
-        ? `${successCount} 台服务器节点创建成功`
-        : `${successCount}/${serverIds.length} 台服务器节点创建成功`)
+        ? t('toast.serversCreated', { count: successCount })
+        : t('toast.serversPartialCreated', { success: successCount, total: serverIds.length }))
     } catch (error: any) {
-      toast.error(error.response?.data?.error || '创建失败')
+      toast.error(error.response?.data?.error || t('toast.createFailed'))
     } finally {
       setQuickCreateLoading(false)
     }
@@ -676,7 +679,7 @@ function NodesPage() {
     mutationFn: async ({ id, name }: { id: number; name: string }) => {
       const target = savedNodes.find(n => n.id === id)
       if (!target) {
-        throw new Error('未找到节点?')
+        throw new Error(t('toast.nodeNotFound'))
       }
       const updatedParsedConfig = updateConfigName(target.parsed_config, name)
       const updatedClashConfig = updateConfigName(target.clash_config, name)
@@ -692,12 +695,12 @@ function NodesPage() {
       return response.data
     },
     onSuccess: () => {
-      toast.success('节点名称已更新')
+      toast.success(t('toast.nodeNameUpdated'))
       setEditingNode(null)
       queryClient.invalidateQueries({ queryKey: ['nodes'] })
     },
     onError: (error: any) => {
-      toast.error(error.response?.data?.error || '节点名称更新失败')
+      toast.error(error.response?.data?.error || t('toast.nodeNameUpdateFailed'))
     },
   })
 
@@ -710,7 +713,7 @@ function NodesPage() {
       return response.data as { ips: string[] }
     },
     onError: (error: any) => {
-      toast.error(error.response?.data?.error || 'IP解析失败')
+      toast.error(error.response?.data?.error || t('toast.ipResolveFailed'))
       setResolvingIpFor(null)
     },
   })
@@ -723,12 +726,12 @@ function NodesPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['nodes'] })
-      toast.success('服务器地址已更新')
+      toast.success(t('toast.serverAddressUpdated'))
       setResolvingIpFor(null)
       setIpMenuState(null)
     },
     onError: (error: any) => {
-      toast.error(error.response?.data?.error || '服务器地址更新失败')
+      toast.error(error.response?.data?.error || t('toast.serverAddressUpdateFailed'))
       setResolvingIpFor(null)
     },
   })
@@ -741,10 +744,10 @@ function NodesPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['nodes'] })
-      toast.success('已恢复原始域名')
+      toast.success(t('toast.domainRestored'))
     },
     onError: (error: any) => {
-      toast.error(error.response?.data?.error || '恢复原始域名失败')
+      toast.error(error.response?.data?.error || t('toast.domainRestoreFailed'))
     },
   })
 
@@ -758,12 +761,12 @@ function NodesPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['nodes'] })
-      toast.success('Clash 配置已更新')
+      toast.success(t('toast.clashConfigUpdated'))
       setClashDialogOpen(false)
       // 状态清理会在 onOpenChange 中自动处理
     },
     onError: (error: any) => {
-      toast.error(error.response?.data?.error || 'Clash 配置更新失败')
+      toast.error(error.response?.data?.error || t('toast.clashConfigUpdateFailed'))
     },
   })
 
@@ -807,7 +810,7 @@ function NodesPage() {
 
       // 检查必需字段
       if (!parsedConfig.name || !parsedConfig.type || !parsedConfig.server || !parsedConfig.port) {
-        setClashConfigError('配置缺少必需字段: name, type, server, port')
+        setClashConfigError(t('toast.configMissingFields'))
         return
       }
 
@@ -817,7 +820,7 @@ function NodesPage() {
         clashConfig: JSON.stringify(parsedConfig)
       })
     } catch (error) {
-      setClashConfigError(`JSON 格式错误: ${error instanceof Error ? error.message : String(error)}`)
+      setClashConfigError(t('toast.jsonFormatError', { error: error instanceof Error ? error.message : String(error) }))
     }
   }
 
@@ -837,7 +840,7 @@ function NodesPage() {
       setJsonErrorLines([])
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : String(error)
-      setClashConfigError(`JSON 格式错误: ${errorMsg}`)
+      setClashConfigError(t('toast.jsonFormatError', { error: errorMsg }))
 
       // 尝试提取错误行号
       // JSON.parse 错误信息格式通常是 "Unexpected token ... in JSON at position ..."
@@ -878,14 +881,14 @@ function NodesPage() {
       // 尝试复制到剪贴板
       try {
         await navigator.clipboard.writeText(uri)
-        toast.success('URI 已复制到剪贴板')
+        toast.success(t('toast.uriCopied'))
       } catch (clipboardError) {
         // 复制失败，显示手动复制对话框
         setUriContent(uri)
         setUriDialogOpen(true)
       }
     } catch (error) {
-      toast.error('生成 URI 失败: ' + (error instanceof Error ? error.message : String(error)))
+      toast.error(t('toast.uriGenerateFailed', { error: error instanceof Error ? error.message : String(error) }))
     }
   }, [])
 
@@ -900,7 +903,7 @@ function NodesPage() {
       const result = await resolveIpMutation.mutateAsync(node.parsed.server)
 
       if (result.ips.length === 0) {
-        toast.error('未解析到IP地址')
+        toast.error(t('toast.noIpResolved'))
         setResolvingIpFor(null)
         return
       }
@@ -949,7 +952,7 @@ function NodesPage() {
         originalServer,
       }
     }))
-    toast.success('服务器地址已更新')
+    toast.success(t('toast.serverAddressUpdated'))
   }
 
   // 恢复临时节点的原始服务器地址
@@ -968,7 +971,7 @@ function NodesPage() {
         originalServer: undefined, // 清除原始服务器地址标记
       }
     }))
-    toast.success('已恢复原始服务器地址')
+    toast.success(t('toast.serverRestoredAddress'))
   }
 
   // 批量创建节点
@@ -976,12 +979,12 @@ function NodesPage() {
     mutationFn: async (nodes: TempNode[]) => {
       // 根据当前标签类型使用对应的自定义标签
       const tag = currentTag === 'manual'
-        ? (manualTag.trim() || '手动输入')
-        : (subscriptionTag.trim() || '订阅导入')
+        ? (manualTag.trim() || t('filter.manualInput'))
+        : (subscriptionTag.trim() || t('filter.subscriptionImport'))
 
       const payload = nodes.map(n => ({
         raw_url: n.rawUrl,
-        node_name: n.name || '未知',
+        node_name: n.name || t('nodeList.unknown'),
         protocol: n.parsed?.type || 'unknown',
         parsed_config: n.parsed ? JSON.stringify(cloneProxyWithName(n.parsed, n.name)) : '',
         clash_config: n.clash ? JSON.stringify(cloneProxyWithName(n.clash, n.name)) : '',
@@ -1010,12 +1013,12 @@ function NodesPage() {
         return { nodes: [...newNodes, ...oldData.nodes] }
       })
 
-      toast.success('节点保存成功')
+      toast.success(t('toast.nodesSaved'))
       setInput('')
       setTempNodes([])
     },
     onError: (error: any) => {
-      toast.error(error.response?.data?.error || '保存失败')
+      toast.error(error.response?.data?.error || t('toast.saveFailed'))
     },
   })
 
@@ -1039,7 +1042,7 @@ function NodesPage() {
       queryClient.invalidateQueries({ queryKey: ['nodes'] })
     },
     onError: (error: any) => {
-      toast.error(error.response?.data?.error || '更新失败')
+      toast.error(error.response?.data?.error || t('toast.updateFailed'))
     },
   })
 
@@ -1050,10 +1053,10 @@ function NodesPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['nodes'] })
-      toast.success('节点已删除')
+      toast.success(t('toast.nodeDeleted'))
     },
     onError: (error: any) => {
-      toast.error(error.response?.data?.error || '删除失败')
+      toast.error(error.response?.data?.error || t('toast.deleteFailed'))
     },
   })
 
@@ -1066,10 +1069,10 @@ function NodesPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['nodes'] })
-      toast.success('所有节点已清空')
+      toast.success(t('toast.allNodesCleared'))
     },
     onError: (error: any) => {
-      toast.error(error.response?.data?.error || '清空失败')
+      toast.error(error.response?.data?.error || t('toast.clearFailed'))
     },
   })
 
@@ -1094,14 +1097,14 @@ function NodesPage() {
     },
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['nodes'] })
-      toast.success(`成功更新 ${variables.nodeIds.length} 个节点的标签`)
+      toast.success(t('toast.batchTagUpdated', { count: variables.nodeIds.length }))
       setBatchTagDialogOpen(false)
       setSelectedNodeIds(new Set())
       setBatchTag('')
       setTagFilter('all') // 切换到全部标签
     },
     onError: (error: any) => {
-      toast.error(error.response?.data?.error || '批量更新标签失败')
+      toast.error(error.response?.data?.error || t('toast.batchTagFailed'))
     },
   })
 
@@ -1113,7 +1116,7 @@ function NodesPage() {
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['nodes'] })
-      toast.success(`成功修改 ${data.success} 个节点名称`)
+      toast.success(t('toast.batchRenameSuccess', { count: data.success }))
       setBatchRenameDialogOpen(false)
       setSelectedNodeIds(new Set())
       setBatchRenameText('')
@@ -1123,7 +1126,7 @@ function NodesPage() {
       setSuffixText('')
     },
     onError: (error: any) => {
-      toast.error(error.response?.data?.error || '批量修改名称失败')
+      toast.error(error.response?.data?.error || t('toast.batchRenameFailed'))
     },
   })
 
@@ -1131,7 +1134,7 @@ function NodesPage() {
   const handleAddRegionEmoji = useCallback(async () => {
     const nodeIds = Array.from(selectedNodeIds)
     if (nodeIds.length === 0) {
-      toast.error('请先选择节点')
+      toast.error(t('toast.selectNodeFirst'))
       return
     }
 
@@ -1227,13 +1230,9 @@ function NodesPage() {
 
       // 显示结果
       if (successCount > 0 && failCount === 0 && skipCount === 0) {
-        toast.success(`成功为 ${successCount} 个节点添加地区 emoji`)
+        toast.success(t('toast.addRegionEmojiSuccess', { count: successCount }))
       } else {
-        const parts = []
-        if (successCount > 0) parts.push(`成功 ${successCount}`)
-        if (skipCount > 0) parts.push(`跳过 ${skipCount} (已有emoji)`)
-        if (failCount > 0) parts.push(`失败 ${failCount}`)
-        toast.info(parts.join('，'))
+        toast.info(t('toast.addRegionEmojiResult', { success: successCount, skip: skipCount, fail: failCount }))
       }
     } finally {
       setAddingRegionEmoji(false)
@@ -1247,7 +1246,7 @@ function NodesPage() {
 
     // 检查节点名称是否已有 emoji 前缀
     if (hasRegionEmoji(node.node_name)) {
-      toast.info('该节点已有 emoji 前缀')
+      toast.info(t('toast.alreadyHasEmoji'))
       return
     }
 
@@ -1259,13 +1258,13 @@ function NodesPage() {
       try {
         parsedConfig = JSON.parse(node.parsed_config)
       } catch {
-        toast.error('无法解析节点配置')
+        toast.error(t('toast.cannotParseConfig'))
         return
       }
 
       const server = parsedConfig?.server
       if (!server) {
-        toast.error('节点配置中没有 server 地址')
+        toast.error(t('toast.noServerAddress'))
         return
       }
 
@@ -1277,12 +1276,12 @@ function NodesPage() {
           const dnsResult = await api.get(`/api/dns/resolve?hostname=${encodeURIComponent(server)}`)
           const ips = dnsResult.data?.ips || []
           if (ips.length === 0) {
-            toast.error('DNS 解析失败')
+            toast.error(t('toast.dnsResolveFailed'))
             return
           }
           ip = ips[0]
         } catch {
-          toast.error('DNS 解析失败')
+          toast.error(t('toast.dnsResolveFailed'))
           return
         }
       }
@@ -1290,14 +1289,14 @@ function NodesPage() {
       // 获取 IP 地理位置
       const geoInfo = await getGeoIPInfo(ip)
       if (!geoInfo.country_code) {
-        toast.error('获取地理位置失败')
+        toast.error(t('toast.geoLocationFailed'))
         return
       }
 
       // 转换为旗帜 emoji
       const flag = countryCodeToFlag(geoInfo.country_code)
       if (!flag) {
-        toast.error('无法生成旗帜 emoji')
+        toast.error(t('toast.flagEmojiFailed'))
         return
       }
 
@@ -1317,10 +1316,10 @@ function NodesPage() {
       })
 
       queryClient.invalidateQueries({ queryKey: ['nodes'] })
-      toast.success('已添加地区 emoji')
+      toast.success(t('toast.emojiAdded'))
     } catch (error) {
       console.error('Failed to add emoji:', error)
-      toast.error('添加 emoji 失败')
+      toast.error(t('toast.addEmojiFailed'))
     } finally {
       setAddingEmojiForNode(null)
     }
@@ -1329,7 +1328,7 @@ function NodesPage() {
   // 查找重复节点
   const findDuplicateNodes = useCallback(() => {
     if (savedNodes.length === 0) {
-      toast.info('没有节点')
+      toast.info(t('toast.noNodes'))
       return
     }
 
@@ -1369,7 +1368,7 @@ function NodesPage() {
     }
 
     if (duplicates.length === 0) {
-      toast.success('没有发现重复节点')
+      toast.success(t('toast.noDuplicates'))
       return
     }
 
@@ -1395,7 +1394,7 @@ function NodesPage() {
     }
 
     if (nodeIdsToDelete.length === 0) {
-      toast.info('没有需要删除的节点')
+      toast.info(t('toast.nothingToDelete'))
       return
     }
 
@@ -1403,11 +1402,11 @@ function NodesPage() {
     try {
       await api.post('/api/admin/nodes/batch-delete', { node_ids: nodeIdsToDelete })
       queryClient.invalidateQueries({ queryKey: ['nodes'] })
-      toast.success(`成功删除 ${nodeIdsToDelete.length} 个重复节点`)
+      toast.success(t('toast.duplicatesDeleted', { count: nodeIdsToDelete.length }))
       setDuplicateDialogOpen(false)
       setDuplicateGroups([])
     } catch (error: any) {
-      toast.error(error.response?.data?.error || '删除失败')
+      toast.error(error.response?.data?.error || t('toast.deleteFailed'))
     } finally {
       setDeletingDuplicates(false)
     }
@@ -1446,7 +1445,7 @@ function NodesPage() {
         [nodeKey]: {
           success: false,
           latency: 0,
-          error: error instanceof Error ? error.message : '测试失败',
+          error: error instanceof Error ? error.message : t('toast.testFailed'),
           loading: false
         }
       }))
@@ -1459,7 +1458,7 @@ function NodesPage() {
   const generateTempSubscription = useCallback(async (singleNodeId?: number) => {
     const nodeIds = singleNodeId !== undefined ? [singleNodeId] : Array.from(selectedNodeIds)
     if (nodeIds.length === 0) {
-      toast.error('请先选择节点')
+      toast.error(t('toast.selectNodeFirst'))
       return
     }
 
@@ -1476,7 +1475,7 @@ function NodesPage() {
       }).filter(Boolean)
 
       if (proxies.length === 0) {
-        toast.error('无法解析节点的配置')
+        toast.error(t('toast.noNodesToParse'))
         return
       }
 
@@ -1489,7 +1488,7 @@ function NodesPage() {
       const fullUrl = `${window.location.origin}${response.data.url}`
       setTempSubUrl(fullUrl)
     } catch (error: any) {
-      toast.error(error.response?.data?.error || '生成临时订阅失败')
+      toast.error(error.response?.data?.error || t('toast.tempSubGenerateFailed'))
     } finally {
       setTempSubGenerating(false)
     }
@@ -1515,11 +1514,11 @@ function NodesPage() {
         serverName = sourceNode.tag.slice(3)
       }
       const sourceServer = remoteServers.find(s => s.name === serverName)
-      if (!sourceServer) throw new Error(`源节点未关联远程服务器，无法配置出站路由`)
-      if (!sourceNode.inbound_tag) throw new Error('源节点缺少 inbound_tag，无法配置路由')
+      if (!sourceServer) throw new Error(t('toast.sourceNodeNoServer'))
+      if (!sourceNode.inbound_tag) throw new Error(t('toast.sourceNodeNoInboundTag'))
 
       let targetClashConfig: any
-      try { targetClashConfig = JSON.parse(targetNode.clash_config) } catch { throw new Error('落地节点配置解析失败') }
+      try { targetClashConfig = JSON.parse(targetNode.clash_config) } catch { throw new Error(t('toast.landingTargetParseError')) }
 
       // 检查是否已存在相同目标的出站
       const existingOutbounds = await api.get(`/api/admin/remote/outbounds?server_id=${sourceServer.id}`)
@@ -1530,7 +1529,7 @@ function NodesPage() {
         const addr = vnext ? `${vnext.address}:${vnext.port}` : srv ? `${srv.address}:${srv.port}` : ''
         return addr === targetAddr
       })) {
-        throw new Error(`该落地节点 (${targetNode.node_name}) 已配置过，请勿重复添加`)
+        throw new Error(t('toast.landingTargetDuplicate', { name: targetNode.node_name }))
       }
 
       const outboundTag = `landing-${sourceNode.inbound_tag}-${Date.now()}`
@@ -1541,25 +1540,25 @@ function NodesPage() {
         action: 'add',
         outbound,
       })
-      if (!outRes.data.success) throw new Error(outRes.data.message || '添加出站失败')
+      if (!outRes.data.success) throw new Error(outRes.data.message || t('toast.addOutboundFailed'))
 
       // 2. 在源服务器添加路由规则：入站 → 新出站
       const routeRes = await api.post(`/api/admin/remote/routing?server_id=${sourceServer.id}`, {
         action: 'add_rule',
         rule: { type: 'field', inboundTag: [sourceNode.inbound_tag], outboundTag },
       })
-      if (!routeRes.data.success) throw new Error(routeRes.data.message || '添加路由规则失败')
+      if (!routeRes.data.success) throw new Error(routeRes.data.message || t('toast.addRoutingRuleFailed'))
 
       return { outboundTag }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['nodes'] })
-      toast.success('落地节点配置成功（出站+路由已添加）')
+      toast.success(t('toast.landingConfigSuccess'))
       setLandingDialogOpen(false)
       setSourceNodeForLanding(null)
     },
     onError: (error: any) => {
-      toast.error(error.message || error.response?.data?.error || '配置落地节点失败')
+      toast.error(error.message || error.response?.data?.error || t('toast.landingConfigFailed'))
     },
   })
 
@@ -1568,7 +1567,7 @@ function NodesPage() {
     if (!sourceNodeForLanding || serverIds.length === 0) return
     const serverId = serverIds[0]
     const trimmedTag = tag?.trim() || inbound.tag || ''
-    if (!trimmedTag) { toast.error('请填写标签'); return }
+    if (!trimmedTag) { toast.error(t('toast.enterTag')); return }
 
     setLandingLoading(true)
     try {
@@ -1577,7 +1576,7 @@ function NodesPage() {
         action: 'add',
         inbound: { ...inbound, tag: trimmedTag },
       })
-      if (!inboundRes.data.success) throw new Error(inboundRes.data.message || '入站创建失败')
+      if (!inboundRes.data.success) throw new Error(inboundRes.data.message || t('toast.inboundCreateFailed'))
 
       // 2. 创建 freedom 出站
       await api.post(`/api/admin/remote/outbounds?server_id=${serverId}`, {
@@ -1593,7 +1592,7 @@ function NodesPage() {
       const newNode = freshNodes?.nodes?.find(n => n.original_server === serverName && n.inbound_tag === trimmedTag)
 
       if (!newNode) {
-        toast.warning('入站已创建，但未找到同步的节点，请手动配置落地')
+        toast.warning(t('toast.inboundCreatedNoNode'))
         setLandingDialogOpen(false)
         return
       }
@@ -1604,7 +1603,7 @@ function NodesPage() {
         targetNode: newNode,
       })
     } catch (error: any) {
-      toast.error(error.message || '创建落地节点失败')
+      toast.error(error.message || t('toast.createLandingFailed'))
     } finally {
       setLandingLoading(false)
     }
@@ -1626,9 +1625,9 @@ function NodesPage() {
       if (!defaultTag) {
         try {
           const urlObj = new URL(variables.url)
-          defaultTag = urlObj.hostname || '外部订阅'
+          defaultTag = urlObj.hostname || t('importCard.subscription.defaultTag')
         } catch {
-          defaultTag = '外部订阅'
+          defaultTag = t('importCard.subscription.defaultTag')
         }
       }
 
@@ -1636,13 +1635,13 @@ function NodesPage() {
       const parsed: TempNode[] = data.proxies.map((clashNode) => {
         // Clash节点已经是标准格式，直接作为ProxyNode和ClashProxy使用
         const proxyNode: ProxyNode = {
-          name: clashNode.name || '未知',
+          name: clashNode.name || t('nodeList.unknown'),
           type: clashNode.type || 'unknown',
           server: clashNode.server || '',
           port: clashNode.port || 0,
           ...clashNode,
         }
-        const name = proxyNode.name || '未知'
+        const name = proxyNode.name || t('nodeList.unknown')
         const parsedProxy = cloneProxyWithName(proxyNode, name)
         const clashProxy = cloneProxyWithName(clashNode, name)
 
@@ -1665,7 +1664,7 @@ function NodesPage() {
         setSubscriptionTag(defaultTag)
       }
 
-      toast.success(`成功导入 ${data.count} 个节点`)
+      toast.success(t('toast.importSuccess', { count: data.count }))
 
       // 保存外部订阅链接
       try {
@@ -1681,11 +1680,11 @@ function NodesPage() {
         queryClient.invalidateQueries({ queryKey: ['traffic-summary'] })
       } catch (error) {
         // 如果保存失败（比如已经存在），忽略错误
-        console.log('保存外部订阅链接失败（可能已存在）:', error)
+        console.log('Failed to save external subscription (may already exist):', error)
       }
     },
     onError: (error: any) => {
-      toast.error(error.response?.data?.error || '获取订阅失败')
+      toast.error(error.response?.data?.error || t('toast.subFetchFailed'))
     },
   })
 
@@ -1698,7 +1697,7 @@ function NodesPage() {
       if (!trimmed || !trimmed.includes('://')) continue
       const parsedNode = parseProxyUrl(trimmed)
       const clashNode = parsedNode ? toClashProxy(parsedNode) : null
-      const name = parsedNode?.name || clashNode?.name || '未知'
+      const name = parsedNode?.name || clashNode?.name || t('nodeList.unknown')
       const normalizedParsed = cloneProxyWithName(parsedNode, name)
       const normalizedClash = cloneProxyWithName(clashNode, name)
 
@@ -1709,7 +1708,7 @@ function NodesPage() {
         parsed: normalizedParsed,
         clash: normalizedClash,
         enabled: true,
-        tag: manualTag.trim() || '手动输入', // 添加标签信息
+        tag: manualTag.trim() || t('filter.manualInput'), // 添加标签信息
       })
     }
 
@@ -1719,7 +1718,7 @@ function NodesPage() {
 
   const handleSave = () => {
     if (tempNodes.length === 0) {
-      toast.error('没有可保存的节点')
+      toast.error(t('toast.noSavableNodes'))
       return
     }
     batchCreateMutation.mutate(tempNodes)
@@ -1738,7 +1737,7 @@ function NodesPage() {
 
   const handleDeleteTemp = useCallback((id: string) => {
     setTempNodes(prev => prev.filter(node => node.id !== id))
-    toast.success('已移除临时节点')
+    toast.success(t('toast.tempNodeRemoved'))
   }, [])
 
   const handleNameEditStart = useCallback((node) => {
@@ -1757,7 +1756,7 @@ function NodesPage() {
     if (!editingNode) return
     const trimmed = editingNode.value.trim()
     if (!trimmed) {
-      toast.error('节点名称不能为空')
+      toast.error(t('toast.nodeNameEmpty'))
       return
     }
     if (trimmed === node.name) {
@@ -1781,7 +1780,7 @@ function NodesPage() {
         }
       }),
     )
-    toast.success('已更新临时节点名称')
+    toast.success(t('toast.tempNodeNameUpdated'))
     setEditingNode(null)
   }, [editingNode, updateNodeNameMutation])
 
@@ -1816,15 +1815,15 @@ function NodesPage() {
 
   const handleFetchSubscription = () => {
     if (!subscriptionUrl.trim()) {
-      toast.error('请输入订阅链接')
+      toast.error(t('toast.enterSubUrl'))
       return
     }
 
     // 确定使用哪个 User-Agent
-    const finalUserAgent = userAgent === '手动输入' ? customUserAgent : userAgent
+    const finalUserAgent = userAgent === 'custom' ? customUserAgent : userAgent
 
-    if (userAgent === '手动输入' && !customUserAgent.trim()) {
-      toast.error('请输入自定义 User-Agent')
+    if (userAgent === 'custom' && !customUserAgent.trim()) {
+      toast.error(t('toast.enterCustomUserAgent'))
       return
     }
 
@@ -1846,7 +1845,7 @@ function NodesPage() {
       } catch (e) {
         // 解析失败，保持 null
       }
-      const displayName = (n.node_name && n.node_name.trim()) || parsed?.name || '未知'
+      const displayName = (n.node_name && n.node_name.trim()) || parsed?.name || t('nodeList.unknown')
       const parsedWithName = cloneProxyWithName(parsed, displayName)
       const clashWithName = cloneProxyWithName(clash, displayName)
       return {
@@ -1856,7 +1855,7 @@ function NodesPage() {
         parsed: parsedWithName,
         clash: clashWithName,
         enabled: n.enabled,
-        tag: n.tag || '手动输入',
+        tag: n.tag || t('filter.manualInput'),
         isSaved: true,
         dbId: n.id,
         dbNode: n,
@@ -2006,7 +2005,7 @@ function NodesPage() {
   // 批量 TCPing 测试选中的节点
   const handleBatchTcping = useCallback(async () => {
     if (selectedNodeIds.size === 0) {
-      toast.error('请先选择要测试的节点')
+      toast.error(t('toast.selectNodeFirst'))
       return
     }
 
@@ -2016,7 +2015,7 @@ function NodesPage() {
     )
 
     if (selectedNodes.length === 0) {
-      toast.error('选中的节点没有有效的服务器地址')
+      toast.error(t('toast.noValidServerAddress'))
       return
     }
 
@@ -2059,9 +2058,9 @@ function NodesPage() {
       const successCount = results.filter(r => r.success).length
       const failCount = results.length - successCount
       if (failCount === 0) {
-        toast.success(`全部 ${successCount} 个节点测试成功`)
+        toast.success(t('toast.allTestSuccess', { count: successCount }))
       } else {
-        toast.info(`成功 ${successCount} 个，失败 ${failCount} 个`)
+        toast.info(t('toast.testResult', { success: successCount, fail: failCount }))
       }
     } catch (error) {
       // 标记所有节点测试失败
@@ -2071,12 +2070,12 @@ function NodesPage() {
         errorResults[nodeKey] = {
           success: false,
           latency: 0,
-          error: error instanceof Error ? error.message : '测试失败',
+          error: error instanceof Error ? error.message : t('toast.testFailed'),
           loading: false
         }
       })
       setTcpingResults(prev => ({ ...prev, ...errorResults }))
-      toast.error('批量测试失败')
+      toast.error(t('toast.batchTestFailed'))
     } finally {
       setBatchTcpingLoading(false)
     }
@@ -2151,9 +2150,9 @@ function NodesPage() {
       <main className='mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 pt-24'>
         <section className='space-y-4'>
           <div>
-            <h1 className='text-3xl font-semibold tracking-tight'>节点管理</h1>
+            <h1 className='text-3xl font-semibold tracking-tight'>{t('page.title')}</h1>
             <p className='text-muted-foreground mt-2'>
-              输入代理节点信息，每行一个节点，支持 VMess、VLESS、Trojan、Shadowsocks、Hysteria、Socks、TUIC、AnyTLS、WireGuard 协议。
+              {t('page.description')}
             </p>
           </div>
 
@@ -2162,7 +2161,7 @@ function NodesPage() {
               <CollapsibleTrigger asChild>
                 <CardHeader className='cursor-pointer hover:bg-muted/50 transition-colors rounded-t-lg'>
                   <div className='flex items-center justify-between'>
-                    <CardTitle>导入外部节点</CardTitle>
+                    <CardTitle>{t('importCard.title')}</CardTitle>
                     <div className='p-1.5 transition-all duration-200'>
                       <ChevronDown className={cn(
                         'h-5 w-5 transition-transform duration-200',
@@ -2176,8 +2175,8 @@ function NodesPage() {
                 <CardContent>
                   <Tabs defaultValue='manual' className='w-full'>
                     <TabsList className='grid w-full grid-cols-2'>
-                      <TabsTrigger value='manual'>手动输入</TabsTrigger>
-                      <TabsTrigger value='subscription'>订阅导入</TabsTrigger>
+                      <TabsTrigger value='manual'>{t('importCard.tabs.manual')}</TabsTrigger>
+                      <TabsTrigger value='subscription'>{t('importCard.tabs.subscription')}</TabsTrigger>
                     </TabsList>
 
                     <TabsContent value='manual' className='space-y-4 mt-4'>
@@ -2192,28 +2191,28 @@ anytls://password@example.com:443/?sni=example.com&fp=chrome&alpn=h2#AnyTLS节�
                       />
                       <div className='space-y-2'>
                         <Label htmlFor='manual-tag' className='text-sm font-medium'>
-                          节点标签
+                          {t('importCard.manual.tagLabel')}
                         </Label>
                         <Input
                           id='manual-tag'
-                          placeholder='手动输入'
+                          placeholder={t('importCard.manual.tagPlaceholder')}
                           value={manualTag}
                           onChange={(e) => setManualTag(e.target.value)}
                           className='font-mono text-sm'
                         />
                         <p className='text-xs text-muted-foreground'>
-                          为这些节点设置标签，用于节点管理中的分类和筛选
+                          {t('importCard.manual.tagDescription')}
                         </p>
                       </div>
                       <div className='flex justify-end gap-2'>
                         <Button onClick={handleParse} disabled={!input.trim()} variant='outline'>
-                          解析节点
+                          {t('importCard.manual.parseBtn')}
                         </Button>
                         <Button
                           onClick={handleSave}
                           disabled={tempNodes.length === 0 || batchCreateMutation.isPending}
                         >
-                          {batchCreateMutation.isPending ? '保存中...' : '保存节点'}
+                          {batchCreateMutation.isPending ? t('importCard.manual.savingBtn') : t('importCard.manual.saveBtn')}
                         </Button>
                       </div>
                     </TabsContent>
@@ -2227,25 +2226,25 @@ anytls://password@example.com:443/?sni=example.com&fp=chrome&alpn=h2#AnyTLS节�
                           className='font-mono text-sm'
                         />
                         <p className='text-xs text-muted-foreground'>
-                          请输入 Clash 订阅链接，系统将自动获取并解析节点
+                          {t('importCard.subscription.urlDescription')}
                         </p>
                       </div>
                       <div className='flex items-center gap-2'>
                         <Label htmlFor='user-agent' className='whitespace-nowrap'>User-Agent:</Label>
                         <Select value={userAgent} onValueChange={handleUserAgentChange}>
                           <SelectTrigger id='user-agent' className='w-[200px]'>
-                            <SelectValue placeholder='选择 User-Agent' />
+                            <SelectValue placeholder={t('importCard.subscription.userAgentPlaceholder')} />
                           </SelectTrigger>
                           <SelectContent>
                             <SelectItem value='clash.meta'>clash.meta</SelectItem>
                             <SelectItem value='clash-verge/v1.5.1'>clash-verge/v1.5.1</SelectItem>
                             <SelectItem value='Clash'>Clash</SelectItem>
-                            <SelectItem value='手动输入'>手动输入</SelectItem>
+                            <SelectItem value='custom'>{t('importCard.subscription.customUserAgent')}</SelectItem>
                           </SelectContent>
                         </Select>
-                        {userAgent === '手动输入' && (
+                        {userAgent === 'custom' && (
                           <Input
-                            placeholder='输入自定义 User-Agent'
+                            placeholder={t('importCard.subscription.customUserAgentPlaceholder')}
                             value={customUserAgent}
                             onChange={handleCustomUserAgentChange}
                             className='font-mono text-sm flex-1'
@@ -2254,17 +2253,17 @@ anytls://password@example.com:443/?sni=example.com&fp=chrome&alpn=h2#AnyTLS节�
                       </div>
                       <div className='space-y-2'>
                         <Label htmlFor='subscription-tag' className='text-sm font-medium'>
-                          节点标签
+                          {t('importCard.subscription.tagLabel')}
                         </Label>
                         <Input
                           id='subscription-tag'
-                          placeholder='默认使用服务器地址作为标签'
+                          placeholder={t('importCard.subscription.tagPlaceholder')}
                           value={subscriptionTag}
                           onChange={(e) => setSubscriptionTag(e.target.value)}
                           className='font-mono text-sm'
                         />
                         <p className='text-xs text-muted-foreground'>
-                          为订阅导入的节点设置标签，留空将使用服务器地址作为标签
+                          {t('importCard.subscription.tagDescription')}
                         </p>
                       </div>
                       <div className='flex justify-end gap-2'>
@@ -2273,13 +2272,13 @@ anytls://password@example.com:443/?sni=example.com&fp=chrome&alpn=h2#AnyTLS节�
                           disabled={!subscriptionUrl.trim() || fetchSubscriptionMutation.isPending}
                           variant='outline'
                         >
-                          {fetchSubscriptionMutation.isPending ? '导入中...' : '导入节点'}
+                          {fetchSubscriptionMutation.isPending ? t('importCard.subscription.importingBtn') : t('importCard.subscription.importBtn')}
                         </Button>
                         <Button
                           onClick={handleSave}
                           disabled={tempNodes.length === 0 || batchCreateMutation.isPending}
                         >
-                          {batchCreateMutation.isPending ? '保存中...' : '保存节点'}
+                          {batchCreateMutation.isPending ? t('importCard.subscription.savingBtn') : t('importCard.subscription.saveBtn')}
                         </Button>
                       </div>
                     </TabsContent>
@@ -2294,17 +2293,17 @@ anytls://password@example.com:443/?sni=example.com&fp=chrome&alpn=h2#AnyTLS节�
               <CardHeader>
                 <div className='flex flex-col gap-4 md:flex-row md:items-center md:justify-between'>
                   <div>
-                    <CardTitle>节点列表 ({deferredFilteredNodes.length})</CardTitle>
-                    <p className='mt-2 text-sm font-semibold text-destructive'>注意!!! 节点的修改与删除均会同步更新所有订阅 </p>
+                    <CardTitle>{t('nodeList.titleWithCount', { count: deferredFilteredNodes.length })}</CardTitle>
+                    <p className='mt-2 text-sm font-semibold text-destructive'>{t('nodeList.warning')}</p>
                     <p className='mt-2 text-xs text-primary flex flex-wrap items-center gap-1'>
-                      <Pencil className='h-4 w-4 inline' /> 编辑节点名称，
-                      <img src={ExchangeIcon} alt='链式代理' className='h-4 w-4 inline [filter:invert(63%)_sepia(45%)_saturate(1068%)_hue-rotate(327deg)_brightness(95%)_contrast(88%)]' /> 创建链式代理，
-                      <Flag className='h-4 w-4 inline' /> 添加地区emoji，
-                      <img src={IpIcon} alt='解析IP地址' className='h-4 w-4 inline [filter:invert(63%)_sepia(45%)_saturate(1068%)_hue-rotate(327deg)_brightness(95%)_contrast(88%)]' /> 解析IP地址，
-                      <Undo2 className='h-4 w-4 inline' /> 恢复原始域名，
-                      <Eye className='h-4 w-4 inline' /> 查看修改配置，
-                      <Copy className='h-4 w-4 inline' /> 复制URI，
-                      <Link2 className='h-4 w-4 inline' /> 生成临时订阅
+                      <Pencil className='h-4 w-4 inline' /> {t('nodeList.editNodeName')}
+                      <img src={ExchangeIcon} alt='chain proxy' className='h-4 w-4 inline [filter:invert(63%)_sepia(45%)_saturate(1068%)_hue-rotate(327deg)_brightness(95%)_contrast(88%)]' /> {t('nodeList.chainProxy')}
+                      <Flag className='h-4 w-4 inline' /> {t('nodeList.addRegionEmoji')}
+                      <img src={IpIcon} alt='resolve IP' className='h-4 w-4 inline [filter:invert(63%)_sepia(45%)_saturate(1068%)_hue-rotate(327deg)_brightness(95%)_contrast(88%)]' /> {t('nodeList.resolveIp')}
+                      <Undo2 className='h-4 w-4 inline' /> {t('nodeList.restoreDomain')}
+                      <Eye className='h-4 w-4 inline' /> {t('nodeList.viewEditConfig')}
+                      <Copy className='h-4 w-4 inline' /> {t('nodeList.copyUri')}
+                      <Link2 className='h-4 w-4 inline' /> {t('nodeList.tempSubscription')}
                     </p>
                   </div>
                   <div className='flex flex-wrap gap-2 justify-end'>
@@ -2313,7 +2312,7 @@ anytls://password@example.com:443/?sni=example.com&fp=chrome&alpn=h2#AnyTLS节�
                       size='sm'
                       onClick={() => {
                         if (remoteServers.length === 0) {
-                          toast.error('没有可用的服务器')
+                          toast.error(t('toast.noAvailableServer'))
                           return
                         }
                         setQuickCreateStep('inbound')
@@ -2324,7 +2323,7 @@ anytls://password@example.com:443/?sni=example.com&fp=chrome&alpn=h2#AnyTLS节�
                       }}
                     >
                       <Zap className='h-4 w-4 mr-1' />
-                      添加节点
+                      {t('actions.addNode')}
                     </Button>
                     <Button
                       variant='outline'
@@ -2333,17 +2332,17 @@ anytls://password@example.com:443/?sni=example.com&fp=chrome&alpn=h2#AnyTLS节�
                         toast.promise(
                           api.post('/api/admin/sync-external-subscriptions'),
                           {
-                            loading: '正在同步外部订阅...',
+                            loading: t('actions.syncingExternalSub'),
                             success: (response) => {
                               queryClient.invalidateQueries({ queryKey: ['nodes'] })
-                              return response.data.message || '外部订阅同步成功'
+                              return response.data.message || t('actions.syncExternalSubSuccess')
                             },
-                            error: (error) => error.response?.data?.error || '同步失败'
+                            error: (error) => error.response?.data?.error || t('toast.saveFailed')
                           }
                         )
                       }}
                     >
-                      同步外部订阅
+                      {t('actions.syncExternalSub')}
                     </Button>
                     {selectedNodeIds.size > 0 && (
                       <>
@@ -2353,7 +2352,7 @@ anytls://password@example.com:443/?sni=example.com&fp=chrome&alpn=h2#AnyTLS节�
                           onClick={handleAddRegionEmoji}
                           disabled={addingRegionEmoji}
                         >
-                          {addingRegionEmoji ? '添加中...' : `添加emoji (${selectedNodeIds.size})`}
+                          {addingRegionEmoji ? t('actions.addingEmoji') : t('actions.addEmojiWithCount', { count: selectedNodeIds.size })}
                         </Button>
                         <Button
                           variant='default'
@@ -2366,14 +2365,14 @@ anytls://password@example.com:443/?sni=example.com&fp=chrome&alpn=h2#AnyTLS节�
                             setBatchRenameDialogOpen(true)
                           }}
                         >
-                          修改名称 ({selectedNodeIds.size})
+                          {t('actions.renameNameWithCount', { count: selectedNodeIds.size })}
                         </Button>
                         <Button
                           variant='default'
                           size='sm'
                           onClick={() => setBatchTagDialogOpen(true)}
                         >
-                          修改标签 ({selectedNodeIds.size})
+                          {t('actions.renameTagWithCount', { count: selectedNodeIds.size })}
                         </Button>
                         <Button
                           variant='secondary'
@@ -2384,7 +2383,7 @@ anytls://password@example.com:443/?sni=example.com&fp=chrome&alpn=h2#AnyTLS节�
                             setTempSubDialogOpen(true)
                           }}
                         >
-                          生成临时订阅 ({selectedNodeIds.size})
+                          {t('actions.tempSubWithCount', { count: selectedNodeIds.size })}
                         </Button>
                         <Button
                           variant='outline'
@@ -2392,7 +2391,7 @@ anytls://password@example.com:443/?sni=example.com&fp=chrome&alpn=h2#AnyTLS节�
                           onClick={handleBatchTcping}
                           disabled={batchTcpingLoading}
                         >
-                          {batchTcpingLoading ? '测试中...' : `延迟测试 (${selectedNodeIds.size})`}
+                          {batchTcpingLoading ? t('actions.testing') : t('actions.latencyTestWithCount', { count: selectedNodeIds.size })}
                         </Button>
                         <AlertDialog>
                           <AlertDialogTrigger asChild>
@@ -2400,18 +2399,18 @@ anytls://password@example.com:443/?sni=example.com&fp=chrome&alpn=h2#AnyTLS节�
                               variant='destructive'
                               size='sm'
                             >
-                              批量删除 ({selectedNodeIds.size})
+                              {t('actions.batchDeleteWithCount', { count: selectedNodeIds.size })}
                             </Button>
                           </AlertDialogTrigger>
                           <AlertDialogContent>
                             <AlertDialogHeader>
-                              <AlertDialogTitle>确认批量删除节点</AlertDialogTitle>
+                              <AlertDialogTitle>{t('dialog.confirmBatchDelete')}</AlertDialogTitle>
                               <AlertDialogDescription>
-                                确定要删除选中的 {selectedNodeIds.size} 个节点吗？此操作不可撤销。
+                                {t('dialog.confirmBatchDeleteDesc', { count: selectedNodeIds.size })}
                               </AlertDialogDescription>
                             </AlertDialogHeader>
                             <AlertDialogFooter>
-                              <AlertDialogCancel>取消</AlertDialogCancel>
+                              <AlertDialogCancel>{t('actions.cancel', { ns: 'common' })}</AlertDialogCancel>
                               <AlertDialogAction
                                 onClick={() => {
                                   // 使用批量删除 API
@@ -2422,17 +2421,17 @@ anytls://password@example.com:443/?sni=example.com&fp=chrome&alpn=h2#AnyTLS节�
                                       setSelectedNodeIds(new Set())
                                       const { deleted, total } = response.data
                                       if (deleted === total) {
-                                        toast.success(`成功删除 ${deleted} 个节点`)
+                                        toast.success(t('toast.batchDeleteSuccess', { count: deleted }))
                                       } else {
-                                        toast.success(`成功删除 ${deleted}/${total} 个节点`)
+                                        toast.success(t('toast.batchDeletePartial', { deleted, total }))
                                       }
                                     })
                                     .catch((error) => {
-                                      toast.error(error.response?.data?.error || '批量删除失败')
+                                      toast.error(error.response?.data?.error || t('toast.batchDeleteFailed'))
                                     })
                                 }}
                               >
-                                确认删除
+                                {t('dialog.confirmDeleteAction')}
                               </AlertDialogAction>
                             </AlertDialogFooter>
                           </AlertDialogContent>
@@ -2447,20 +2446,20 @@ anytls://password@example.com:443/?sni=example.com&fp=chrome&alpn=h2#AnyTLS节�
                             size='sm'
                             disabled={clearAllMutation.isPending}
                           >
-                            {clearAllMutation.isPending ? '清空中...' : '清空所有'}
+                            {clearAllMutation.isPending ? t('actions.clearingAll') : t('actions.clearAll')}
                           </Button>
                         </AlertDialogTrigger>
                         <AlertDialogContent>
                           <AlertDialogHeader>
-                            <AlertDialogTitle>确认清空所有节点</AlertDialogTitle>
+                            <AlertDialogTitle>{t('dialog.confirmClearAll')}</AlertDialogTitle>
                             <AlertDialogDescription>
-                              确定要清空所有已保存的节点吗？此操作不可撤销，将删除 {savedNodes.length} 个节点。
+                              {t('dialog.confirmClearAllDesc', { count: savedNodes.length })}
                             </AlertDialogDescription>
                           </AlertDialogHeader>
                           <AlertDialogFooter>
-                            <AlertDialogCancel>取消</AlertDialogCancel>
+                            <AlertDialogCancel>{t('actions.cancel', { ns: 'common' })}</AlertDialogCancel>
                             <AlertDialogAction onClick={handleClearAll}>
-                              清空所有
+                              {t('dialog.clearAll')}
                             </AlertDialogAction>
                           </AlertDialogFooter>
                         </AlertDialogContent>
@@ -2472,7 +2471,7 @@ anytls://password@example.com:443/?sni=example.com&fp=chrome&alpn=h2#AnyTLS节�
                         size='sm'
                         onClick={findDuplicateNodes}
                       >
-                        删除重复
+                        {t('actions.deleteDuplicates')}
                       </Button>
                     )}
                   </div>
@@ -2482,14 +2481,14 @@ anytls://password@example.com:443/?sni=example.com&fp=chrome&alpn=h2#AnyTLS节�
                 {/* 协议筛选按钮 */}
                 <div className='space-y-3'>
                   <div>
-                    <div className='text-sm font-medium mb-2'>按协议筛选</div>
+                    <div className='text-sm font-medium mb-2'>{t('filter.byProtocol')}</div>
                     <div className='flex flex-wrap gap-2'>
                       <Button
                         size='sm'
                         variant={selectedProtocol === 'all' ? 'default' : 'outline'}
                         onClick={() => setSelectedProtocol('all')}
                       >
-                        全部 ({protocolCounts.all})
+                        {t('filter.all')} ({protocolCounts.all})
                       </Button>
                       {PROTOCOLS.map(protocol => {
                         const count = protocolCounts[protocol] || 0
@@ -2510,7 +2509,7 @@ anytls://password@example.com:443/?sni=example.com&fp=chrome&alpn=h2#AnyTLS节�
 
                   {/* 标签筛选按钮 */}
                   <div>
-                    <div className='text-sm font-medium mb-2'>按标签筛选</div>
+                    <div className='text-sm font-medium mb-2'>{t('filter.byTag')}</div>
                     <div className='flex flex-wrap gap-2'>
                       <Button
                         size='sm'
@@ -2534,7 +2533,7 @@ anytls://password@example.com:443/?sni=example.com&fp=chrome&alpn=h2#AnyTLS节�
                           }
                         }}
                       >
-                        全部 ({tagCounts.all})
+                        {t('filter.all')} ({tagCounts.all})
                       </Button>
                       {Object.keys(tagCounts).filter(tag => tag !== 'all' && tagCounts[tag] > 0).map(tag => (
                         <Button
@@ -2584,7 +2583,7 @@ anytls://password@example.com:443/?sni=example.com&fp=chrome&alpn=h2#AnyTLS节�
                       {deferredFilteredNodes.length === 0 ? (
                         <Card>
                           <CardContent className='text-center text-muted-foreground py-8'>
-                            没有找到匹配的节点
+                            {t('nodeList.noMatchingNodes')}
                           </CardContent>
                         </Card>
                       ) : (
@@ -2634,7 +2633,7 @@ anytls://password@example.com:443/?sni=example.com&fp=chrome&alpn=h2#AnyTLS节�
                                       : node.parsed.type.toUpperCase()}
                                   </Badge>
                                 ) : (
-                                  <Badge variant='destructive'>解析失败</Badge>
+                                  <Badge variant='destructive'>{t('nodeList.parseFailed')}</Badge>
                                 )}
                                 {node.isSaved && (
                                   <Check className='size-4 text-green-600' />
@@ -2677,7 +2676,7 @@ anytls://password@example.com:443/?sni=example.com&fp=chrome&alpn=h2#AnyTLS节�
                                   </Button>
                                 </div>
                               ) : (
-                                <div className='font-medium text-sm break-all line-clamp-2'><Twemoji>{node.name || '未知'}</Twemoji></div>
+                                <div className='font-medium text-sm break-all line-clamp-2'><Twemoji>{node.name || t('nodeList.unknown')}</Twemoji></div>
                               )}
                             </div>
                             {/* 编辑、交换按钮 */}
@@ -2715,7 +2714,7 @@ anytls://password@example.com:443/?sni=example.com&fp=chrome&alpn=h2#AnyTLS节�
                                   >
                                     <img
                                       src={ExchangeIcon}
-                                      alt='落地节点'
+                                      alt={t('tooltip.landingNode')}
                                       className='size-4 [filter:invert(63%)_sepia(45%)_saturate(1068%)_hue-rotate(327deg)_brightness(95%)_contrast(88%)]'
                                     />
                                   </Button>
@@ -2733,7 +2732,7 @@ anytls://password@example.com:443/?sni=example.com&fp=chrome&alpn=h2#AnyTLS节�
                                             serverName = node.dbNode!.tag.slice(3)
                                           }
                                           const server = (remoteServersData?.servers || []).find(s => s.name === serverName)
-                                          if (!server) { toast.error('未找到关联的远程服务器'); return }
+                                          if (!server) { toast.error(t('toast.remoteServerNotFound')); return }
                                           setRoutingSourceNode(node.dbNode)
                                           setRoutingServerId(server.id)
                                           setRoutingServerName(server.name)
@@ -2743,7 +2742,7 @@ anytls://password@example.com:443/?sni=example.com&fp=chrome&alpn=h2#AnyTLS节�
                                         <RouteIcon className='size-4' />
                                       </Button>
                                     </TooltipTrigger>
-                                    <TooltipContent>节点路由</TooltipContent>
+                                    <TooltipContent>{t('tooltip.nodeRouting')}</TooltipContent>
                                   </Tooltip>
                                 )}
                                 {node.isSaved && node.dbId && (
@@ -2762,7 +2761,7 @@ anytls://password@example.com:443/?sni=example.com&fp=chrome&alpn=h2#AnyTLS节�
                                         <Link2 className='size-4' />
                                       </Button>
                                     </TooltipTrigger>
-                                    <TooltipContent>生成临时订阅</TooltipContent>
+                                    <TooltipContent>{t('tooltip.tempSubscription')}</TooltipContent>
                                   </Tooltip>
                                 )}
                               </div>
@@ -2773,7 +2772,7 @@ anytls://password@example.com:443/?sni=example.com&fp=chrome&alpn=h2#AnyTLS节�
                           <div className='space-y-1.5'>
                             {node.parsed && (
                               <div className='flex items-center gap-2 flex-wrap text-xs'>
-                                <span className='text-muted-foreground shrink-0'>地址:</span>
+                                <span className='text-muted-foreground shrink-0'>{t('label.address')}</span>
                                 <span className='font-mono break-all'>{node.parsed.server}:{node.parsed.port}</span>
                                 {node.parsed.network && node.parsed.network !== 'tcp' && (
                                   <Badge variant='outline' className='text-xs'>
@@ -2788,9 +2787,9 @@ anytls://password@example.com:443/?sni=example.com&fp=chrome&alpn=h2#AnyTLS节�
                               </div>
                             )}
                             <div className='flex items-center gap-2 flex-wrap text-xs'>
-                              <span className='text-muted-foreground shrink-0'>标签:</span>
+                              <span className='text-muted-foreground shrink-0'>{t('label.tag')}</span>
                               <Badge variant='secondary' className='text-xs'>
-                                {node.dbNode?.tag || node.tag || (currentTag === 'manual' ? manualTag.trim() || '手动输入' : currentTag === 'subscription' ? subscriptionTag.trim() || '订阅导入' : '未知')}
+                                {node.dbNode?.tag || node.tag || (currentTag === 'manual' ? manualTag.trim() || t('filter.manualInput') : currentTag === 'subscription' ? subscriptionTag.trim() || t('filter.subscriptionImport') : t('nodeList.unknown'))}
                               </Badge>
                             </div>
                           </div>
@@ -2813,7 +2812,7 @@ anytls://password@example.com:443/?sni=example.com&fp=chrome&alpn=h2#AnyTLS节�
                                 }}
                               >
                                 <Eye className='size-4 mr-1' />
-                                配置
+                                {t('actions.config')}
                               </Button>
                             )}
                             {node.clash && node.isSaved && (
@@ -2824,7 +2823,7 @@ anytls://password@example.com:443/?sni=example.com&fp=chrome&alpn=h2#AnyTLS节�
                                 onClick={() => node.isSaved && handleCopyUri(node.dbNode!)}
                               >
                                 <Copy className='size-4 mr-1' />
-                                复制
+                                {t('actions.copy')}
                               </Button>
                             )}
                             <AlertDialog>
@@ -2835,23 +2834,23 @@ anytls://password@example.com:443/?sni=example.com&fp=chrome&alpn=h2#AnyTLS节�
                                   className='flex-1 text-destructive hover:text-destructive hover:bg-destructive/10'
                                   disabled={node.isSaved && isDeletingNode}
                                 >
-                                  删除
+                                  {t('actions.delete')}
                                 </Button>
                               </AlertDialogTrigger>
                               <AlertDialogContent>
                                 <AlertDialogHeader>
-                                  <AlertDialogTitle>确认删除</AlertDialogTitle>
+                                  <AlertDialogTitle>{t('dialog.confirmDelete')}</AlertDialogTitle>
                                   <AlertDialogDescription>
-                                    确定要删除节点 "{node.name || '未知'}" 吗？
-                                    {node.isSaved && '此操作不可撤销。'}
+                                    {t('dialog.confirmDeleteNode', { name: node.name || t('nodeList.unknown') })}
+                                    {node.isSaved && t('dialog.cannotUndo')}
                                   </AlertDialogDescription>
                                 </AlertDialogHeader>
                                 <AlertDialogFooter>
-                                  <AlertDialogCancel>取消</AlertDialogCancel>
+                                  <AlertDialogCancel>{t('actions.cancel', { ns: 'common' })}</AlertDialogCancel>
                                   <AlertDialogAction
                                     onClick={() => node.isSaved ? handleDelete(node.dbId) : handleDeleteTemp(node.id)}
                                   >
-                                    删除
+                                    {t('actions.delete')}
                                   </AlertDialogAction>
                                 </AlertDialogFooter>
                               </AlertDialogContent>
@@ -2893,18 +2892,18 @@ anytls://password@example.com:443/?sni=example.com&fp=chrome&alpn=h2#AnyTLS节�
                       <TableHeader>
                         <TableRow>
                           <TableHead style={{ width: '36px' }}></TableHead>
-                          <TableHead style={{ width: '60px' }}>协议</TableHead>
-                          <TableHead>节点名称</TableHead>
-                          <TableHead style={{ width: '100px' }}>标签</TableHead>
-                          <TableHead style={{ width: '70px' }} className='text-center'>配置</TableHead>
-                        <TableHead style={{ width: '70px' }} className='text-center'>操作</TableHead>
+                          <TableHead style={{ width: '60px' }}>{t('columns.protocol')}</TableHead>
+                          <TableHead>{t('columns.nodeName')}</TableHead>
+                          <TableHead style={{ width: '100px' }}>{t('columns.tag')}</TableHead>
+                          <TableHead style={{ width: '70px' }} className='text-center'>{t('columns.config')}</TableHead>
+                        <TableHead style={{ width: '70px' }} className='text-center'>{t('columns.actions')}</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {deferredFilteredNodes.length === 0 ? (
                         <TableRow>
                           <TableCell colSpan={6} className='text-center text-muted-foreground py-8'>
-                            没有找到匹配的节点
+                            {t('nodeList.noMatchingNodes')}
                           </TableCell>
                         </TableRow>
                       ) : (
@@ -2937,7 +2936,7 @@ anytls://password@example.com:443/?sni=example.com&fp=chrome&alpn=h2#AnyTLS节�
                                     : node.parsed.type.toUpperCase()}
                                 </Badge>
                               ) : (
-                                <Badge variant='destructive'>解析失败</Badge>
+                                <Badge variant='destructive'>{t('nodeList.parseFailed')}</Badge>
                               )}
                             </TableCell>
                             <TableCell className='font-medium min-w-[200px] max-w-[300px]'>
@@ -2999,7 +2998,7 @@ anytls://password@example.com:443/?sni=example.com&fp=chrome&alpn=h2#AnyTLS节�
                                 <div className='flex items-center gap-2 min-w-0'>
                                   <div className='flex-1 min-w-0'>
                                     <div className='flex items-center gap-1'>
-                                      <span className='truncate'><Twemoji>{node.name || '未知'}</Twemoji></span>
+                                      <span className='truncate'><Twemoji>{node.name || t('nodeList.unknown')}</Twemoji></span>
                                       {node.isSaved && (
                                         <Check className='size-4 text-green-600 shrink-0' />
                                       )}
@@ -3053,7 +3052,7 @@ anytls://password@example.com:443/?sni=example.com&fp=chrome&alpn=h2#AnyTLS节�
                                     >
                                       <img
                                         src={ExchangeIcon}
-                                        alt='落地节点'
+                                        alt={t('tooltip.landingNode')}
                                         className='size-4 [filter:invert(63%)_sepia(45%)_saturate(1068%)_hue-rotate(327deg)_brightness(95%)_contrast(88%)]'
                                       />
                                     </Button>
@@ -3071,7 +3070,7 @@ anytls://password@example.com:443/?sni=example.com&fp=chrome&alpn=h2#AnyTLS节�
                                               serverName = node.dbNode!.tag.slice(3)
                                             }
                                             const server = (remoteServersData?.servers || []).find(s => s.name === serverName)
-                                            if (!server) { toast.error('未找到关联的远程服务器'); return }
+                                            if (!server) { toast.error(t('toast.remoteServerNotFound')); return }
                                             setRoutingSourceNode(node.dbNode)
                                             setRoutingServerId(server.id)
                                             setRoutingServerName(server.name)
@@ -3081,7 +3080,7 @@ anytls://password@example.com:443/?sni=example.com&fp=chrome&alpn=h2#AnyTLS节�
                                           <RouteIcon className='size-4' />
                                         </Button>
                                       </TooltipTrigger>
-                                      <TooltipContent>节点路由</TooltipContent>
+                                      <TooltipContent>{t('tooltip.nodeRouting')}</TooltipContent>
                                     </Tooltip>
                                   )}
                                 </div>
@@ -3090,7 +3089,7 @@ anytls://password@example.com:443/?sni=example.com&fp=chrome&alpn=h2#AnyTLS节�
                             <TableCell>
                               <div className='flex flex-wrap gap-1'>
                                 <Badge variant='secondary' className='text-xs max-w-[90px] truncate'>
-                                  {node.dbNode?.tag || node.tag || (currentTag === 'manual' ? manualTag.trim() || '手动输入' : currentTag === 'subscription' ? subscriptionTag.trim() || '订阅导入' : '未知')}
+                                  {node.dbNode?.tag || node.tag || (currentTag === 'manual' ? manualTag.trim() || t('filter.manualInput') : currentTag === 'subscription' ? subscriptionTag.trim() || t('filter.subscriptionImport') : t('nodeList.unknown'))}
                                 </Badge>
                               </div>
                             </TableCell>
@@ -3116,7 +3115,7 @@ anytls://password@example.com:443/?sni=example.com&fp=chrome&alpn=h2#AnyTLS节�
                                       variant='ghost'
                                       size='icon'
                                       className='h-7 w-7'
-                                      title='复制 URI'
+                                      title={t('tooltip.copyUri')}
                                       onClick={() => handleCopyUri(node.dbNode!)}
                                     >
                                       <Copy className='h-4 w-4' />
@@ -3136,23 +3135,23 @@ anytls://password@example.com:443/?sni=example.com&fp=chrome&alpn=h2#AnyTLS节�
                                     className='h-7 text-xs'
                                     disabled={node.isSaved && isDeletingNode}
                                   >
-                                    删除
+                                    {t('actions.delete')}
                                   </Button>
                                 </AlertDialogTrigger>
                                 <AlertDialogContent>
                                   <AlertDialogHeader>
-                                    <AlertDialogTitle>确认删除</AlertDialogTitle>
+                                    <AlertDialogTitle>{t('dialog.confirmDelete')}</AlertDialogTitle>
                                     <AlertDialogDescription>
-                                      确定要删除节点 "{node.name || '未知'}" 吗？
-                                      {node.isSaved && '此操作不可撤销。'}
+                                      {t('dialog.confirmDeleteNode', { name: node.name || t('nodeList.unknown') })}
+                                      {node.isSaved && t('dialog.cannotUndo')}
                                     </AlertDialogDescription>
                                   </AlertDialogHeader>
                                   <AlertDialogFooter>
-                                    <AlertDialogCancel>取消</AlertDialogCancel>
+                                    <AlertDialogCancel>{t('actions.cancel', { ns: 'common' })}</AlertDialogCancel>
                                     <AlertDialogAction
                                       onClick={() => node.isSaved ? handleDelete(node.dbId) : handleDeleteTemp(node.id)}
                                     >
-                                      删除
+                                      {t('actions.delete')}
                                     </AlertDialogAction>
                                   </AlertDialogFooter>
                                 </AlertDialogContent>
@@ -3178,19 +3177,19 @@ anytls://password@example.com:443/?sni=example.com&fp=chrome&alpn=h2#AnyTLS节�
                         <TableHeader>
                           <TableRow>
                             <TableHead style={{ width: '36px' }}></TableHead>
-                            <TableHead style={{ width: '90px' }}>协议</TableHead>
-                            <TableHead>节点名称</TableHead>
-                            <TableHead style={{ width: '120px' }}>标签</TableHead>
-                            <TableHead style={{ width: '280px', maxWidth: '280px' }}>服务器地址</TableHead>
-                            <TableHead style={{ width: '80px' }} className='text-center'>配置</TableHead>
-                            <TableHead style={{ width: '80px' }} className='text-center'>操作</TableHead>
+                            <TableHead style={{ width: '90px' }}>{t('columns.protocol')}</TableHead>
+                            <TableHead>{t('columns.nodeName')}</TableHead>
+                            <TableHead style={{ width: '120px' }}>{t('columns.tag')}</TableHead>
+                            <TableHead style={{ width: '280px', maxWidth: '280px' }}>{t('columns.serverAddress')}</TableHead>
+                            <TableHead style={{ width: '80px' }} className='text-center'>{t('columns.config')}</TableHead>
+                            <TableHead style={{ width: '80px' }} className='text-center'>{t('columns.actions')}</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
                           {deferredFilteredNodes.length === 0 ? (
                             <TableRow>
                               <TableCell colSpan={7} className='text-center text-muted-foreground py-8'>
-                                没有找到匹配的节点
+                                {t('nodeList.noMatchingNodes')}
                               </TableCell>
                             </TableRow>
                           ) : (
@@ -3223,7 +3222,7 @@ anytls://password@example.com:443/?sni=example.com&fp=chrome&alpn=h2#AnyTLS节�
                                     : node.parsed.type.toUpperCase()}
                                 </Badge>
                               ) : (
-                                <Badge variant='destructive'>解析失败</Badge>
+                                <Badge variant='destructive'>{t('nodeList.parseFailed')}</Badge>
                               )}
                             </TableCell>
                             <TableCell className='font-medium min-w-[200px] max-w-[300px]'>
@@ -3264,7 +3263,7 @@ anytls://password@example.com:443/?sni=example.com&fp=chrome&alpn=h2#AnyTLS节�
                                 </div>
                               ) : (
                                 <div className='flex items-center gap-2 min-w-0'>
-                                  <span className='truncate flex-1 min-w-0' title={node.name || '未知'}><Twemoji>{node.name || '未知'}</Twemoji></span>
+                                  <span className='truncate flex-1 min-w-0' title={node.name || t('nodeList.unknown')}><Twemoji>{node.name || t('nodeList.unknown')}</Twemoji></span>
                                   {node.isSaved && (
                                     <Check className='size-4 text-green-600 shrink-0' />
                                   )}
@@ -3292,7 +3291,7 @@ anytls://password@example.com:443/?sni=example.com&fp=chrome&alpn=h2#AnyTLS节�
                                     >
                                       <img
                                         src={ExchangeIcon}
-                                        alt='落地节点'
+                                        alt={t('tooltip.landingNode')}
                                         className='size-4 [filter:invert(63%)_sepia(45%)_saturate(1068%)_hue-rotate(327deg)_brightness(95%)_contrast(88%)]'
                                       />
                                     </Button>
@@ -3310,7 +3309,7 @@ anytls://password@example.com:443/?sni=example.com&fp=chrome&alpn=h2#AnyTLS节�
                                               serverName = node.dbNode!.tag.slice(3)
                                             }
                                             const server = (remoteServersData?.servers || []).find(s => s.name === serverName)
-                                            if (!server) { toast.error('未找到关联的远程服务器'); return }
+                                            if (!server) { toast.error(t('toast.remoteServerNotFound')); return }
                                             setRoutingSourceNode(node.dbNode)
                                             setRoutingServerId(server.id)
                                             setRoutingServerName(server.name)
@@ -3320,7 +3319,7 @@ anytls://password@example.com:443/?sni=example.com&fp=chrome&alpn=h2#AnyTLS节�
                                           <RouteIcon className='size-4' />
                                         </Button>
                                       </TooltipTrigger>
-                                      <TooltipContent>节点路由</TooltipContent>
+                                      <TooltipContent>{t('tooltip.nodeRouting')}</TooltipContent>
                                     </Tooltip>
                                   )}
                                   <FlagEmojiPicker
@@ -3339,9 +3338,9 @@ anytls://password@example.com:443/?sni=example.com&fp=chrome&alpn=h2#AnyTLS节�
                                 <Badge
                                   variant='secondary'
                                   className='text-xs max-w-[120px] truncate'
-                                  title={node.dbNode?.tag || node.tag || (currentTag === 'manual' ? manualTag.trim() || '手动输入' : currentTag === 'subscription' ? subscriptionTag.trim() || '订阅导入' : '未知')}
+                                  title={node.dbNode?.tag || node.tag || (currentTag === 'manual' ? manualTag.trim() || t('filter.manualInput') : currentTag === 'subscription' ? subscriptionTag.trim() || t('filter.subscriptionImport') : t('nodeList.unknown'))}
                                 >
-                                  {node.dbNode?.tag || node.tag || (currentTag === 'manual' ? manualTag.trim() || '手动输入' : currentTag === 'subscription' ? subscriptionTag.trim() || '订阅导入' : '未知')}
+                                  {node.dbNode?.tag || node.tag || (currentTag === 'manual' ? manualTag.trim() || t('filter.manualInput') : currentTag === 'subscription' ? subscriptionTag.trim() || t('filter.subscriptionImport') : t('nodeList.unknown'))}
                                 </Badge>
                               </div>
                             </TableCell>
@@ -3382,7 +3381,7 @@ anytls://password@example.com:443/?sni=example.com&fp=chrome&alpn=h2#AnyTLS节�
                                               variant='ghost'
                                               size='sm'
                                               className='size-6 p-0 border border-orange-500/50 hover:border-orange-500 shrink-0'
-                                              title='恢复原始域名'
+                                              title={t('tooltip.restoreDomain')}
                                               onClick={() => restoreTempNodeServer(node.id)}
                                             >
                                               <Undo2 className='size-4 text-orange-500' />
@@ -3398,7 +3397,7 @@ anytls://password@example.com:443/?sni=example.com&fp=chrome&alpn=h2#AnyTLS节�
                                                 variant='ghost'
                                                 size='sm'
                                                 className='size-6 p-0 border border-primary/50 hover:border-primary shrink-0'
-                                                title='选择IP地址'
+                                                title={t('tooltip.selectIp')}
                                               >
                                                 <img
                                                   src={IpIcon}
@@ -3433,7 +3432,7 @@ anytls://password@example.com:443/?sni=example.com&fp=chrome&alpn=h2#AnyTLS节�
                                             variant='ghost'
                                             size='sm'
                                             className='size-6 p-0 border border-primary/50 hover:border-primary shrink-0'
-                                            title='解析IP地址'
+                                            title={t('tooltip.resolveIp')}
                                             disabled={resolvingIpFor === nodeKey}
                                             onClick={() => handleResolveIp(node)}
                                           >
@@ -3451,7 +3450,7 @@ anytls://password@example.com:443/?sni=example.com&fp=chrome&alpn=h2#AnyTLS节�
                                         variant='ghost'
                                         size='sm'
                                         className='size-6 p-0 border border-primary/50 hover:border-primary ml-1 shrink-0'
-                                        title='恢复原始域名'
+                                        title={t('tooltip.restoreDomain')}
                                         disabled={restoreNodeServerMutation.isPending}
                                         onClick={() => restoreNodeServerMutation.mutate(node.dbId)}
                                       >
@@ -3486,7 +3485,7 @@ anytls://password@example.com:443/?sni=example.com&fp=chrome&alpn=h2#AnyTLS节�
                                                     : `${(tcpingResult.latency / 1000).toFixed(1)}s`}
                                                 </Button>
                                               </TooltipTrigger>
-                                              <TooltipContent>点击重新测试</TooltipContent>
+                                              <TooltipContent>{t('tcping.retest')}</TooltipContent>
                                             </Tooltip>
                                           )
                                         }
@@ -3502,10 +3501,10 @@ anytls://password@example.com:443/?sni=example.com&fp=chrome&alpn=h2#AnyTLS节�
                                                   className='h-5 px-1 text-xs font-mono border border-red-500/50 hover:border-red-500 text-red-500 shrink-0 ml-1'
                                                   onClick={() => handleTcping(node)}
                                                 >
-                                                  超时
+                                                  {t('tcping.timeout')}
                                                 </Button>
                                               </TooltipTrigger>
-                                              <TooltipContent>{tcpingResult.error || '连接超时'}</TooltipContent>
+                                              <TooltipContent>{tcpingResult.error || t('toast.connectionTimeout')}</TooltipContent>
                                             </Tooltip>
                                           )
                                         }
@@ -3518,7 +3517,7 @@ anytls://password@example.com:443/?sni=example.com&fp=chrome&alpn=h2#AnyTLS节�
                                                 variant='ghost'
                                                 size='sm'
                                                 className='size-6 p-0 border border-primary/50 hover:border-primary ml-1 shrink-0'
-                                                title='延迟测试'
+                                                title={t('tcping.testBtn')}
                                                 disabled={isLoading}
                                                 onClick={() => handleTcping(node)}
                                               >
@@ -3529,7 +3528,7 @@ anytls://password@example.com:443/?sni=example.com&fp=chrome&alpn=h2#AnyTLS节�
                                                 )}
                                               </Button>
                                             </TooltipTrigger>
-                                            <TooltipContent>TCPing 延迟测试</TooltipContent>
+                                            <TooltipContent>{t('tcping.tcpingTest')}</TooltipContent>
                                           </Tooltip>
                                         )
                                       })()
@@ -3579,11 +3578,11 @@ anytls://password@example.com:443/?sni=example.com&fp=chrome&alpn=h2#AnyTLS节�
                                     <DialogContent className='max-w-4xl sm:max-w-4xl max-h-[80vh] flex flex-col'>
                                     <DialogHeader>
                                       <DialogTitle>
-                                        Clash 配置详情{editingClashConfig?.nodeId === -1 ? '（仅查看）' : ''}
+                                        {editingClashConfig?.nodeId === -1 ? t('dialog.clashConfig.titleReadonly') : t('dialog.clashConfig.title')}
                                       </DialogTitle>
                                       <DialogDescription>
-                                        <Twemoji>{node.name || '未知'}</Twemoji>
-                                        {editingClashConfig?.nodeId === -1 && ' - 保存节点后可编辑配置'}
+                                        <Twemoji>{node.name || t('nodeList.unknown')}</Twemoji>
+                                        {editingClashConfig?.nodeId === -1 && ` - ${t('dialog.clashConfig.saveAfterCreate')}`}
                                       </DialogDescription>
                                     </DialogHeader>
                                     <div className='mt-4 flex-1 flex flex-col gap-3 min-h-0'>
@@ -3608,7 +3607,7 @@ anytls://password@example.com:443/?sni=example.com&fp=chrome&alpn=h2#AnyTLS节�
                                           value={editingClashConfig?.config || ''}
                                           onChange={(e) => handleClashConfigChange(e.target.value)}
                                           className='font-mono text-xs flex-1 min-h-[400px] resize-none border-0 rounded-none focus-visible:ring-0 leading-5'
-                                          placeholder='输入 JSON 配置...'
+                                          placeholder={t('dialog.clashConfig.inputPlaceholder')}
                                           readOnly={editingClashConfig?.nodeId === -1}
                                         />
                                       </div>
@@ -3623,7 +3622,7 @@ anytls://password@example.com:443/?sni=example.com&fp=chrome&alpn=h2#AnyTLS节�
                                           size='sm'
                                           onClick={() => setClashDialogOpen(false)}
                                         >
-                                          {editingClashConfig?.nodeId === -1 ? '关闭' : '取消'}
+                                          {editingClashConfig?.nodeId === -1 ? t('dialog.clashConfig.close') : t('actions.cancel', { ns: 'common' })}
                                         </Button>
                                         {editingClashConfig?.nodeId !== -1 && (
                                           <Button
@@ -3631,7 +3630,7 @@ anytls://password@example.com:443/?sni=example.com&fp=chrome&alpn=h2#AnyTLS节�
                                             onClick={handleSaveClashConfig}
                                             disabled={!!clashConfigError || updateClashConfigMutation.isPending}
                                           >
-                                            {updateClashConfigMutation.isPending ? '保存中...' : '保存'}
+                                            {updateClashConfigMutation.isPending ? t('actions.saving', { ns: 'common' }) : t('actions.save', { ns: 'common' })}
                                           </Button>
                                         )}
                                       </div>
@@ -3642,7 +3641,7 @@ anytls://password@example.com:443/?sni=example.com&fp=chrome&alpn=h2#AnyTLS节�
                                   variant='ghost'
                                   size='icon'
                                   className='h-8 w-8'
-                                  title='复制 URI'
+                                  title={t('tooltip.copyUri')}
                                   onClick={() => node.isSaved && handleCopyUri(node.dbNode!)}
                                 >
                                   <Copy className='h-4 w-4' />
@@ -3651,7 +3650,7 @@ anytls://password@example.com:443/?sni=example.com&fp=chrome&alpn=h2#AnyTLS节�
                                   variant='ghost'
                                   size='icon'
                                   className='h-8 w-8'
-                                  title='生成临时订阅'
+                                  title={t('tooltip.tempSubscription')}
                                   onClick={() => {
                                     if (node.isSaved && node.dbId) {
                                       setTempSubSingleNodeId(node.dbId)
@@ -3675,23 +3674,23 @@ anytls://password@example.com:443/?sni=example.com&fp=chrome&alpn=h2#AnyTLS节�
                                     size='sm'
                                     disabled={node.isSaved && isDeletingNode}
                                   >
-                                    删除
+                                    {t('actions.delete')}
                                   </Button>
                                 </AlertDialogTrigger>
                                 <AlertDialogContent>
                                   <AlertDialogHeader>
-                                    <AlertDialogTitle>确认删除</AlertDialogTitle>
+                                    <AlertDialogTitle>{t('dialog.confirmDelete')}</AlertDialogTitle>
                                     <AlertDialogDescription>
-                                      确定要删除节点 "{node.name || '未知'}" 吗？
-                                      {node.isSaved && '此操作不可撤销。'}
+                                      {t('dialog.confirmDeleteNode', { name: node.name || t('nodeList.unknown') })}
+                                      {node.isSaved && t('dialog.cannotUndo')}
                                     </AlertDialogDescription>
                                   </AlertDialogHeader>
                                   <AlertDialogFooter>
-                                    <AlertDialogCancel>取消</AlertDialogCancel>
+                                    <AlertDialogCancel>{t('actions.cancel', { ns: 'common' })}</AlertDialogCancel>
                                     <AlertDialogAction
                                       onClick={() => node.isSaved ? handleDelete(node.dbId) : handleDeleteTemp(node.id)}
                                     >
-                                      删除
+                                      {t('actions.delete')}
                                     </AlertDialogAction>
                                   </AlertDialogFooter>
                                 </AlertDialogContent>
@@ -3738,10 +3737,10 @@ anytls://password@example.com:443/?sni=example.com&fp=chrome&alpn=h2#AnyTLS节�
         <DialogContent className='max-w-4xl sm:max-w-4xl max-h-[80vh] flex flex-col'>
           <DialogHeader>
             <DialogTitle>
-              Clash 配置详情{editingClashConfig?.nodeId === -1 ? '（仅查看）' : ''}
+              {editingClashConfig?.nodeId === -1 ? t('dialog.clashConfig.titleReadonly') : t('dialog.clashConfig.title')}
             </DialogTitle>
             <DialogDescription>
-              {editingClashConfig?.nodeId === -1 && '保存节点后可编辑配置'}
+              {editingClashConfig?.nodeId === -1 && t('dialog.clashConfig.saveAfterCreate')}
             </DialogDescription>
           </DialogHeader>
           <div className='mt-4 flex-1 flex flex-col gap-3 min-h-0'>
@@ -3766,7 +3765,7 @@ anytls://password@example.com:443/?sni=example.com&fp=chrome&alpn=h2#AnyTLS节�
                 value={editingClashConfig?.config || ''}
                 onChange={(e) => handleClashConfigChange(e.target.value)}
                 className='font-mono text-xs flex-1 min-h-[400px] resize-none border-0 rounded-none focus-visible:ring-0 leading-5'
-                placeholder='输入 JSON 配置...'
+                placeholder={t('dialog.clashConfig.inputPlaceholder')}
                 readOnly={editingClashConfig?.nodeId === -1}
               />
             </div>
@@ -3781,7 +3780,7 @@ anytls://password@example.com:443/?sni=example.com&fp=chrome&alpn=h2#AnyTLS节�
                 size='sm'
                 onClick={() => setClashDialogOpen(false)}
               >
-                {editingClashConfig?.nodeId === -1 ? '关闭' : '取消'}
+                {editingClashConfig?.nodeId === -1 ? t('dialog.clashConfig.close') : t('actions.cancel', { ns: 'common' })}
               </Button>
               {editingClashConfig?.nodeId !== -1 && (
                 <Button
@@ -3789,7 +3788,7 @@ anytls://password@example.com:443/?sni=example.com&fp=chrome&alpn=h2#AnyTLS节�
                   onClick={handleSaveClashConfig}
                   disabled={!!clashConfigError || updateClashConfigMutation.isPending}
                 >
-                  {updateClashConfigMutation.isPending ? '保存中...' : '保存'}
+                  {updateClashConfigMutation.isPending ? t('actions.saving', { ns: 'common' }) : t('actions.save', { ns: 'common' })}
                 </Button>
               )}
             </div>
@@ -3801,9 +3800,9 @@ anytls://password@example.com:443/?sni=example.com&fp=chrome&alpn=h2#AnyTLS节�
       <Dialog open={uriDialogOpen} onOpenChange={setUriDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>手动复制 URI</DialogTitle>
+            <DialogTitle>{t('dialog.uriCopy.title')}</DialogTitle>
             <DialogDescription>
-              自动复制失败，请手动复制下方的 URI
+              {t('dialog.uriCopy.description')}
             </DialogDescription>
           </DialogHeader>
           <div className='space-y-4 py-4'>
@@ -3815,19 +3814,19 @@ anytls://password@example.com:443/?sni=example.com&fp=chrome&alpn=h2#AnyTLS节�
                 variant='outline'
                 onClick={() => setUriDialogOpen(false)}
               >
-                关闭
+                {t('dialog.clashConfig.close')}
               </Button>
               <Button
                 onClick={() => {
                   navigator.clipboard.writeText(uriContent).then(() => {
-                    toast.success('URI 已复制到剪贴板')
+                    toast.success(t('toast.uriCopied'))
                     setUriDialogOpen(false)
                   }).catch(() => {
-                    toast.error('复制失败，请手动选择文本复制')
+                    toast.error(t('dialog.uriCopy.copyFailedRetry'))
                   })
                 }}
               >
-                再试一次
+                {t('dialog.uriCopy.retryBtn')}
               </Button>
             </div>
           </div>
@@ -3845,29 +3844,29 @@ anytls://password@example.com:443/?sni=example.com&fp=chrome&alpn=h2#AnyTLS节�
       }}>
         <DialogContent className={landingStep === 'create-inbound' ? 'max-w-[95vw] max-h-[90vh] overflow-y-auto' : 'max-w-2xl max-h-[80vh] overflow-y-auto'}>
           <DialogHeader>
-            <DialogTitle>{landingStep === 'create-inbound' ? '创建落地入站' : '新增落地节点'}</DialogTitle>
+            <DialogTitle>{landingStep === 'create-inbound' ? t('dialog.landing.createInboundTitle') : t('dialog.landing.addLandingTitle')}</DialogTitle>
             <DialogDescription>
               {landingStep === 'create-inbound'
-                ? `在 ${remoteServers.find(s => s.id === landingServerId)?.name || ''} 上创建入站，自动配置到 "${sourceNodeForLanding?.node_name}" 的出站和路由`
-                : `为 "${sourceNodeForLanding?.node_name}" 选择落地节点或服务器`}
+                ? t('dialog.landing.createInboundDesc', { serverName: remoteServers.find(s => s.id === landingServerId)?.name || '', nodeName: sourceNodeForLanding?.node_name })
+                : t('dialog.landing.addLandingDesc', { name: sourceNodeForLanding?.node_name })}
             </DialogDescription>
           </DialogHeader>
 
           {landingStep === 'select' ? (
             <Tabs value={landingTab} onValueChange={(v) => setLandingTab(v as 'nodes' | 'servers')}>
               <TabsList className='w-full'>
-                <TabsTrigger value='nodes' className='flex-1'>选择落地节点</TabsTrigger>
-                <TabsTrigger value='servers' className='flex-1'>选择服务器</TabsTrigger>
+                <TabsTrigger value='nodes' className='flex-1'>{t('dialog.landing.tabNodes')}</TabsTrigger>
+                <TabsTrigger value='servers' className='flex-1'>{t('dialog.landing.tabServers')}</TabsTrigger>
               </TabsList>
 
               <TabsContent value='nodes' className='space-y-4 pt-2'>
                 <Input
-                  placeholder='搜索节点名称、协议或标签...'
+                  placeholder={t('dialog.landing.searchPlaceholder')}
                   value={landingFilterText}
                   onChange={(e) => setLandingFilterText(e.target.value)}
                   className='text-sm'
                 />
-                <p className='text-xs text-muted-foreground'>自动排除链式代理节点和源节点自身</p>
+                <p className='text-xs text-muted-foreground'>{t('dialog.landing.excludeHint')}</p>
                 {(() => {
                   const filtered = savedNodes
                     .filter(n => n.id !== sourceNodeForLanding?.id)
@@ -3903,14 +3902,14 @@ anytls://password@example.com:443/?sni=example.com&fp=chrome&alpn=h2#AnyTLS节�
                     </div>
                   ) : (
                     <div className='text-center text-sm text-muted-foreground py-8'>
-                      {landingFilterText.trim() ? '未找到匹配的节点' : '暂无可用的节点'}
+                      {landingFilterText.trim() ? t('dialog.landing.noMatchingNodes') : t('dialog.landing.noAvailableNodes')}
                     </div>
                   )
                 })()}
               </TabsContent>
 
               <TabsContent value='servers' className='space-y-4 pt-2'>
-                <p className='text-xs text-muted-foreground'>选择服务器后将创建新入站，并自动配置出站和路由规则</p>
+                <p className='text-xs text-muted-foreground'>{t('dialog.landing.serverHint')}</p>
                 {(() => {
                   const sourceServerName = sourceNodeForLanding?.original_server
                   const available = remoteServers.filter(s => s.name !== sourceServerName)
@@ -3934,7 +3933,7 @@ anytls://password@example.com:443/?sni=example.com&fp=chrome&alpn=h2#AnyTLS节�
                       ))}
                     </div>
                   ) : (
-                    <div className='text-center text-sm text-muted-foreground py-8'>无可用的其他服务器</div>
+                    <div className='text-center text-sm text-muted-foreground py-8'>{t('dialog.landing.noOtherServers')}</div>
                   )
                 })()}
               </TabsContent>
@@ -3944,7 +3943,7 @@ anytls://password@example.com:443/?sni=example.com&fp=chrome&alpn=h2#AnyTLS节�
               {landingLoading ? (
                 <div className='flex items-center justify-center gap-2 py-12 text-muted-foreground'>
                   <Loader2 className='h-5 w-5 animate-spin' />
-                  正在配置落地节点...
+                  {t('dialog.landing.configuringLanding')}
                 </div>
               ) : (
                 <InboundWizard
@@ -3964,15 +3963,15 @@ anytls://password@example.com:443/?sni=example.com&fp=chrome&alpn=h2#AnyTLS节�
       <Dialog open={batchTagDialogOpen} onOpenChange={setBatchTagDialogOpen}>
         <DialogContent className='max-w-md'>
           <DialogHeader>
-            <DialogTitle>批量修改标签</DialogTitle>
+            <DialogTitle>{t('dialog.batchTag.title')}</DialogTitle>
             <DialogDescription>
-              将为选中的 {selectedNodeIds.size} 个节点修改标签
+              {t('dialog.batchTag.description', { count: selectedNodeIds.size })}
             </DialogDescription>
           </DialogHeader>
           <div className='space-y-4 py-4'>
             {allUniqueTags.length > 0 && (
               <div className='space-y-2'>
-                <Label className='text-sm font-medium'>快速选择标签</Label>
+                <Label className='text-sm font-medium'>{t('dialog.batchTag.quickSelect')}</Label>
                 <div className='flex flex-wrap gap-2'>
                   {allUniqueTags.map((tag) => (
                     <Badge
@@ -3989,11 +3988,11 @@ anytls://password@example.com:443/?sni=example.com&fp=chrome&alpn=h2#AnyTLS节�
             )}
             <div className='space-y-2'>
               <Label htmlFor='batch-tag-input' className='text-sm font-medium'>
-                标签名称
+                {t('dialog.batchTag.tagNameLabel')}
               </Label>
               <Input
                 id='batch-tag-input'
-                placeholder='输入标签名称'
+                placeholder={t('dialog.batchTag.tagNamePlaceholder')}
                 value={batchTag}
                 onChange={(e) => setBatchTag(e.target.value)}
                 className='font-mono text-sm'
@@ -4008,12 +4007,12 @@ anytls://password@example.com:443/?sni=example.com&fp=chrome&alpn=h2#AnyTLS节�
                 }}
                 disabled={batchUpdateTagMutation.isPending}
               >
-                取消
+                {t('actions.cancel', { ns: 'common' })}
               </Button>
               <Button
                 onClick={() => {
                   if (!batchTag.trim()) {
-                    toast.error('请输入标签名称')
+                    toast.error(t('toast.enterTagName'))
                     return
                   }
                   const nodeIds = Array.from(selectedNodeIds)
@@ -4024,7 +4023,7 @@ anytls://password@example.com:443/?sni=example.com&fp=chrome&alpn=h2#AnyTLS节�
                 }}
                 disabled={batchUpdateTagMutation.isPending || !batchTag.trim()}
               >
-                {batchUpdateTagMutation.isPending ? '保存中...' : '保存'}
+                {batchUpdateTagMutation.isPending ? t('actions.saving', { ns: 'common' }) : t('actions.save', { ns: 'common' })}
               </Button>
             </div>
           </div>
@@ -4035,9 +4034,9 @@ anytls://password@example.com:443/?sni=example.com&fp=chrome&alpn=h2#AnyTLS节�
       <Dialog open={batchRenameDialogOpen} onOpenChange={setBatchRenameDialogOpen}>
         <DialogContent className='max-w-3xl max-h-[80vh] flex flex-col'>
           <DialogHeader>
-            <DialogTitle>批量修改节点名称</DialogTitle>
+            <DialogTitle>{t('dialog.batchRename.title')}</DialogTitle>
             <DialogDescription>
-              修改选中的 {selectedNodeIds.size} 个节点名称
+              {t('dialog.batchRename.description', { count: selectedNodeIds.size })}
             </DialogDescription>
           </DialogHeader>
           <div className='flex-1 space-y-4 py-4 min-h-0 flex flex-col'>
@@ -4045,11 +4044,11 @@ anytls://password@example.com:443/?sni=example.com&fp=chrome&alpn=h2#AnyTLS节�
             <div className='grid grid-cols-3 gap-2 grid-cols-[1fr_1fr_auto] items-end'>
               <div className='space-y-2'>
                 <Label htmlFor='find-text' className='text-sm font-medium'>
-                  查找内容
+                  {t('dialog.batchRename.findLabel')}
                 </Label>
                 <Input
                   id='find-text'
-                  placeholder='输入要查找的文本'
+                  placeholder={t('dialog.batchRename.findPlaceholder')}
                   value={findText}
                   onChange={(e) => setFindText(e.target.value)}
                   className='text-sm'
@@ -4057,12 +4056,12 @@ anytls://password@example.com:443/?sni=example.com&fp=chrome&alpn=h2#AnyTLS节�
               </div>
               <div className='space-y-2'>
                 <Label htmlFor='replace-text' className='text-sm font-medium'>
-                  替换为
+                  {t('dialog.batchRename.replaceLabel')}
                 </Label>
                 <div className='flex gap-2'>
                   <Input
                     id='replace-text'
-                    placeholder='输入替换后的文本'
+                    placeholder={t('dialog.batchRename.replacePlaceholder')}
                     value={replaceText}
                     onChange={(e) => setReplaceText(e.target.value)}
                     className='text-sm'
@@ -4074,17 +4073,17 @@ anytls://password@example.com:443/?sni=example.com&fp=chrome&alpn=h2#AnyTLS节�
                 variant='outline'
                 onClick={() => {
                   if (!findText) {
-                    toast.error('请输入要查找的内容')
+                    toast.error(t('toast.enterFindContent'))
                     return
                   }
                   const replaced = batchRenameText.split('\n').map(line =>
                     line.replace(new RegExp(findText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'), replaceText)
                   ).join('\n')
                   setBatchRenameText(replaced)
-                  toast.success('替换完成')
+                  toast.success(t('toast.replaceDone'))
                 }}
                 >
-                替换
+                {t('dialog.batchRename.replaceBtn')}
               </Button>
             </div>
 
@@ -4092,11 +4091,11 @@ anytls://password@example.com:443/?sni=example.com&fp=chrome&alpn=h2#AnyTLS节�
             <div className='grid grid-cols-3 gap-2 grid-cols-[1fr_1fr_auto] items-end'>
               <div className='space-y-2'>
                 <Label htmlFor='prefix-text' className='text-sm font-medium'>
-                  前缀
+                  {t('dialog.batchRename.prefixLabel')}
                 </Label>
                 <Input
                   id='prefix-text'
-                  placeholder='添加到名称前面'
+                  placeholder={t('dialog.batchRename.prefixPlaceholder')}
                   value={prefixText}
                   onChange={(e) => setPrefixText(e.target.value)}
                   className='text-sm'
@@ -4104,11 +4103,11 @@ anytls://password@example.com:443/?sni=example.com&fp=chrome&alpn=h2#AnyTLS节�
               </div>
               <div className='space-y-2'>
                 <Label htmlFor='suffix-text' className='text-sm font-medium'>
-                  后缀
+                  {t('dialog.batchRename.suffixLabel')}
                 </Label>
                 <Input
                   id='suffix-text'
-                  placeholder='添加到名称后面'
+                  placeholder={t('dialog.batchRename.suffixPlaceholder')}
                   value={suffixText}
                   onChange={(e) => setSuffixText(e.target.value)}
                   className='text-sm'
@@ -4119,7 +4118,7 @@ anytls://password@example.com:443/?sni=example.com&fp=chrome&alpn=h2#AnyTLS节�
                 variant='outline'
                 onClick={() => {
                   if (!prefixText && !suffixText) {
-                    toast.error('请输入前缀或后缀')
+                    toast.error(t('toast.enterPrefixOrSuffix'))
                     return
                   }
                   const updated = batchRenameText.split('\n').map(line =>
@@ -4128,24 +4127,24 @@ anytls://password@example.com:443/?sni=example.com&fp=chrome&alpn=h2#AnyTLS节�
                   setBatchRenameText(updated)
                   setPrefixText('')
                   setSuffixText('')
-                  toast.success('应用完成')
+                  toast.success(t('toast.appliedPrefixSuffix'))
                 }}
               >
-                应用
+                {t('dialog.batchRename.applyBtn')}
               </Button>
             </div>
 
             {/* 名称编辑区 */}
             <div className='flex-1 space-y-2 min-h-0 flex flex-col'>
               <Label htmlFor='batch-rename-text' className='text-sm font-medium'>
-                节点名称 (每行一个，共 {batchRenameText.split('\n').length} 行)
+                {t('dialog.batchRename.nodeNamesLabel', { count: batchRenameText.split('\n').length })}
               </Label>
               <Textarea
                 id='batch-rename-text'
                 value={batchRenameText}
                 onChange={(e) => setBatchRenameText(e.target.value)}
                 className='font-mono text-sm flex-1 min-h-[300px] resize-none'
-                placeholder='每行一个节点名称'
+                placeholder={t('dialog.batchRename.nodeNamesPlaceholder')}
               />
               {/* <p className='text-xs text-muted-foreground'>
                 支持多行编辑，使用上方的查找替换功能批量修改文本
@@ -4166,7 +4165,7 @@ anytls://password@example.com:443/?sni=example.com&fp=chrome&alpn=h2#AnyTLS节�
                 }}
                 disabled={batchRenameMutation.isPending}
               >
-                取消
+                {t('actions.cancel', { ns: 'common' })}
               </Button>
               <Button
                 onClick={() => {
@@ -4174,12 +4173,12 @@ anytls://password@example.com:443/?sni=example.com&fp=chrome&alpn=h2#AnyTLS节�
                   const nodeIds = Array.from(selectedNodeIds)
 
                   if (newNames.length === 0) {
-                    toast.error('请输入节点名称')
+                    toast.error(t('toast.enterNodeNames'))
                     return
                   }
 
                   if (newNames.length !== nodeIds.length) {
-                    toast.error(`名称数量 (${newNames.length}) 与选中节点数量 (${nodeIds.length}) 不匹配`)
+                    toast.error(t('toast.nameCountMismatch', { nameCount: newNames.length, nodeCount: nodeIds.length }))
                     return
                   }
 
@@ -4193,7 +4192,7 @@ anytls://password@example.com:443/?sni=example.com&fp=chrome&alpn=h2#AnyTLS节�
                 }}
                 disabled={batchRenameMutation.isPending || !batchRenameText.trim()}
               >
-                {batchRenameMutation.isPending ? '保存中...' : '确认修改'}
+                {batchRenameMutation.isPending ? t('actions.saving', { ns: 'common' }) : t('dialog.batchRename.confirmBtn')}
               </Button>
             </div>
           </div>
@@ -4204,9 +4203,9 @@ anytls://password@example.com:443/?sni=example.com&fp=chrome&alpn=h2#AnyTLS节�
       <Dialog open={duplicateDialogOpen} onOpenChange={setDuplicateDialogOpen}>
         <DialogContent className='max-w-2xl max-h-[80vh] flex flex-col'>
           <DialogHeader>
-            <DialogTitle>删除重复节点</DialogTitle>
+            <DialogTitle>{t('dialog.duplicates.title')}</DialogTitle>
             <DialogDescription>
-              发现 {duplicateGroups.length} 组重复节点，共 {duplicateGroups.reduce((sum, g) => sum + g.nodes.length - 1, 0)} 个重复节点将被删除（每组保留最早创建的节点）
+              {t('dialog.duplicates.description', { groupCount: duplicateGroups.length, deleteCount: duplicateGroups.reduce((sum, g) => sum + g.nodes.length - 1, 0) })}
             </DialogDescription>
           </DialogHeader>
           <div className='flex-1 overflow-y-auto space-y-4 py-4'>
@@ -4214,10 +4213,10 @@ anytls://password@example.com:443/?sni=example.com&fp=chrome&alpn=h2#AnyTLS节�
               <div key={groupIndex} className='border rounded-lg p-3 space-y-2'>
                 <div className='flex items-center justify-between'>
                   <span className='text-sm font-medium'>
-                    重复组 {groupIndex + 1}（{group.nodes.length} 个节点）
+                    {t('dialog.duplicates.groupTitle', { index: groupIndex + 1, count: group.nodes.length })}
                   </span>
                   <Badge variant='secondary'>
-                    将删除 {group.nodes.length - 1} 个
+                    {t('dialog.duplicates.willDelete', { count: group.nodes.length - 1 })}
                   </Badge>
                 </div>
                 <div className='space-y-1'>
@@ -4244,7 +4243,7 @@ anytls://password@example.com:443/?sni=example.com&fp=chrome&alpn=h2#AnyTLS节�
                           )}
                         </div>
                         <span className={`text-xs shrink-0 ml-2 ${nodeIndex === 0 ? 'text-green-600' : 'text-red-600'}`}>
-                          {nodeIndex === 0 ? '保留' : '删除'}
+                          {nodeIndex === 0 ? t('dialog.duplicates.keep') : t('dialog.duplicates.deleteLabel')}
                         </span>
                       </div>
                     ))}
@@ -4261,14 +4260,14 @@ anytls://password@example.com:443/?sni=example.com&fp=chrome&alpn=h2#AnyTLS节�
               }}
               disabled={deletingDuplicates}
             >
-              取消
+              {t('actions.cancel', { ns: 'common' })}
             </Button>
             <Button
               variant='destructive'
               onClick={handleDeleteDuplicates}
               disabled={deletingDuplicates}
             >
-              {deletingDuplicates ? '删除中...' : `确认删除 ${duplicateGroups.reduce((sum, g) => sum + g.nodes.length - 1, 0)} 个重复节点`}
+              {deletingDuplicates ? t('dialog.duplicates.deletingBtn') : t('dialog.duplicates.confirmDeleteBtn', { count: duplicateGroups.reduce((sum, g) => sum + g.nodes.length - 1, 0) })}
             </Button>
           </div>
         </DialogContent>
@@ -4287,11 +4286,11 @@ anytls://password@example.com:443/?sni=example.com&fp=chrome&alpn=h2#AnyTLS节�
       >
         <DialogContent className='max-w-md'>
           <DialogHeader>
-            <DialogTitle>生成临时订阅</DialogTitle>
+            <DialogTitle>{t('dialog.tempSub.title')}</DialogTitle>
             <DialogDescription>
               {tempSubSingleNodeId !== null
-                ? `为节点 "${savedNodes.find(n => n.id === tempSubSingleNodeId)?.node_name || '未知'}" 生成临时订阅链接`
-                : `为选中的 ${selectedNodeIds.size} 个节点生成临时订阅链接`
+                ? t('dialog.tempSub.descriptionSingle', { name: savedNodes.find(n => n.id === tempSubSingleNodeId)?.node_name || t('nodeList.unknown') })
+                : t('dialog.tempSub.descriptionBatch', { count: selectedNodeIds.size })
               }
             </DialogDescription>
           </DialogHeader>
@@ -4299,7 +4298,7 @@ anytls://password@example.com:443/?sni=example.com&fp=chrome&alpn=h2#AnyTLS节�
             <div className='grid grid-cols-2 gap-4'>
               <div className='space-y-2'>
                 <Label htmlFor='temp-sub-max-access' className='text-sm font-medium'>
-                  访问次数
+                  {t('dialog.tempSub.maxAccessLabel')}
                 </Label>
                 <Input
                   id='temp-sub-max-access'
@@ -4313,7 +4312,7 @@ anytls://password@example.com:443/?sni=example.com&fp=chrome&alpn=h2#AnyTLS节�
               </div>
               <div className='space-y-2'>
                 <Label htmlFor='temp-sub-expire' className='text-sm font-medium'>
-                  过期时间（秒）
+                  {t('dialog.tempSub.expireLabel')}
                 </Label>
                 <Input
                   id='temp-sub-expire'
@@ -4327,12 +4326,12 @@ anytls://password@example.com:443/?sni=example.com&fp=chrome&alpn=h2#AnyTLS节�
               </div>
             </div>
             <div className='space-y-2'>
-              <Label className='text-sm font-medium'>临时订阅链接</Label>
+              <Label className='text-sm font-medium'>{t('dialog.tempSub.linkLabel')}</Label>
               <div className='flex gap-2'>
                 <Input
-                  value={tempSubGenerating ? '生成中...' : tempSubUrl}
+                  value={tempSubGenerating ? t('dialog.tempSub.generatingLink') : tempSubUrl}
                   readOnly
-                  placeholder='自动生成中...'
+                  placeholder={t('dialog.tempSub.linkPlaceholder')}
                   className='text-sm font-mono'
                 />
                 {tempSubUrl && !tempSubGenerating && (
@@ -4342,12 +4341,12 @@ anytls://password@example.com:443/?sni=example.com&fp=chrome&alpn=h2#AnyTLS节�
                     onClick={async () => {
                       try {
                         await navigator.clipboard.writeText(tempSubUrl)
-                        toast.success('链接已复制')
+                        toast.success(t('toast.linkCopied'))
                         setTempSubDialogOpen(false)
                         setTempSubUrl('')
                         setTempSubSingleNodeId(null)
                       } catch {
-                        toast.error('复制失败，请手动复制')
+                        toast.error(t('toast.copyFailed'))
                       }
                     }}
                   >
@@ -4357,7 +4356,7 @@ anytls://password@example.com:443/?sni=example.com&fp=chrome&alpn=h2#AnyTLS节�
               </div>
               {tempSubUrl && !tempSubGenerating && (
                 <p className='text-xs text-muted-foreground'>
-                  链接将在 {tempSubExpireSeconds} 秒后或访问 {tempSubMaxAccess} 次后失效
+                  {t('dialog.tempSub.linkExpireHint', { seconds: tempSubExpireSeconds, count: tempSubMaxAccess })}
                 </p>
               )}
             </div>
@@ -4370,7 +4369,7 @@ anytls://password@example.com:443/?sni=example.com&fp=chrome&alpn=h2#AnyTLS节�
                   setTempSubSingleNodeId(null)
                 }}
               >
-                关闭
+                {t('dialog.clashConfig.close')}
               </Button>
             </div>
           </div>
@@ -4384,8 +4383,8 @@ anytls://password@example.com:443/?sni=example.com&fp=chrome&alpn=h2#AnyTLS节�
       >
         <DialogContent className='sm:max-w-md'>
           <DialogHeader>
-            <DialogTitle>选择服务器</DialogTitle>
-            <DialogDescription>请选择一台服务器后继续创建节点</DialogDescription>
+            <DialogTitle>{t('dialog.serverSelect.title')}</DialogTitle>
+            <DialogDescription>{t('dialog.serverSelect.description')}</DialogDescription>
           </DialogHeader>
           <div className='space-y-2 py-2'>
             {remoteServers.map((server) => (
@@ -4406,7 +4405,7 @@ anytls://password@example.com:443/?sni=example.com&fp=chrome&alpn=h2#AnyTLS节�
               variant='outline'
               onClick={() => setQuickCreateServerDialogOpen(false)}
             >
-              取消
+              {t('actions.cancel', { ns: 'common' })}
             </Button>
             <Button
               type='button'
@@ -4417,7 +4416,7 @@ anytls://password@example.com:443/?sni=example.com&fp=chrome&alpn=h2#AnyTLS节�
                 setQuickCreateOpen(true)
               }}
             >
-              下一步
+              {t('actions.next', { ns: 'common' })}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -4438,12 +4437,12 @@ anytls://password@example.com:443/?sni=example.com&fp=chrome&alpn=h2#AnyTLS节�
         )}>
           <DialogHeader>
             <DialogTitle>
-              {quickCreateStep === 'inbound' && '添加节点'}
-              {quickCreateStep === 'done' && '创建完成'}
+              {quickCreateStep === 'inbound' && t('dialog.quickCreate.addNodeTitle')}
+              {quickCreateStep === 'done' && t('dialog.quickCreate.doneTitle')}
             </DialogTitle>
             <DialogDescription>
-              {quickCreateStep === 'inbound' && '配置入站参数'}
-              {quickCreateStep === 'done' && '入站和出站已创建，节点已自动同步'}
+              {quickCreateStep === 'inbound' && t('dialog.quickCreate.configInbound')}
+              {quickCreateStep === 'done' && t('dialog.quickCreate.doneDescription')}
             </DialogDescription>
           </DialogHeader>
 
@@ -4458,7 +4457,7 @@ anytls://password@example.com:443/?sni=example.com&fp=chrome&alpn=h2#AnyTLS节�
               />
               {quickCreateLoading && (
                 <div className='absolute inset-0 bg-background/60 flex items-center justify-center'>
-                  <p className='text-sm text-muted-foreground'>正在创建入站和出站...</p>
+                  <p className='text-sm text-muted-foreground'>{t('toast.creatingInboundOutbound')}</p>
                 </div>
               )}
             </div>
@@ -4469,15 +4468,15 @@ anytls://password@example.com:443/?sni=example.com&fp=chrome&alpn=h2#AnyTLS节�
               <div className='space-y-2 text-sm'>
                 <div className='flex items-center gap-2'>
                   <CheckCircle2 className='h-4 w-4 text-green-500' />
-                  <span>在 {quickCreateResult.serverCount} 台服务器上创建入站 <Badge variant='secondary'>{quickCreateResult.inboundTag}</Badge></span>
+                  <span>{t('dialog.quickCreate.inboundCreated', { count: quickCreateResult.serverCount })} <Badge variant='secondary'>{quickCreateResult.inboundTag}</Badge></span>
                 </div>
                 <div className='flex items-center gap-2'>
                   <CheckCircle2 className='h-4 w-4 text-green-500' />
-                  <span>出站 <Badge variant='secondary'>{quickCreateResult.outboundTag}</Badge> 已创建</span>
+                  <span>{t('dialog.quickCreate.outboundPrefix')} <Badge variant='secondary'>{quickCreateResult.outboundTag}</Badge> {t('dialog.quickCreate.outboundSuffix')}</span>
                 </div>
                 <div className='flex items-center gap-2'>
                   <CheckCircle2 className='h-4 w-4 text-green-500' />
-                  <span>节点已自动同步到列表</span>
+                  <span>{t('dialog.quickCreate.nodesSynced')}</span>
                 </div>
               </div>
               <div className='flex gap-2 justify-end'>
@@ -4488,7 +4487,7 @@ anytls://password@example.com:443/?sni=example.com&fp=chrome&alpn=h2#AnyTLS节�
                     queryClient.invalidateQueries({ queryKey: ['nodes'] })
                   }}
                 >
-                  完成
+                  {t('dialog.quickCreate.doneBtn')}
                 </Button>
               </div>
             </div>

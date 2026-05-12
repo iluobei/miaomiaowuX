@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useMutation } from '@tanstack/react-query'
 import { Download, Upload, HardDrive, AlertTriangle } from 'lucide-react'
 import { toast } from 'sonner'
+import { useTranslation } from 'react-i18next'
 import { api } from '@/lib/api'
 import {
   Dialog,
@@ -20,6 +21,7 @@ interface BackupDialogProps {
 }
 
 export function BackupDialog({ open, onOpenChange }: BackupDialogProps) {
+  const { t } = useTranslation('common')
   const [backupFile, setBackupFile] = useState<File | null>(null)
   const [isDownloading, setIsDownloading] = useState(false)
 
@@ -39,9 +41,9 @@ export function BackupDialog({ open, onOpenChange }: BackupDialogProps) {
       link.click()
       link.remove()
       window.URL.revokeObjectURL(url)
-      toast.success('备份下载成功')
+      toast.success(t('backup.downloadSuccess'))
     } catch {
-      toast.error('备份下载失败')
+      toast.error(t('backup.downloadFailed'))
     } finally {
       setIsDownloading(false)
     }
@@ -57,7 +59,7 @@ export function BackupDialog({ open, onOpenChange }: BackupDialogProps) {
       })
     },
     onSuccess: () => {
-      toast.success('备份恢复成功，请刷新页面')
+      toast.success(t('backup.restoreSuccess'))
       setBackupFile(null)
       onOpenChange(false)
       // Reload page after a short delay
@@ -66,7 +68,7 @@ export function BackupDialog({ open, onOpenChange }: BackupDialogProps) {
       }, 1500)
     },
     onError: () => {
-      toast.error('备份恢复失败')
+      toast.error(t('backup.restoreFailed'))
     },
   })
 
@@ -75,30 +77,30 @@ export function BackupDialog({ open, onOpenChange }: BackupDialogProps) {
       <DialogContent className='sm:max-w-md'>
         <DialogHeader>
           <DialogTitle className='flex items-center gap-2'>
-            <HardDrive className='size-5' /> 数据备份
+            <HardDrive className='size-5' /> {t('backup.title')}
           </DialogTitle>
           <DialogDescription>
-            备份包含数据库和订阅文件，恢复后页面会自动刷新
+            {t('backup.description')}
           </DialogDescription>
         </DialogHeader>
 
         <div className='space-y-6'>
           {/* Download backup */}
           <div className='space-y-2'>
-            <Label>下载备份</Label>
+            <Label>{t('backup.downloadLabel')}</Label>
             <Button
               onClick={handleDownload}
               disabled={isDownloading}
               className='w-full'
             >
               <Download className='size-4 mr-2' />
-              {isDownloading ? '正在生成备份...' : '下载当前数据备份'}
+              {isDownloading ? t('backup.downloading') : t('backup.downloadButton')}
             </Button>
           </div>
 
           {/* Restore backup */}
           <div className='space-y-3'>
-            <Label>恢复备份</Label>
+            <Label>{t('backup.restoreLabel')}</Label>
             <Input
               type='file'
               accept='.zip'
@@ -112,11 +114,11 @@ export function BackupDialog({ open, onOpenChange }: BackupDialogProps) {
               className='w-full'
             >
               <Upload className='size-4 mr-2' />
-              {restoreMutation.isPending ? '恢复中...' : '恢复备份'}
+              {restoreMutation.isPending ? t('backup.restoring') : t('backup.restoreButton')}
             </Button>
             <div className='flex items-start gap-2 text-xs text-muted-foreground'>
               <AlertTriangle className='size-4 shrink-0 text-destructive' />
-              <span>恢复备份将覆盖当前所有数据，请谨慎操作</span>
+              <span>{t('backup.restoreWarning')}</span>
             </div>
           </div>
         </div>

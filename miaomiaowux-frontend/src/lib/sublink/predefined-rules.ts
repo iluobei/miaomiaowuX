@@ -1,6 +1,8 @@
 // Predefined rule categories for custom selection
 // Converted from sublink-worker's UNIFIED_RULES
 
+import i18n from '@/lib/i18n'
+
 export interface RuleCategory {
   name: string
   label: string
@@ -9,133 +11,35 @@ export interface RuleCategory {
   ip_rules: string[]    // GeoIP rules
 }
 
+function rc(name: string, icon: string, site_rules: string[], ip_rules: string[]): RuleCategory {
+  return {
+    name,
+    get label() { return i18n.t(`subscribe:ruleCategories.${name}` as any) as string },
+    icon,
+    site_rules,
+    ip_rules,
+  }
+}
+
 export const RULE_CATEGORIES: RuleCategory[] = [
-  {
-    name: 'ads',
-    label: '广告拦截',
-    icon: '🔴',
-    site_rules: ['category-ads-all'],
-    ip_rules: [],
-  },
-  {
-    name: 'ai',
-    label: 'AI 服务',
-    icon: '🤖',
-    site_rules: ['category-ai-!cn'],
-    ip_rules: [],
-  },
-  {
-    name: 'bilibili',
-    label: '哔哩哔哩',
-    icon: '📺',
-    site_rules: ['bilibili'],
-    ip_rules: [],
-  },
-  {
-    name: 'youtube',
-    label: '油管视频',
-    icon: '📺',
-    site_rules: ['youtube'],
-    ip_rules: [],
-  },
-  {
-    name: 'google',
-    label: '谷歌服务',
-    icon: '🔍',
-    site_rules: ['google'],
-    ip_rules: ['google'],
-  },
-  {
-    name: 'private',
-    label: '私有网络',
-    icon: '🏠',
-    site_rules: [],
-    ip_rules: ['private'],
-  },
-  {
-    name: 'domestic',
-    label: '国内服务',
-    icon: '🔒',
-    site_rules: ['geolocation-cn', 'cn'],
-    ip_rules: ['cn'],
-  },
-  {
-    name: 'telegram',
-    label: '电报消息',
-    icon: '📱',
-    site_rules: [],
-    ip_rules: ['telegram'],
-  },
-  {
-    name: 'github',
-    label: 'Github',
-    icon: '🐱',
-    site_rules: ['github', 'gitlab'],
-    ip_rules: [],
-  },
-  {
-    name: 'microsoft',
-    label: '微软服务',
-    icon: '🪟',
-    site_rules: ['microsoft'],
-    ip_rules: [],
-  },
-  {
-    name: 'apple',
-    label: '苹果服务',
-    icon: '🍎',
-    site_rules: ['apple'],
-    ip_rules: [],
-  },
-  {
-    name: 'social',
-    label: '社交媒体',
-    icon: '🌐',
-    site_rules: ['facebook', 'instagram', 'twitter', 'tiktok', 'linkedin'],
-    ip_rules: [],
-  },
-  {
-    name: 'streaming',
-    label: '流媒体',
-    icon: '📺',
-    site_rules: ['netflix', 'hulu', 'disney', 'hbo', 'amazon', 'bahamut'],
-    ip_rules: [],
-  },
-  {
-    name: 'gaming',
-    label: '游戏平台',
-    icon: '🎮',
-    site_rules: ['steam', 'epicgames', 'ea', 'ubisoft', 'blizzard'],
-    ip_rules: [],
-  },
-  {
-    name: 'education',
-    label: '教育资源',
-    icon: '📚',
-    site_rules: ['coursera', 'edx', 'udemy', 'khanacademy', 'category-scholar-!cn'],
-    ip_rules: [],
-  },
-  {
-    name: 'finance',
-    label: '金融服务',
-    icon: '💰',
-    site_rules: ['paypal', 'visa', 'mastercard', 'stripe', 'wise'],
-    ip_rules: [],
-  },
-  {
-    name: 'cloud',
-    label: '云服务',
-    icon: '☁️',
-    site_rules: ['aws', 'azure', 'digitalocean', 'heroku', 'dropbox'],
-    ip_rules: [],
-  },
-  {
-    name: 'overseas',
-    label: '非中国',
-    icon: '🌍',
-    site_rules: ['geolocation-!cn'],
-    ip_rules: [],
-  },
+  rc('ads', '🔴', ['category-ads-all'], []),
+  rc('ai', '🤖', ['category-ai-!cn'], []),
+  rc('bilibili', '📺', ['bilibili'], []),
+  rc('youtube', '📺', ['youtube'], []),
+  rc('google', '🔍', ['google'], ['google']),
+  rc('private', '🏠', [], ['private']),
+  rc('domestic', '🔒', ['geolocation-cn', 'cn'], ['cn']),
+  rc('telegram', '📱', [], ['telegram']),
+  rc('github', '🐱', ['github', 'gitlab'], []),
+  rc('microsoft', '🪟', ['microsoft'], []),
+  rc('apple', '🍎', ['apple'], []),
+  rc('social', '🌐', ['facebook', 'instagram', 'twitter', 'tiktok', 'linkedin'], []),
+  rc('streaming', '📺', ['netflix', 'hulu', 'disney', 'hbo', 'amazon', 'bahamut'], []),
+  rc('gaming', '🎮', ['steam', 'epicgames', 'ea', 'ubisoft', 'blizzard'], []),
+  rc('education', '📚', ['coursera', 'edx', 'udemy', 'khanacademy', 'category-scholar-!cn'], []),
+  rc('finance', '💰', ['paypal', 'visa', 'mastercard', 'stripe', 'wise'], []),
+  rc('cloud', '☁️', ['aws', 'azure', 'digitalocean', 'heroku', 'dropbox'], []),
+  rc('overseas', '🌍', ['geolocation-!cn'], []),
 ]
 
 /**

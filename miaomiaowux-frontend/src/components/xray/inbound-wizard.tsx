@@ -1,5 +1,6 @@
 // @ts-nocheck
 import { useState, useEffect, useRef } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useQuery } from '@tanstack/react-query'
 import {
   Eye,
@@ -79,11 +80,11 @@ const PROTOCOL_COLORS: Record<string, string> = {
   Tunnel: 'text-orange-700 dark:text-orange-400',
 }
 
-// Security protocol display labels
-const getSecurityLabel = (security: string): string => {
-  if (security === 'None') return '无'
+// Security protocol display labels - needs t() at call site
+const getSecurityLabel = (security: string, t: (key: string) => string): string => {
+  if (security === 'None') return t('wizard.securityNone')
   if (security.includes('MLKEM768'))
-    return security.replace('MLKEM768', '后量子加密')
+    return security.replace('MLKEM768', t('wizard.postQuantum'))
   return security
 }
 
@@ -95,7 +96,7 @@ const pickSimpleTransport = (
 ): string => {
   if (transportNames.length === 0) return ''
 
-  // 优先选择支持 XTLS-Vision-REALITY 的传输协议
+  // Prefer transport that supports XTLS-Vision-REALITY
   for (const transport of transportNames) {
     const securities = getSecurityOptions(protocol, transport)
     if (securities.includes('XTLS-Vision-REALITY')) {
@@ -155,9 +156,7 @@ interface InboundWizardProps {
   selectedServerIds: number[]
   onCancel: () => void
   onSubmit: (serverIds: number[], inbound: any, tag: string, nodeName?: string) => Promise<void>
-  /** 是否跳过服务器选择（远程模式时为 true） */
   skipServerSelection?: boolean
-  /** 已被占用的端口列表 */
   usedPorts?: number[]
 }
 
@@ -186,19 +185,21 @@ export function InboundWizard({
   skipServerSelection = false,
   usedPorts = [],
 }: InboundWizardProps) {
+  const { t } = useTranslation('xray')
+  const { t: tc } = useTranslation('common')
   const [wizardMode, setWizardMode] = useState<WizardMode>('simple')
   const isSimpleMode = wizardMode === 'simple'
 
-  // 是否需要显示服务器选择步骤
+  // Show server selection step when no server is pre-selected
   const needsServerSelection =
     !skipServerSelection && selectedServerIds.length === 0 && servers.length > 0
 
-  // 内部维护的已选服务器（当外部没有预选时使用，单选）
+  // Internal selected server (single selection when no external pre-selection)
   const [internalSelectedServerId, setInternalSelectedServerId] = useState<
     number | null
   >(null)
 
-  // 最终使用的服务器ID（单选）
+  // Effective server ID (single selection)
   const effectiveServerId =
     selectedServerIds.length > 0
       ? selectedServerIds[0]
@@ -236,7 +237,7 @@ export function InboundWizard({
     encryption: 'none',
   })
 
-  // 移动端 JSON 预览弹窗状态
+  // Mobile JSON preview dialog state
   const [showMobileJsonPreview, setShowMobileJsonPreview] = useState(false)
   const [realityDomainsLoading, setRealityDomainsLoading] = useState(false)
   const [realityDomainOptions, setRealityDomainOptions] = useState<
@@ -255,12 +256,12 @@ export function InboundWizard({
   const [customDomainProbing, setCustomDomainProbing] = useState(false)
   const simpleRealityAutoLoaded = useRef(false)
 
-  // 节点名称 + 国旗选择器
+  // Node name + flag picker
   const [nodeName, setNodeName] = useState('')
   const [selectedFlag, setSelectedFlag] = useState('')
   const [showFlagPicker, setShowFlagPicker] = useState(false)
 
-  // 常用用户快捷添加
+  // Frequent users quick-add
   const [frequentUsers, setFrequentUsers] = useState<any[]>([])
 
   useEffect(() => {
@@ -272,7 +273,7 @@ export function InboundWizard({
     }
   }, [tunnelInPort])
 
-  // 切换服务器选择（单选）
+  // Toggle server selection (single)
   const toggleServerSelection = (serverId: number) => {
     setInternalSelectedServerId((prev) => (prev === serverId ? null : serverId))
   }
@@ -341,7 +342,7 @@ export function InboundWizard({
     }
   }, [selectedSecurity])
 
-  // 简易模式下 REALITY 安全协议自动触发"偷自己"
+  // Auto-trigger "steal self" in simple mode with REALITY security
   useEffect(() => {
     const isRealitySecurity =
       selectedSecurity === 'REALITY' ||
@@ -403,7 +404,7 @@ export function InboundWizard({
         })
       } catch {
         if (!cancelled) {
-          toast.error('自动生成 REALITY 公私钥失败，请点击生成按钮手动生成')
+          toast.error(t('wizard.autoGenRealityFailed'))
         }
       }
     }
@@ -415,7 +416,7 @@ export function InboundWizard({
   }, [selectedSecurity, formData.privateKey, formData.publicKey])
 
   useEffect(() => {
-    // 简易模式下，Socks5/HTTP 默认使用密码认证，便于直接选择用户
+    // In simple mode, default Socks5/HTTP to password auth for user selection
     if (!isSimpleMode) return
     if (selectedProtocol !== 'Socks5' && selectedProtocol !== 'HTTP') return
 
@@ -425,7 +426,7 @@ export function InboundWizard({
     }))
   }, [isSimpleMode, selectedProtocol])
 
-  // GeoIP 自动检测国旗
+  // GeoIP auto-detect flag
   useEffect(() => {
     if (!effectiveServerId) return
     const server = servers.find((s) => s.id === effectiveServerId)
@@ -435,7 +436,7 @@ export function InboundWizard({
       .catch(() => {})
   }, [effectiveServerId, servers])
 
-  // 常用用户加载
+  // Load frequent users
   useEffect(() => {
     const cached = localStorage.getItem('inbound-wizard-frequent-users')
     if (cached) {
@@ -452,7 +453,7 @@ export function InboundWizard({
     }
   }, [])
 
-  // SS2022 进入协议或切换加密方法时自动生成服务器密码和用户密码
+  // Auto-generate server/user passwords when entering SS2022 or switching method
   const prevSS2022MethodRef = useRef<string | undefined>(undefined)
   useEffect(() => {
     if (selectedProtocol !== 'Shadowsocks2022') {
@@ -475,24 +476,24 @@ export function InboundWizard({
     }))
   }, [selectedProtocol, formData.method])
 
-  // 自动更新tag默认值
+  // Auto-update default tag
   const buildDefaultTag = (port: number | string | undefined) => {
     const parts = [selectedProtocol.toLowerCase()]
 
-    // Shadowsocks2022 直接使用 协议-端口 格式（没有传输协议和安全协议）
+    // Shadowsocks2022 uses protocol-port format (no transport/security)
     if (selectedProtocol !== 'Shadowsocks2022') {
-      // 只在传输协议不是None时添加
+      // Only add transport when not None
       if (selectedTransport && selectedTransport !== 'None') {
         parts.push(selectedTransport.toLowerCase())
       }
 
-      // 只在安全协议存在且不是None时添加
+      // Only add security when present and not None
       if (selectedSecurity && selectedSecurity !== 'None') {
         parts.push(selectedSecurity.toLowerCase())
       }
     }
 
-    // 最后添加端口
+    // Append port
     parts.push(String(port || 443))
 
     return parts.join('-')
@@ -501,7 +502,7 @@ export function InboundWizard({
   useEffect(() => {
     const defaultTag = buildDefaultTag(formData.port)
 
-    // 只在用户还没有手动修改tag时更新
+    // Only update when user hasn't manually modified the tag
     setFormData((prev: any) => ({
       ...prev,
       tag: defaultTag,
@@ -555,7 +556,7 @@ export function InboundWizard({
           ? (user.email || user.username)
           : user.username
       } else if (field.name === 'password' || field.name === 'pass') {
-        const isSS2022PskField = field.label?.includes('PSK')
+        const isSS2022PskField = field.label?.includes('psk')
         if (isSS2022PskField) {
           const method = formData.method || '2022-blake3-aes-128-gcm'
           const byteLength = method.includes('128') ? 16 : 32
@@ -574,12 +575,12 @@ export function InboundWizard({
     const fieldName = (selectedProtocol === 'Socks5' || selectedProtocol === 'HTTP') ? 'accounts' : 'clients'
     const existing = formData[fieldName] || []
     if (existing.some((c: any) => c.email === user.username || c.user === user.username)) {
-      toast.info('该用户已添加')
+      toast.info(t('wizard.userAlreadyAdded'))
       return
     }
     const newClient = buildClientFromUser(user)
     handleFieldChange(fieldName, [...existing, newClient])
-    // 更新常用用户缓存
+    // Update frequent users cache
     setFrequentUsers((prev) => {
       const updated = [user, ...prev.filter((u: any) => u.id !== user.id)].slice(0, 5)
       localStorage.setItem('inbound-wizard-frequent-users', JSON.stringify(updated))
@@ -688,13 +689,13 @@ export function InboundWizard({
       })
       setCustomDomainInput('')
       if (newOpt.success) {
-        toast.success(`${newOpt.domain} 延迟 ${newOpt.latency_ms ?? '-'}ms`)
+        toast.success(`${newOpt.domain} ${newOpt.latency_ms ?? '-'}ms`)
         handleSelectRealityDomain(newOpt.domain)
       } else {
-        toast.error(`${newOpt.domain} 探测失败: ${newOpt.error || '未知错误'}`)
+        toast.error(`${newOpt.domain} ${t('wizard.probeFailed')}: ${newOpt.error || t('routing.unknown')}`)
       }
     } catch {
-      toast.error('探测请求失败')
+      toast.error(t('wizard.probeRequestFailed'))
     } finally {
       setCustomDomainProbing(false)
     }
@@ -702,7 +703,7 @@ export function InboundWizard({
 
   const handleLoadRealityDomains = async () => {
     if (!effectiveServerId) {
-      toast.error('请先选择服务器')
+      toast.error(t('wizard.selectServerFirst'))
       return
     }
 
@@ -719,7 +720,7 @@ export function InboundWizard({
       setDomainServers(serverMap)
 
       if (domains.length === 0) {
-        toast.error(response.data?.message || '未找到可用域名')
+        toast.error(response.data?.message || t('wizard.noDomainsFound'))
         return
       }
 
@@ -744,7 +745,7 @@ export function InboundWizard({
           const warning = response.data?.warning
           toast.error(
             warning ||
-              `所有 ${domains.length} 个域名探测失败: ${errors.join('; ')}`
+              t('wizard.allDomainsFailed', { count: domains.length, errors: errors.join('; ') })
           )
         }
         return
@@ -766,9 +767,9 @@ export function InboundWizard({
         applyRealityDomain(firstAvailable.domain, serverMap, domains)
       }
 
-      toast.success(`已获取 ${domains.length} 个域名，${successCount} 个可用`)
+      toast.success(t('wizard.domainsLoaded', { total: domains.length, available: successCount }))
     } catch (error: any) {
-      toast.error(error?.response?.data?.error || '读取域名延迟失败')
+      toast.error(error?.response?.data?.error || t('wizard.loadDomainsFailed'))
     } finally {
       setRealityDomainsLoading(false)
     }
@@ -828,7 +829,7 @@ export function InboundWizard({
 
     const port = Number(submitData.port)
     if (port && resolvedUsedPorts.includes(port)) {
-      toast.error(`端口 ${port} 已被其他入站占用，请更换端口`)
+      toast.error(t('wizard.portOccupied', { port }))
       return
     }
 
@@ -837,7 +838,7 @@ export function InboundWizard({
         selectedSecurity.includes('TLS') &&
         !selectedSecurity.includes('REALITY')
       if (requiresCertFiles) {
-        toast.error('该安全协议需要证书文件，请切换到专家模式配置')
+        toast.error(t('wizard.needsCertSwitch'))
         return
       }
 
@@ -859,7 +860,7 @@ export function InboundWizard({
       if (!submitData.listen) submitData.listen = '0.0.0.0'
       if (submitData.sniffing === undefined) submitData.sniffing = true
 
-      // 协议默认值
+      // Protocol defaults
       if (selectedProtocol === 'Shadowsocks2022') {
         if (!submitData.method) submitData.method = '2022-blake3-aes-128-gcm'
         if (!submitData.network) submitData.network = 'tcp,udp'
@@ -882,7 +883,7 @@ export function InboundWizard({
         if (!submitData.network) submitData.network = 'tcp'
       }
 
-      // 传输默认值
+      // Transport defaults
       if (
         (selectedTransport === 'HTTP' || selectedTransport === 'HTTP2') &&
         !submitData.path
@@ -900,7 +901,7 @@ export function InboundWizard({
       if (selectedTransport === 'GRPC' && !submitData.serviceName)
         submitData.serviceName = 'grpc'
 
-      // REALITY 自动填充
+      // REALITY auto-fill
       if (selectedSecurity.includes('REALITY')) {
         if (!submitData.dest) submitData.dest = 'www.microsoft.com:443'
         if (!submitData.serverNames)
@@ -913,7 +914,7 @@ export function InboundWizard({
             submitData.privateKey = response.data.privateKey
             submitData.publicKey = response.data.publicKey
           } catch {
-            toast.error('自动生成 REALITY 私钥失败，请切换到专家模式手动填写')
+            toast.error(t('wizard.autoGenRealityKeyFailed'))
             return
           }
         }
@@ -926,7 +927,7 @@ export function InboundWizard({
       ? submitData.accounts || []
       : submitData.clients || []
     if (shouldShowUserManagement && selectedUsers.length === 0) {
-      toast.error('请至少选择一个用户')
+      toast.error(t('wizard.selectAtLeastOneUser'))
       return
     }
 
@@ -937,13 +938,13 @@ export function InboundWizard({
       selectedSecurity
     )
 
-    // 生成默认tag（如果用户没有填写）
+    // Generate default tag if user hasn't specified one
     let tag = submitData.tag
     if (!tag) {
       tag = buildDefaultTag(submitData.port)
     }
 
-    // 简易模式下构建自定义节点名称
+    // Build custom node name in simple mode
     let customNodeName = ''
     if (isSimpleMode && nodeName) {
       const flag = selectedFlag ? countryCodeToFlag(selectedFlag) + ' ' : ''
@@ -985,9 +986,9 @@ export function InboundWizard({
       {/* Server Selection - Show when no server is pre-selected and there are multiple servers */}
       {needsServerSelection && (
         <div>
-          <h3 className='mb-4 text-lg font-semibold'>选择目标服务器</h3>
+          <h3 className='mb-4 text-lg font-semibold'>{t('wizard.selectTargetServer')}</h3>
           <p className='text-muted-foreground mb-4 text-sm'>
-            请选择要添加入站的服务器（单选）
+            {t('wizard.selectTargetServerDesc')}
           </p>
           <div className='flex flex-wrap gap-2 md:gap-3'>
             {servers.map((server) => (
@@ -1005,7 +1006,7 @@ export function InboundWizard({
           </div>
           {internalSelectedServerId === null && (
             <p className='mt-3 text-sm text-amber-600 dark:text-amber-400'>
-              请选择一台服务器
+              {t('wizard.selectServer')}
             </p>
           )}
         </div>
@@ -1013,7 +1014,7 @@ export function InboundWizard({
 
       {/* Protocol Selection - Always visible */}
       <div>
-        <h3 className='mb-4 text-lg font-semibold'>选择协议</h3>
+        <h3 className='mb-4 text-lg font-semibold'>{t('wizard.selectProtocol')}</h3>
         <div className='flex flex-wrap gap-2 md:gap-3'>
           {protocols.map((protocol) => (
             <Button
@@ -1028,7 +1029,7 @@ export function InboundWizard({
               type='button'
             >
               {protocol === 'Dokodemo'
-                ? 'Tunnel (任意门)'
+                ? t('wizard.tunnelAnyDoor')
                 : protocol.toUpperCase()}
             </Button>
           ))}
@@ -1038,7 +1039,7 @@ export function InboundWizard({
       {/* Transport Selection - Show only when protocol has multiple transport options */}
       {selectedProtocol && transports.length > 1 && (
         <div>
-          <h3 className='mb-4 text-lg font-semibold'>传输协议</h3>
+          <h3 className='mb-4 text-lg font-semibold'>{t('wizard.transportProtocol')}</h3>
           <div className='flex flex-wrap gap-2 md:gap-3'>
             {transports.map((transport) => (
               <Button
@@ -1059,7 +1060,7 @@ export function InboundWizard({
       {/* Security Selection - Show when transport is selected and has security options */}
       {selectedProtocol && selectedTransport && securityOptions.length > 0 && (
         <div>
-          <h3 className='mb-4 text-lg font-semibold'>安全协议</h3>
+          <h3 className='mb-4 text-lg font-semibold'>{t('wizard.securityProtocol')}</h3>
           <div className='flex flex-wrap gap-2 md:gap-3'>
             {securityOptions.map((security) => (
               <Button
@@ -1069,7 +1070,7 @@ export function InboundWizard({
                 type='button'
                 className='h-auto min-h-[2.5rem] py-2 whitespace-normal'
               >
-                {getSecurityLabel(security)}
+                {getSecurityLabel(security, t)}
               </Button>
             ))}
           </div>
@@ -1081,7 +1082,7 @@ export function InboundWizard({
         selectedTransport &&
         (securityOptions.length === 0 || selectedSecurity) && (
           <div>
-            <h3 className='mb-4 text-lg font-semibold'>配置模式</h3>
+            <h3 className='mb-4 text-lg font-semibold'>{t('wizard.configMode')}</h3>
             <ButtonGroup mode='adaptive-full' className='w-full' gap='md'>
               <Button
                 type='button'
@@ -1089,7 +1090,7 @@ export function InboundWizard({
                 className='w-full min-w-0'
                 onClick={() => setWizardMode('simple')}
               >
-                简易模式
+                {t('wizard.simpleMode')}
               </Button>
               <Button
                 type='button'
@@ -1097,7 +1098,7 @@ export function InboundWizard({
                 className='w-full min-w-0'
                 onClick={() => setWizardMode('expert')}
               >
-                专家模式
+                {t('wizard.expertMode')}
               </Button>
             </ButtonGroup>
           </div>
@@ -1118,15 +1119,15 @@ export function InboundWizard({
                 )
                 return (
                   <>
-                    {/* 简易模式也使用左右分栏：左侧表单，右侧JSON预览 */}
+                    {/* Simple mode: left form, right JSON preview */}
                     <div className='flex gap-6'>
                       <div className='min-w-0 flex-1 space-y-6'>
-                        {/* 节点名称 */}
+                        {/* Node Name */}
                         <Card>
                           <CardHeader>
-                            <CardTitle>节点名称</CardTitle>
+                            <CardTitle>{t('wizard.nodeName')}</CardTitle>
                             <CardDescription>
-                              自定义节点显示名称，国旗根据服务器 IP 自动选择
+                              {t('wizard.nodeNameDesc')}
                             </CardDescription>
                           </CardHeader>
                           <CardContent>
@@ -1156,7 +1157,7 @@ export function InboundWizard({
                                 </PopoverContent>
                               </Popover>
                               <Input
-                                placeholder='输入节点名称'
+                                placeholder={t('wizard.nodeNamePlaceholder')}
                                 value={nodeName}
                                 onChange={(e) => setNodeName(e.target.value)}
                                 className='flex-1'
@@ -1165,32 +1166,32 @@ export function InboundWizard({
                           </CardContent>
                         </Card>
 
-                        {/* REALITY 域名选择 */}
+                        {/* REALITY Domain Selection */}
                         {isRealitySecurity && (
                           <Card>
                             <CardHeader>
-                              <CardTitle>REALITY 域名</CardTitle>
+                              <CardTitle>{t('wizard.realityDomain')}</CardTitle>
                               <CardDescription>
                                 {realityDomainsLoading
-                                  ? '正在探测域名延迟...'
+                                  ? t('wizard.realityDomainProbing')
                                   : hasAvailableDomains
-                                    ? '已自动选择延迟最低的域名'
+                                    ? t('wizard.realityDomainAutoSelected')
                                     : realityDomainOptions.length > 0
-                                      ? '所有域名探测失败，请手动输入'
+                                      ? t('wizard.realityDomainAllFailed')
                                       : effectiveServerId
-                                        ? '正在获取可用域名...'
-                                        : '请先选择服务器'}
+                                        ? t('wizard.realityDomainFetching')
+                                        : t('wizard.realityDomainSelectFirst')}
                               </CardDescription>
                             </CardHeader>
                             <CardContent className='space-y-3'>
                               {realityDomainsLoading && (
                                 <div className='text-muted-foreground flex items-center gap-2 text-sm'>
                                   <Loader2 className='h-4 w-4 animate-spin' />
-                                  探测中...
+                                  {t('wizard.probing')}
                                 </div>
                               )}
 
-                              {/* 有可用域名时显示下拉选择 */}
+                              {/* Available domains dropdown */}
                               {hasAvailableDomains && (
                                 <div className='space-y-2'>
                                   <Select
@@ -1198,7 +1199,7 @@ export function InboundWizard({
                                     onValueChange={handleSelectRealityDomain}
                                   >
                                     <SelectTrigger>
-                                      <SelectValue placeholder='选择域名（已按延迟排序）' />
+                                      <SelectValue placeholder={t('wizard.selectDomainSorted')} />
                                     </SelectTrigger>
                                     <SelectContent>
                                       {realityDomainOptions.map((item) => (
@@ -1209,7 +1210,7 @@ export function InboundWizard({
                                         >
                                           {item.success
                                             ? `${item.domain} (${item.latency_ms ?? '-'}ms)`
-                                            : `${item.domain} (探测失败)`}
+                                            : `${item.domain} (${t('wizard.probeFailed')})`}
                                         </SelectItem>
                                       ))}
                                     </SelectContent>
@@ -1224,18 +1225,18 @@ export function InboundWizard({
                                     {realityDomainsLoading && (
                                       <Loader2 className='mr-2 h-3 w-3 animate-spin' />
                                     )}
-                                    重新探测
+                                    {t('wizard.reprobeBtn')}
                                   </Button>
                                 </div>
                               )}
 
-                              {/* 没有可用域名时显示手动输入 */}
+                              {/* Manual input when no domains available */}
                               {!realityDomainsLoading &&
                                 !hasAvailableDomains && (
                                   <div className='space-y-2'>
-                                    <Label>目标域名</Label>
+                                    <Label>{t('wizard.targetDomain')}</Label>
                                     <Input
-                                      placeholder='例如: www.microsoft.com'
+                                      placeholder='www.microsoft.com'
                                       value={manualRealityDomain}
                                       onChange={(e) =>
                                         handleManualRealityDomain(
@@ -1257,17 +1258,17 @@ export function InboundWizard({
                                         {realityDomainsLoading && (
                                           <Loader2 className='mr-2 h-3 w-3 animate-spin' />
                                         )}
-                                        重新探测域名
+                                        {t('wizard.reprobeDomain')}
                                       </Button>
                                     )}
                                   </div>
                                 )}
 
                               <div className='space-y-2'>
-                                <Label>自定义域名</Label>
+                                <Label>{t('wizard.customDomain')}</Label>
                                 <div className='flex gap-2'>
                                   <Input
-                                    placeholder='输入域名，如 www.microsoft.com'
+                                    placeholder={t('wizard.customDomainPlaceholder')}
                                     value={customDomainInput}
                                     onChange={(e) =>
                                       setCustomDomainInput(e.target.value)
@@ -1291,7 +1292,7 @@ export function InboundWizard({
                                     {customDomainProbing ? (
                                       <Loader2 className='h-4 w-4 animate-spin' />
                                     ) : (
-                                      '探测'
+                                      t('wizard.probe')
                                     )}
                                   </Button>
                                 </div>
@@ -1303,18 +1304,18 @@ export function InboundWizard({
                         {shouldShowUserManagement ? (
                           <Card>
                             <CardHeader>
-                              <CardTitle>用户管理</CardTitle>
+                              <CardTitle>{t('wizard.userManagement')}</CardTitle>
                               <CardDescription>
                                 {selectedProtocol === 'Socks5' ||
                                 selectedProtocol === 'HTTP'
-                                  ? '账户配置'
-                                  : '客户端配置'}
+                                  ? t('wizard.accountConfig')
+                                  : t('wizard.clientConfig')}
                               </CardDescription>
                             </CardHeader>
                             <CardContent>
                               {frequentUsers.length > 0 && (
                                 <div className='mb-3 space-y-1'>
-                                  <Label className='text-muted-foreground text-xs'>常用用户</Label>
+                                  <Label className='text-muted-foreground text-xs'>{t('wizard.frequentUsers')}</Label>
                                   <div className='flex flex-wrap gap-1'>
                                     {frequentUsers.map((user) => (
                                       <Button
@@ -1334,8 +1335,8 @@ export function InboundWizard({
                                 label={
                                   selectedProtocol === 'Socks5' ||
                                   selectedProtocol === 'HTTP'
-                                    ? '账户'
-                                    : '用户'
+                                    ? t('inbounds.accounts')
+                                    : t('inbounds.users')
                                 }
                                 fields={clientFieldsWithFlow}
                                 values={
@@ -1356,8 +1357,8 @@ export function InboundWizard({
                                 addButtonText={
                                   selectedProtocol === 'Socks5' ||
                                   selectedProtocol === 'HTTP'
-                                    ? '添加账户'
-                                    : '添加用户'
+                                    ? t('inbounds.addAccount')
+                                    : t('inbounds.addUser')
                                 }
                                 showUserSelect={
                                   selectedProtocol === 'VLESS' ||
@@ -1379,22 +1380,22 @@ export function InboundWizard({
                         ) : (
                           <Card>
                             <CardHeader>
-                              <CardTitle>简易模式</CardTitle>
+                              <CardTitle>{t('wizard.simpleModeTitle')}</CardTitle>
                               <CardDescription>
-                                当前协议无需用户配置，使用默认参数即可提交
+                                {t('wizard.simpleModeDesc')}
                               </CardDescription>
                             </CardHeader>
                           </Card>
                         )}
                       </div>
 
-                      {/* 右侧 JSON 预览 */}
+                      {/* Right-side JSON preview */}
                       <div className='sticky top-4 hidden w-[380px] flex-shrink-0 self-start md:block'>
                         <Card>
                           <CardHeader>
-                            <CardTitle>JSON 预览</CardTitle>
+                            <CardTitle>{t('wizard.jsonPreview')}</CardTitle>
                             <CardDescription>
-                              实时生成的入站配置
+                              {t('wizard.realtimeInboundConfig')}
                             </CardDescription>
                           </CardHeader>
                           <CardContent>
@@ -1415,7 +1416,7 @@ export function InboundWizard({
                       </div>
                     </div>
 
-                    {/* 移动端 JSON 预览浮动按钮 */}
+                    {/* Mobile JSON preview FAB */}
                     <Button
                       variant='outline'
                       size='icon'
@@ -1425,15 +1426,15 @@ export function InboundWizard({
                       <Eye className='h-5 w-5' />
                     </Button>
 
-                    {/* 移动端 JSON 预览弹窗 */}
+                    {/* Mobile JSON preview dialog */}
                     {showMobileJsonPreview && (
                       <div className='bg-background/80 fixed inset-0 z-50 backdrop-blur-sm md:hidden'>
                         <div className='bg-background fixed inset-4 flex flex-col rounded-lg border shadow-lg'>
                           <div className='flex items-center justify-between border-b p-4'>
                             <div>
-                              <h3 className='font-semibold'>JSON 预览</h3>
+                              <h3 className='font-semibold'>{t('wizard.jsonPreview')}</h3>
                               <p className='text-muted-foreground text-sm'>
-                                实时生成的入站配置
+                                {t('wizard.realtimeInboundConfig')}
                               </p>
                             </div>
                             <Button
@@ -1466,17 +1467,17 @@ export function InboundWizard({
               })()
             ) : (
               <>
-                {/* 左右分栏布局：左侧表单展开，右侧JSON预览固定 */}
+                {/* Two-column layout: left form, right JSON preview */}
                 <div className='flex gap-6'>
-                  {/* 左侧表单区域 */}
+                  {/* Left form area */}
                   <div className='min-w-0 flex-1'>
                     <div className='grid grid-cols-1 gap-6 xl:grid-cols-2'>
                       {/* Common Fields */}
                       <Card>
                         <CardHeader>
-                          <CardTitle>通用配置</CardTitle>
+                          <CardTitle>{t('wizard.commonConfig')}</CardTitle>
                           <CardDescription>
-                            适用于所有入站的基础配置
+                            {t('wizard.commonConfigDesc')}
                           </CardDescription>
                         </CardHeader>
                         <CardContent className='space-y-4'>
@@ -1497,12 +1498,12 @@ export function InboundWizard({
                       {shouldShowUserManagement && (
                         <Card>
                           <CardHeader>
-                            <CardTitle>用户管理</CardTitle>
+                            <CardTitle>{t('wizard.userManagement')}</CardTitle>
                             <CardDescription>
                               {selectedProtocol === 'Socks5' ||
                               selectedProtocol === 'HTTP'
-                                ? '账户配置'
-                                : '客户端配置'}
+                                ? t('wizard.accountConfig')
+                                : t('wizard.clientConfig')}
                             </CardDescription>
                           </CardHeader>
                           <CardContent>
@@ -1510,8 +1511,8 @@ export function InboundWizard({
                               label={
                                 selectedProtocol === 'Socks5' ||
                                 selectedProtocol === 'HTTP'
-                                  ? '账户'
-                                  : '用户'
+                                  ? t('inbounds.accounts')
+                                  : t('inbounds.users')
                               }
                               fields={clientFieldsWithFlow}
                               values={
@@ -1532,8 +1533,8 @@ export function InboundWizard({
                               addButtonText={
                                 selectedProtocol === 'Socks5' ||
                                 selectedProtocol === 'HTTP'
-                                  ? '添加账户'
-                                  : '添加用户'
+                                  ? t('inbounds.addAccount')
+                                  : t('inbounds.addUser')
                               }
                               showUserSelect={
                                 selectedProtocol === 'VLESS' ||
@@ -1558,9 +1559,9 @@ export function InboundWizard({
                       {currentSecurityFields.length > 0 && (
                         <Card>
                           <CardHeader>
-                            <CardTitle>安全协议配置</CardTitle>
+                            <CardTitle>{t('wizard.securityConfig')}</CardTitle>
                             <CardDescription>
-                              {selectedSecurity} 安全设置
+                              {selectedSecurity} {t('wizard.securitySettings')}
                             </CardDescription>
                           </CardHeader>
                           <CardContent className='space-y-4'>
@@ -1580,10 +1581,10 @@ export function InboundWizard({
                                     {realityDomainsLoading && (
                                       <Loader2 className='mr-2 h-4 w-4 animate-spin' />
                                     )}
-                                    我要偷自己
+                                    {t('wizard.stealSelf')}
                                   </Button>
                                   <p className='text-muted-foreground text-xs'>
-                                    读取所有服务器配置域名，并由当前服务器探测延迟
+                                    {t('wizard.stealSelfDesc')}
                                   </p>
                                 </div>
 
@@ -1593,7 +1594,7 @@ export function InboundWizard({
                                     onValueChange={handleSelectRealityDomain}
                                   >
                                     <SelectTrigger>
-                                      <SelectValue placeholder='选择低延迟域名（已按延迟排序）' />
+                                      <SelectValue placeholder={t('wizard.selectLowLatencyDomain')} />
                                     </SelectTrigger>
                                     <SelectContent>
                                       {realityDomainOptions.map((item) => (
@@ -1604,7 +1605,7 @@ export function InboundWizard({
                                         >
                                           {item.success
                                             ? `${item.domain} (${item.latency_ms ?? '-'}ms)`
-                                            : `${item.domain} (探测失败)`}
+                                            : `${item.domain} (${t('wizard.probeFailed')})`}
                                         </SelectItem>
                                       ))}
                                     </SelectContent>
@@ -1612,10 +1613,10 @@ export function InboundWizard({
                                 )}
 
                                 <div className='space-y-1'>
-                                  <Label className='text-xs'>自定义域名</Label>
+                                  <Label className='text-xs'>{t('wizard.customDomain')}</Label>
                                   <div className='flex gap-2'>
                                     <Input
-                                      placeholder='输入域名，如 www.microsoft.com'
+                                      placeholder={t('wizard.customDomainPlaceholder')}
                                       value={customDomainInput}
                                       onChange={(e) =>
                                         setCustomDomainInput(e.target.value)
@@ -1639,7 +1640,7 @@ export function InboundWizard({
                                       {customDomainProbing ? (
                                         <Loader2 className='h-4 w-4 animate-spin' />
                                       ) : (
-                                        '探测'
+                                        t('wizard.probe')
                                       )}
                                     </Button>
                                   </div>
@@ -1675,9 +1676,9 @@ export function InboundWizard({
                         selectedProtocol === 'VLESS') && (
                         <Card>
                           <CardHeader>
-                            <CardTitle>协议特定配置</CardTitle>
+                            <CardTitle>{t('wizard.protocolSpecificConfig')}</CardTitle>
                             <CardDescription>
-                              {selectedProtocol} 协议设置
+                              {selectedProtocol} {t('wizard.protocolSettings')}
                             </CardDescription>
                           </CardHeader>
                           <CardContent className='space-y-4'>
@@ -1734,9 +1735,9 @@ export function InboundWizard({
                       {currentTransportFields.length > 0 && (
                         <Card>
                           <CardHeader>
-                            <CardTitle>传输协议配置</CardTitle>
+                            <CardTitle>{t('wizard.transportConfig')}</CardTitle>
                             <CardDescription>
-                              {selectedTransport} 传输协议设置
+                              {selectedTransport} {t('wizard.transportSettings')}
                             </CardDescription>
                           </CardHeader>
                           <CardContent className='space-y-4'>
@@ -1756,12 +1757,12 @@ export function InboundWizard({
                     </div>
                   </div>
 
-                  {/* 右侧 JSON 预览 - sticky 定位，随滚动固定在可视区域 */}
+                  {/* Right-side JSON preview - sticky positioned */}
                   <div className='sticky top-4 hidden w-[380px] flex-shrink-0 self-start md:block'>
                     <Card>
                       <CardHeader>
-                        <CardTitle>JSON 预览</CardTitle>
-                        <CardDescription>实时生成的入站配置</CardDescription>
+                        <CardTitle>{t('wizard.jsonPreview')}</CardTitle>
+                        <CardDescription>{t('wizard.realtimeInboundConfig')}</CardDescription>
                       </CardHeader>
                       <CardContent>
                         <pre className='max-h-[60vh] overflow-auto rounded bg-gray-50 p-4 text-xs dark:bg-gray-900'>
@@ -1781,7 +1782,7 @@ export function InboundWizard({
                   </div>
                 </div>
 
-                {/* 移动端 JSON 预览浮动按钮 - 固定垂直居中 */}
+                {/* Mobile JSON preview FAB */}
                 <Button
                   variant='outline'
                   size='icon'
@@ -1791,15 +1792,15 @@ export function InboundWizard({
                   <Eye className='h-5 w-5' />
                 </Button>
 
-                {/* 移动端 JSON 预览弹窗 */}
+                {/* Mobile JSON preview dialog */}
                 {showMobileJsonPreview && (
                   <div className='bg-background/80 fixed inset-0 z-50 backdrop-blur-sm md:hidden'>
                     <div className='bg-background fixed inset-4 flex flex-col rounded-lg border shadow-lg'>
                       <div className='flex items-center justify-between border-b p-4'>
                         <div>
-                          <h3 className='font-semibold'>JSON 预览</h3>
+                          <h3 className='font-semibold'>{t('wizard.jsonPreview')}</h3>
                           <p className='text-muted-foreground text-sm'>
-                            实时生成的入站配置
+                            {t('wizard.realtimeInboundConfig')}
                           </p>
                         </div>
                         <Button
@@ -1835,7 +1836,7 @@ export function InboundWizard({
       {/* Action Buttons */}
       <div className='flex justify-end gap-3 border-t pt-4'>
         <Button variant='outline' onClick={onCancel} type='button'>
-          取消
+          {tc('actions.cancel')}
         </Button>
         {selectedProtocol &&
           selectedTransport &&
@@ -1847,7 +1848,7 @@ export function InboundWizard({
                 needsServerSelection && internalSelectedServerId === null
               }
             >
-              提交配置
+              {t('wizard.submitConfig')}
             </Button>
           )}
       </div>
@@ -1856,9 +1857,9 @@ export function InboundWizard({
       <Dialog open={showSSLSetupDialog} onOpenChange={setShowSSLSetupDialog}>
         <DialogContent className='max-w-md'>
           <DialogHeader>
-            <DialogTitle>SSL 配置</DialogTitle>
+            <DialogTitle>{t('wizard.sslConfig')}</DialogTitle>
             <DialogDescription>
-              以下服务器 443 端口不可用，需要配置 SSL 证书与 Nginx 443 端口
+              {t('wizard.sslConfigDesc')}
             </DialogDescription>
           </DialogHeader>
           <div className='max-h-[40vh] space-y-3 overflow-auto'>
@@ -1892,25 +1893,25 @@ export function InboundWizard({
                           disabled={anySSLSetupLoading}
                         >
                           <ShieldCheck className='mr-1 h-3.5 w-3.5' />
-                          配置
+                          {t('wizard.configure')}
                         </Button>
                       )}
                       {status === 'loading' && (
                         <Button size='sm' variant='outline' disabled>
                           <Loader2 className='mr-1 h-3.5 w-3.5 animate-spin' />
-                          配置中
+                          {t('wizard.configuring')}
                         </Button>
                       )}
                       {status === 'success' && (
                         <span className='inline-flex items-center text-sm text-green-600'>
                           <CheckCircle className='mr-1 h-3.5 w-3.5' />
-                          完成
+                          {t('wizard.done')}
                         </span>
                       )}
                       {status === 'error' && (
                         <span className='inline-flex items-center text-sm text-red-600'>
                           <XCircle className='mr-1 h-3.5 w-3.5' />
-                          失败
+                          {t('wizard.failed')}
                         </span>
                       )}
                     </div>
@@ -1924,10 +1925,10 @@ export function InboundWizard({
                 {anySSLSetupLoading && (
                   <Loader2 className='mr-2 h-4 w-4 animate-spin' />
                 )}
-                一键配置全部
+                {t('wizard.oneClickSetup')}
               </Button>
             ) : (
-              <Button onClick={handleSSLSetupDone}>重新探测</Button>
+              <Button onClick={handleSSLSetupDone}>{t('wizard.reprobeAfterSetup')}</Button>
             )}
           </DialogFooter>
         </DialogContent>

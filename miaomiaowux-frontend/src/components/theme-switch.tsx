@@ -1,9 +1,11 @@
 import { useEffect } from 'react'
 import { Moon, Sun, SunMoon } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { useTheme } from '@/context/theme-provider'
 import { Button } from '@/components/ui/button'
 
 export function ThemeSwitch() {
+  const { t } = useTranslation()
   const { theme, setTheme } = useTheme()
 
   /* Update theme-color meta tag
@@ -27,7 +29,7 @@ export function ThemeSwitch() {
 
   // 根据当前主题选择图标
   const Icon = theme === 'light' ? Sun : theme === 'dark' ? Moon : SunMoon
-  const label = theme === 'light' ? '浅色模式' : theme === 'dark' ? '深色模式' : '跟随系统'
+  const label = theme === 'light' ? t('theme.light') : theme === 'dark' ? t('theme.dark') : t('theme.system')
 
   return (
     <Button

@@ -1,0 +1,152 @@
+{
+  "page": {
+    "title": "SSL/TLS Certificate Management",
+    "description": "Manage ACME certificates with wildcard, DNS validation, multi-CA and auto-deploy support"
+  },
+  "masterCert": {
+    "detected": "Certificate for master domain {{domain}} has been issued",
+    "deployDesc": "After deployment, Nginx will be auto-installed with SSL configured and HTTPS enabled",
+    "deploying": "Deploying...",
+    "deployToMaster": "Deploy to Master",
+    "deploySuccess": "Master certificate deployed, redirecting to HTTPS",
+    "deployFailed": "Deployment failed"
+  },
+  "https": {
+    "enable": "Enable HTTPS",
+    "enableTitle": "Enable HTTPS Access",
+    "enableDesc": "This will install Nginx and set up a reverse proxy for MiaomiaowuX, enabling HTTPS access for domain {{domain}}. Continue?",
+    "enableSuccess": "HTTPS enabled, redirecting",
+    "enableFailed": "Failed to enable",
+    "configuring": "Configuring...",
+    "confirmEnable": "Confirm Enable"
+  },
+  "buttons": {
+    "applyCert": "Apply Certificate",
+    "uploadCert": "Upload Certificate"
+  },
+  "tabs": {
+    "certList": "Certificates",
+    "dnsProviders": "DNS Providers"
+  },
+  "certTable": {
+    "title": "Certificate List",
+    "description": "All applied SSL/TLS certificates",
+    "empty": "No certificates yet, click \"Apply Certificate\" to start",
+    "columns": {
+      "domain": "Domain",
+      "ca": "CA",
+      "server": "Server",
+      "challenge": "Challenge",
+      "status": "Status",
+      "expiry": "Expiry",
+      "deploy": "Deploy",
+      "autoRenew": "Auto Renew",
+      "autoDeploy": "Auto Deploy",
+      "actions": "Actions"
+    }
+  },
+  "status": {
+    "valid": "Valid",
+    "pending": "Pending",
+    "expired": "Expired",
+    "failed": "Failed"
+  },
+  "expiry": {
+    "expired": "Expired",
+    "daysLeft": "{{days}} days left"
+  },
+  "tooltips": {
+    "reapply": "Re-apply",
+    "manualRenew": "Manual Renew",
+    "deployCert": "Deploy Certificate"
+  },
+  "createDialog": {
+    "title": "Apply SSL/TLS Certificate",
+    "description": "Supports wildcard certificates (*.example.com), DNS validation and multi-CA",
+    "domain": "Domain *",
+    "domainHint": "Wildcard certificates (*.example.com) require DNS validation",
+    "email": "Email *",
+    "caProvider": "CA Provider",
+    "targetServer": "Target Server",
+    "selectServer": "Select Server",
+    "masterLocal": "Master (Local)",
+    "challengeMode": "Challenge Mode",
+    "challengeDns": "DNS-01 (Supports wildcard certificates)",
+    "challengeStandalone": "Standalone (Requires stopping port 80 service)",
+    "challengeWebroot": "Webroot (Write to Nginx directory)",
+    "webrootPath": "Webroot Path",
+    "dnsProvider": "DNS Provider",
+    "selectDnsProvider": "Select DNS Provider",
+    "dnsProviderHint": "Please add DNS API credentials in the \"DNS Providers\" tab first",
+    "certFilePath": "Certificate File Path",
+    "keyFilePath": "Private Key File Path",
+    "autoRenew": "Auto Renew",
+    "autoDeploy": "Auto Deploy",
+    "autoDeployDesc": "Auto-deploy and reload service after renewal or new server installation",
+    "applying": "Applying...",
+    "apply": "Apply Certificate"
+  },
+  "dnsProviderTable": {
+    "title": "DNS Providers",
+    "description": "Manage DNS API credentials for DNS-01 validation of wildcard certificates",
+    "addProvider": "Add Provider",
+    "empty": "No DNS providers yet, please add one to support wildcard certificate applications",
+    "columns": {
+      "name": "Name",
+      "type": "Type",
+      "createdAt": "Created",
+      "actions": "Actions"
+    }
+  },
+  "dnsProviderDialog": {
+    "title": "Add DNS Provider",
+    "description": "Configure DNS API credentials for DNS-01 validation",
+    "name": "Name",
+    "namePlaceholder": "My API Credentials",
+    "providerType": "Provider Type",
+    "apiCredentials": "API Credentials (JSON)",
+    "requiredFields": "Required fields: {{fields}}",
+    "adding": "Adding..."
+  },
+  "deleteDialog": {
+    "title": "Confirm Delete Certificate",
+    "description": "Are you sure you want to delete the certificate for domain <strong>{{domain}}</strong>? This action cannot be undone."
+  },
+  "deployDialog": {
+    "title": "Deploy Certificate",
+    "description": "Deploy certificate <strong>{{domain}}</strong> to master server and all remote servers",
+    "certFilePath": "Certificate File Path",
+    "keyFilePath": "Private Key File Path",
+    "deploying": "Deploying...",
+    "confirmDeploy": "Confirm Deploy"
+  },
+  "uploadDialog": {
+    "title": "Upload Certificate",
+    "description": "Manually upload SSL/TLS certificate, paste PEM format certificate and private key content",
+    "apiUploadTitle": "API Upload",
+    "apiUploadDesc": "You can also upload certificates via API Token: POST /api/admin/certificates/upload, add Authorization: Bearer <API Token> header, Body is JSON: {\"domain\": \"example.com\", \"cert_pem\": \"<base64>\", \"key_pem\": \"<base64>\"}. API Token can be obtained in system settings.",
+    "domain": "Domain *",
+    "certContent": "Certificate Content (PEM) *",
+    "keyContent": "Private Key Content (PEM) *",
+    "uploading": "Uploading...",
+    "uploadCert": "Upload Certificate"
+  },
+  "toast": {
+    "certSubmitted": "Certificate application submitted",
+    "certRenewSubmitted": "Certificate renewal submitted",
+    "certDeleted": "Certificate deleted",
+    "certDeployed": "Certificate deployed to master server and all remote servers",
+    "certUploaded": "Certificate uploaded successfully",
+    "dnsProviderAdded": "DNS provider added",
+    "dnsProviderDeleted": "DNS provider deleted",
+    "fillDomainEmail": "Please fill in domain and email",
+    "dnsProviderRequired": "DNS validation mode requires selecting a DNS provider",
+    "fillNameCredentials": "Please fill in name and credentials",
+    "invalidJson": "Invalid credentials format, please enter valid JSON",
+    "fillDomainCertKey": "Please fill in domain, certificate and private key"
+  },
+  "dnsProviderTypes": {
+    "alidns": "Alibaba Cloud DNS",
+    "tencentcloud": "Tencent Cloud DNS"
+  }
+}

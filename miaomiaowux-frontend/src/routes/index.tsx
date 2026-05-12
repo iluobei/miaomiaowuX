@@ -1,5 +1,6 @@
 // @ts-nocheck
 import { useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useQuery } from '@tanstack/react-query'
 import { createFileRoute, redirect } from '@tanstack/react-router'
 import {
@@ -191,6 +192,7 @@ function DashboardPage() {
 }
 
 function UserDashboard() {
+  const { t } = useTranslation('dashboard')
   const { auth } = useAuthStore()
 
   const numberFormatter = useMemo(
@@ -264,11 +266,11 @@ function UserDashboard() {
     if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
       try {
         await navigator.clipboard.writeText(urlText)
-        toast.success(`${clientName} 订阅链接已复制`)
+        toast.success(t('user.subscribe.linkCopied', { client: clientName }))
         return
       } catch (_) { /* fall through */ }
     }
-    toast.error('复制失败(需要https)，请手动复制')
+    toast.error(t('user.subscribe.copyFailed'))
   }
 
   const dateFormatter = useMemo(
@@ -279,11 +281,11 @@ function UserDashboard() {
   const metrics = useMemo(() => data?.metrics ?? {}, [data?.metrics])
 
   const cards = useMemo(() => [
-    { title: '总流量配额', description: '您的可用总配额', value: formatMetric(metrics.total_limit_gb, numberFormatter), icon: TrendingUp },
-    { title: '已用流量', description: '您的累计消耗', value: formatMetric(metrics.total_used_gb, numberFormatter), icon: Activity },
-    { title: '剩余流量', description: '仍可分配的余量', value: formatMetric(metrics.total_remaining_gb, numberFormatter), icon: HardDrive },
-    { title: '使用率', description: '累计使用占比', value: formatPercentage(metrics.usage_percentage, numberFormatter), progress: Number(metrics.usage_percentage ?? 0), icon: PieChart },
-  ], [metrics, numberFormatter])
+    { title: t('user.stats.totalQuota'), description: t('user.stats.totalQuotaDesc'), value: formatMetric(metrics.total_limit_gb, numberFormatter), icon: TrendingUp },
+    { title: t('user.stats.usedTraffic'), description: t('user.stats.usedTrafficDesc'), value: formatMetric(metrics.total_used_gb, numberFormatter), icon: Activity },
+    { title: t('user.stats.remainingTraffic'), description: t('user.stats.remainingTrafficDesc'), value: formatMetric(metrics.total_remaining_gb, numberFormatter), icon: HardDrive },
+    { title: t('user.stats.usageRate'), description: t('user.stats.usageRateDesc'), value: formatPercentage(metrics.usage_percentage, numberFormatter), progress: Number(metrics.usage_percentage ?? 0), icon: PieChart },
+  ], [metrics, numberFormatter, t])
 
   const chartData = useMemo(() => {
     return (data?.history ?? []).map((item: any) => ({
@@ -327,7 +329,7 @@ function UserDashboard() {
                     {typeof progress === 'number' && !Number.isNaN(progress) ? (
                       <div className="mt-4 space-y-2">
                         <Progress value={Math.min(Math.max(progress, 0), 100)} max={100} />
-                        <div className="text-xs text-muted-foreground">已使用 {numberFormatter.format(progress)}%</div>
+                        <div className="text-xs text-muted-foreground">{t('user.stats.usedPercent', { percent: numberFormatter.format(progress) })}</div>
                       </div>
                     ) : null}
                   </CardContent>
@@ -339,8 +341,8 @@ function UserDashboard() {
           {subscribeFiles.length === 0 ? (
             <Card className="col-span-full border-dashed shadow-none">
               <CardHeader className="py-4">
-                <CardTitle className="text-base">暂无可用订阅</CardTitle>
-                <CardDescription>管理员尚未为您分配套餐或订阅链接，请联系管理员。</CardDescription>
+                <CardTitle className="text-base">{t('user.subscribe.noSubscriptions')}</CardTitle>
+                <CardDescription>{t('user.subscribe.noSubscriptionsDesc')}</CardDescription>
               </CardHeader>
             </Card>
           ) : subscribeFiles.map((file) => {
@@ -353,7 +355,7 @@ function UserDashboard() {
                   <button
                     onClick={() => setQrValue(displayURL)}
                     className="bg-primary/10 text-primary hover:bg-primary/20 flex size-10 shrink-0 cursor-pointer items-center justify-center rounded-lg transition-all hover:scale-110 active:scale-95"
-                    title="点击显示二维码"
+                    title={t('user.subscribe.showQrCode')}
                   >
                     <QrCode className="size-5" />
                   </button>
@@ -362,10 +364,10 @@ function UserDashboard() {
                       <span className="truncate text-sm font-semibold" title={file.name}>{file.name}</span>
                       {file.expire_at ? (
                         new Date(file.expire_at) < new Date()
-                          ? <span className="inline-flex shrink-0 items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold bg-destructive text-destructive-foreground">已过期</span>
-                          : <span className="inline-flex shrink-0 items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold">到期: {dateFormatter.format(new Date(file.expire_at))}</span>
+                          ? <span className="inline-flex shrink-0 items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold bg-destructive text-destructive-foreground">{t('user.subscribe.expired')}</span>
+                          : <span className="inline-flex shrink-0 items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold">{t('user.subscribe.expireAt', { date: dateFormatter.format(new Date(file.expire_at)) })}</span>
                       ) : (
-                        <span className="inline-flex shrink-0 items-center rounded-full border px-2 py-0.5 text-[10px] text-muted-foreground">永久</span>
+                        <span className="inline-flex shrink-0 items-center rounded-full border px-2 py-0.5 text-[10px] text-muted-foreground">{t('user.subscribe.permanent')}</span>
                       )}
                     </div>
                     <div className="bg-muted/40 rounded-md border px-2 py-1 font-mono text-xs break-all">{displayURL}</div>
@@ -374,7 +376,7 @@ function UserDashboard() {
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button size="sm" className="transition-transform hover:-translate-y-0.5 hover:shadow-md active:translate-y-0.5 active:scale-95">
-                          <Copy className="mr-1 size-3.5" />复制<ChevronDown className="ml-1 size-3.5" />
+                          <Copy className="mr-1 size-3.5" />{t('user.subscribe.copy')}<ChevronDown className="ml-1 size-3.5" />
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end" className="w-56">
@@ -389,7 +391,7 @@ function UserDashboard() {
                       </DropdownMenuContent>
                     </DropdownMenu>
                     <Button size="sm" variant="secondary" className="transition-transform hover:-translate-y-0.5 hover:shadow-md active:translate-y-0.5 active:scale-95" asChild>
-                      <a href={clashURL}><Download className="mr-1 size-3.5" />导入</a>
+                      <a href={clashURL}><Download className="mr-1 size-3.5" />{t('user.subscribe.import')}</a>
                     </Button>
                   </div>
                 </CardContent>
@@ -403,8 +405,8 @@ function UserDashboard() {
         <Dialog open={Boolean(qrValue)} onOpenChange={(open) => { if (!open) setQrValue(null) }}>
           <DialogContent className="sm:max-w-sm">
             <DialogHeader>
-              <DialogTitle>订阅二维码</DialogTitle>
-              <DialogDescription>使用手机扫描二维码快速导入订阅链接。</DialogDescription>
+              <DialogTitle>{t('user.qrDialog.title')}</DialogTitle>
+              <DialogDescription>{t('user.qrDialog.description')}</DialogDescription>
             </DialogHeader>
             {qrValue ? (
               <div className="flex flex-col items-center gap-4">
@@ -424,11 +426,12 @@ function UserDashboard() {
 function TrafficChart({ isLoading, isError, hasHistory, chartData, numberFormatter }: {
   isLoading: boolean; isError: boolean; hasHistory: boolean; chartData: any[]; numberFormatter: Intl.NumberFormat
 }) {
+  const { t } = useTranslation('dashboard')
   return (
     <Card className="mt-8">
       <CardHeader>
-        <CardTitle>每日流量消耗</CardTitle>
-        <CardDescription>最近记录的日度流量趋势</CardDescription>
+        <CardTitle>{t('chart.title')}</CardTitle>
+        <CardDescription>{t('chart.description')}</CardDescription>
       </CardHeader>
       <CardContent className="pt-0">
         <div className="h-80">
@@ -438,7 +441,7 @@ function TrafficChart({ isLoading, isError, hasHistory, chartData, numberFormatt
             </div>
           ) : !hasHistory ? (
             <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
-              {isError ? '数据加载失败，请稍后重试。' : '暂无历史记录。'}
+              {isError ? t('chart.loadFailed') : t('chart.noHistory')}
             </div>
           ) : (
             <ResponsiveContainer width="100%" height="100%">
@@ -456,12 +459,12 @@ function TrafficChart({ isLoading, isError, hasHistory, chartData, numberFormatt
                 <YAxis tickLine={false} axisLine={false} tickFormatter={(value: number) => `${numberFormatter.format(value)}`} className="fill-foreground" stroke="#a1a1aa" />
                 <Tooltip
                   cursor={{ stroke: '#d97757', strokeWidth: 2 }}
-                  labelFormatter={(label: string) => `日期：${chartData.find((item) => item.label === label)?.date ?? label}`}
-                  formatter={(value: number) => [`${numberFormatter.format(value)} GB`, '日消耗']}
+                  labelFormatter={(label: string) => t('chart.tooltipDate', { date: chartData.find((item) => item.label === label)?.date ?? label })}
+                  formatter={(value: number) => [`${numberFormatter.format(value)} GB`, t('chart.dailyUsage')]}
                   contentStyle={{ backgroundColor: 'hsl(var(--popover))', border: '1px solid hsl(var(--border))', borderRadius: 'var(--radius)' }}
                   labelStyle={{ color: 'hsl(var(--foreground))' }}
                 />
-                <Area type="monotone" dataKey="used" stroke="#d97757" fill="url(#dailyUsageGradient)" strokeWidth={3} name="日消耗" filter="url(#shadow)" />
+                <Area type="monotone" dataKey="used" stroke="#d97757" fill="url(#dailyUsageGradient)" strokeWidth={3} name={t('chart.dailyUsage')} filter="url(#shadow)" />
               </AreaChart>
             </ResponsiveContainer>
           )}
@@ -472,6 +475,7 @@ function TrafficChart({ isLoading, isError, hasHistory, chartData, numberFormatt
 }
 
 function AdminDashboard() {
+  const { t } = useTranslation('dashboard')
   const { auth } = useAuthStore()
 
   const numberFormatter = useMemo(
@@ -721,11 +725,11 @@ function AdminDashboard() {
   const metrics = useMemo(() => data?.metrics ?? {}, [data?.metrics])
 
   const cards = useMemo(() => [
-    { title: '总流量配额', description: '所有节点的总配额', value: formatMetric(metrics.total_limit_gb, numberFormatter), icon: TrendingUp },
-    { title: '已用流量', description: '所有节点累计消耗', value: formatMetric(metrics.total_used_gb, numberFormatter), icon: Activity },
-    { title: '剩余流量', description: '仍可分配的余量', value: formatMetric(metrics.total_remaining_gb, numberFormatter), icon: HardDrive },
-    { title: '实时网速', description: '所有服务器汇总', value: '', speedData: { upload: aggregatedSpeed.upload, download: aggregatedSpeed.download }, icon: Activity },
-  ], [metrics, numberFormatter, aggregatedSpeed])
+    { title: t('admin.stats.totalQuota'), description: t('admin.stats.totalQuotaDesc'), value: formatMetric(metrics.total_limit_gb, numberFormatter), icon: TrendingUp },
+    { title: t('admin.stats.usedTraffic'), description: t('admin.stats.usedTrafficDesc'), value: formatMetric(metrics.total_used_gb, numberFormatter), icon: Activity },
+    { title: t('admin.stats.remainingTraffic'), description: t('admin.stats.remainingTrafficDesc'), value: formatMetric(metrics.total_remaining_gb, numberFormatter), icon: HardDrive },
+    { title: t('admin.stats.realtimeSpeed'), description: t('admin.stats.realtimeSpeedDesc'), value: '', speedData: { upload: aggregatedSpeed.upload, download: aggregatedSpeed.download }, icon: Activity },
+  ], [metrics, numberFormatter, aggregatedSpeed, t])
 
   const chartData = useMemo(() => {
     return (data?.history ?? []).map((item: any) => ({ date: item.date, label: item.date.slice(5), used: Number(item.used_gb ?? 0) }))
@@ -773,7 +777,7 @@ function AdminDashboard() {
         <div className="flex items-center gap-2 mt-4 mb-2">
           {(['today', 'week', 'month'] as const).map((range) => (
             <Button key={range} variant={timeRange === range ? 'default' : 'outline'} size="sm" onClick={() => setTimeRange(range)}>
-              {range === 'today' ? '今天' : range === 'week' ? '本周' : '本月'}
+              {range === 'today' ? t('admin.timeRange.today') : range === 'week' ? t('admin.timeRange.week') : t('admin.timeRange.month')}
             </Button>
           ))}
         </div>
@@ -781,8 +785,8 @@ function AdminDashboard() {
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <div>
-                <CardTitle className="text-base flex items-center gap-2"><Server className="size-4" />节点视图</CardTitle>
-                <CardDescription>按周期流量排序</CardDescription>
+                <CardTitle className="text-base flex items-center gap-2"><Server className="size-4" />{t('admin.nodeView.title')}</CardTitle>
+                <CardDescription>{t('admin.nodeView.sortDesc')}</CardDescription>
               </div>
               <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { setFullscreenView('nodes'); setFullscreenPage(0) }}><Maximize2 className="h-4 w-4" /></Button>
             </CardHeader>
@@ -790,17 +794,17 @@ function AdminDashboard() {
               {isTrafficLoading ? (
                 <div className="space-y-3">{Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}</div>
               ) : nodeTrafficList.length === 0 ? (
-                <div className="text-sm text-muted-foreground text-center py-6">暂无数据</div>
+                <div className="text-sm text-muted-foreground text-center py-6">{t('admin.nodeView.noData')}</div>
               ) : (
                 <div className="space-y-1">
                   {nodeTrafficList.slice(0, PREVIEW_COUNT).map((node) => (
                     <div key={node.tag} className="flex items-center justify-between rounded-md px-3 py-2 text-sm cursor-pointer transition hover:bg-muted"
                       onClick={() => { setDrilldown({ type: 'node', key: node.tag, label: node.display_name }); setDrilldownPage(0) }}>
-                      <div className="truncate flex-1 min-w-0 mr-3 font-medium" title={`${node.display_name}\n服务器: ${node.server_names.join(', ')}`}>{node.display_name}</div>
+                      <div className="truncate flex-1 min-w-0 mr-3 font-medium" title={`${node.display_name}\n${t('admin.nodeView.serverTooltip', { servers: node.server_names.join(', ') })}`}>{node.display_name}</div>
                       <div className="shrink-0 text-muted-foreground text-xs">↑{formatBytes(node.uplink)} ↓{formatBytes(node.downlink)}</div>
                     </div>
                   ))}
-                  {nodeTrafficList.length > PREVIEW_COUNT && <div className="text-xs text-muted-foreground text-center pt-2">共 {nodeTrafficList.length} 个节点，点击右上角查看全部</div>}
+                  {nodeTrafficList.length > PREVIEW_COUNT && <div className="text-xs text-muted-foreground text-center pt-2">{t('admin.nodeView.totalNodes', { count: nodeTrafficList.length })}</div>}
                 </div>
               )}
             </CardContent>
@@ -809,8 +813,8 @@ function AdminDashboard() {
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <div>
-                <CardTitle className="text-base flex items-center gap-2"><Users className="size-4" />用户视图</CardTitle>
-                <CardDescription>按周期流量排序</CardDescription>
+                <CardTitle className="text-base flex items-center gap-2"><Users className="size-4" />{t('admin.userView.title')}</CardTitle>
+                <CardDescription>{t('admin.userView.sortDesc')}</CardDescription>
               </div>
               <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { setFullscreenView('users'); setFullscreenPage(0) }}><Maximize2 className="h-4 w-4" /></Button>
             </CardHeader>
@@ -818,7 +822,7 @@ function AdminDashboard() {
               {isTrafficLoading ? (
                 <div className="space-y-3">{Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}</div>
               ) : userTrafficList.length === 0 ? (
-                <div className="text-sm text-muted-foreground text-center py-6">暂无数据</div>
+                <div className="text-sm text-muted-foreground text-center py-6">{t('admin.userView.noData')}</div>
               ) : (
                 <div className="space-y-1">
                   {userTrafficList.slice(0, PREVIEW_COUNT).map((user) => {
@@ -835,7 +839,7 @@ function AdminDashboard() {
                       </div>
                     )
                   })}
-                  {userTrafficList.length > PREVIEW_COUNT && <div className="text-xs text-muted-foreground text-center pt-2">共 {userTrafficList.length} 个用户，点击右上角查看全部</div>}
+                  {userTrafficList.length > PREVIEW_COUNT && <div className="text-xs text-muted-foreground text-center pt-2">{t('admin.userView.totalUsers', { count: userTrafficList.length })}</div>}
                 </div>
               )}
             </CardContent>
@@ -844,21 +848,21 @@ function AdminDashboard() {
 
         <Card className="mt-4">
           <CardHeader>
-            <CardTitle className="text-base flex items-center gap-2"><Server className="size-4" />服务器概览</CardTitle>
+            <CardTitle className="text-base flex items-center gap-2"><Server className="size-4" />{t('admin.serverOverview.title')}</CardTitle>
           </CardHeader>
           <CardContent>
             {serverOverviewList.length === 0 ? (
-              <div className="text-sm text-muted-foreground text-center py-6">暂无服务器</div>
+              <div className="text-sm text-muted-foreground text-center py-6">{t('admin.serverOverview.noServers')}</div>
             ) : (
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>服务器</TableHead>
-                    <TableHead>网速</TableHead>
-                    <TableHead className="text-right">已用</TableHead>
-                    <TableHead className="text-right">总量</TableHead>
-                    <TableHead className="text-right">剩余</TableHead>
-                    <TableHead className="text-right">使用率</TableHead>
+                    <TableHead>{t('admin.serverOverview.columns.server')}</TableHead>
+                    <TableHead>{t('admin.serverOverview.columns.speed')}</TableHead>
+                    <TableHead className="text-right">{t('admin.serverOverview.columns.used')}</TableHead>
+                    <TableHead className="text-right">{t('admin.serverOverview.columns.total')}</TableHead>
+                    <TableHead className="text-right">{t('admin.serverOverview.columns.remaining')}</TableHead>
+                    <TableHead className="text-right">{t('admin.serverOverview.columns.usageRate')}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -870,7 +874,7 @@ function AdminDashboard() {
                         <TableCell className="font-medium">{s.name}</TableCell>
                         <TableCell className="text-xs text-muted-foreground whitespace-nowrap">↑{formatSpeed(s.upload)} ↓{formatSpeed(s.download)}</TableCell>
                         <TableCell className="text-right">{formatBytes(s.used)}</TableCell>
-                        <TableCell className="text-right">{s.limit > 0 ? formatBytes(s.limit) : '无限'}</TableCell>
+                        <TableCell className="text-right">{s.limit > 0 ? formatBytes(s.limit) : t('admin.serverOverview.unlimited')}</TableCell>
                         <TableCell className="text-right">{remaining >= 0 ? formatBytes(remaining) : '--'}</TableCell>
                         <TableCell className="text-right">{pct >= 0 ? `${pct.toFixed(1)}%` : '--'}</TableCell>
                       </TableRow>
@@ -886,7 +890,7 @@ function AdminDashboard() {
           <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
-                {fullscreenView === 'nodes' ? <><Server className="size-4" /> 节点流量</> : <><Users className="size-4" /> 用户流量</>}
+                {fullscreenView === 'nodes' ? <><Server className="size-4" /> {t('admin.dialog.nodeTraffic')}</> : <><Users className="size-4" /> {t('admin.dialog.userTraffic')}</>}
               </DialogTitle>
             </DialogHeader>
             {fullscreenView === 'nodes' ? (
@@ -903,7 +907,7 @@ function AdminDashboard() {
           <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>
-                {drilldown?.type === 'node' ? `${drilldown.label ?? drilldown.key} 的用户流量` : drilldown?.type === 'user' ? `${drilldown.key} 的节点流量` : ''}
+                {drilldown?.type === 'node' ? t('admin.dialog.nodeUserTraffic', { name: drilldown.label ?? drilldown.key }) : drilldown?.type === 'user' ? t('admin.dialog.userNodeTraffic', { name: drilldown.key }) : ''}
               </DialogTitle>
             </DialogHeader>
             <DrilldownList items={drilldownData} page={drilldownPage} onPageChange={setDrilldownPage} />
@@ -915,11 +919,12 @@ function AdminDashboard() {
 }
 
 function PaginationControls({ page, totalPages, onPageChange }: { page: number; totalPages: number; onPageChange: (p: number) => void }) {
+  const { t } = useTranslation('dashboard')
   if (totalPages <= 1) return null
   return (
     <div className="flex items-center justify-center gap-3 pt-4">
       <Button variant="outline" size="sm" disabled={page === 0} onClick={() => onPageChange(page - 1)}><ChevronLeft className="h-4 w-4" /></Button>
-      <span className="text-sm text-muted-foreground">第 {page + 1}/{totalPages} 页</span>
+      <span className="text-sm text-muted-foreground">{t('pagination.page', { current: page + 1, total: totalPages })}</span>
       <Button variant="outline" size="sm" disabled={page >= totalPages - 1} onClick={() => onPageChange(page + 1)}><ChevronRight className="h-4 w-4" /></Button>
     </div>
   )
@@ -946,12 +951,13 @@ function FullscreenNodeList({ items, page, onPageChange, onDrilldown }: {
 }) {
   const totalPages = Math.max(1, Math.ceil(items.length / PAGE_SIZE))
   const paged = items.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE)
-  if (items.length === 0) return <div className="text-sm text-muted-foreground text-center py-6">暂无数据</div>
+  const { t } = useTranslation('dashboard')
+  if (items.length === 0) return <div className="text-sm text-muted-foreground text-center py-6">{t('admin.nodeView.noData')}</div>
   return (
     <div>
       <div className="space-y-1">
         {paged.map((node) => (
-          <TrafficRow key={node.tag} label={node.display_name} tooltip={`${node.display_name}\n服务器: ${node.server_names.join(', ')}`}
+          <TrafficRow key={node.tag} label={node.display_name} tooltip={`${node.display_name}\n${t('admin.nodeView.serverTooltip', { servers: node.server_names.join(', ') })}`}
             uplink={node.uplink} downlink={node.downlink} lastUplink={node.last_uplink} lastDownlink={node.last_downlink} showSpeed={false}
             onClick={() => onDrilldown(node.tag, node.display_name)} />
         ))}
@@ -966,7 +972,8 @@ function FullscreenUserList({ items, page, onPageChange, onDrilldown }: {
 }) {
   const totalPages = Math.max(1, Math.ceil(items.length / PAGE_SIZE))
   const paged = items.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE)
-  if (items.length === 0) return <div className="text-sm text-muted-foreground text-center py-6">暂无数据</div>
+  const { t } = useTranslation('dashboard')
+  if (items.length === 0) return <div className="text-sm text-muted-foreground text-center py-6">{t('admin.userView.noData')}</div>
   return (
     <div>
       <div className="space-y-1">
@@ -983,7 +990,8 @@ function FullscreenUserList({ items, page, onPageChange, onDrilldown }: {
 function DrilldownList({ items, page, onPageChange }: { items: DrilldownItem[]; page: number; onPageChange: (p: number) => void }) {
   const totalPages = Math.max(1, Math.ceil(items.length / PAGE_SIZE))
   const paged = items.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE)
-  if (items.length === 0) return <div className="text-sm text-muted-foreground text-center py-6">暂无数据</div>
+  const { t } = useTranslation('dashboard')
+  if (items.length === 0) return <div className="text-sm text-muted-foreground text-center py-6">{t('admin.nodeView.noData')}</div>
   return (
     <div>
       <div className="space-y-1">

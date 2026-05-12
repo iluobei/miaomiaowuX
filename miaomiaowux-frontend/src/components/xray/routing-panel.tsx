@@ -1,5 +1,6 @@
 // @ts-nocheck
 import { useCallback, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { RefreshCw, Trash2, Plus, ChevronDown, GripVertical } from 'lucide-react'
@@ -32,15 +33,6 @@ import { Textarea } from '@/components/ui/textarea'
 import { api } from '@/lib/api'
 import { handleServerError } from '@/lib/handle-server-error'
 
-const QUICK_RULES = {
-  ban_bt: { name: '禁止 BT', rule: { type: 'field', protocol: ['bittorrent'], marktag: 'ban_bt', outboundTag: 'block' }, needSelectOutbound: false },
-  ban_geoip_cn: { name: '禁止访问大陆 IP', rule: { type: 'field', ip: ['geoip:cn'], marktag: 'ban_geoip_cn', outboundTag: 'block' }, needSelectOutbound: false },
-  fix_openai: { name: 'OpenAI 直连', rule: { type: 'field', domain: ['geosite:openai'], marktag: 'fix_openai', outboundTag: 'direct' }, needSelectOutbound: false },
-  ban_private: { name: '禁止内网访问', rule: { type: 'field', ip: ['geoip:private'], marktag: 'ban_private', outboundTag: 'block' }, needSelectOutbound: false },
-  rfc_emby: { name: 'RFC EMBY', rule: { type: 'field', domain: ['rfc.uhdnow.com'], network: 'tcp', marktag: 'rfc_emby' }, needSelectOutbound: true },
-  tiktok_unlock: { name: '抖音解锁', rule: { type: 'field', domain: ['geosite:tiktok'], marktag: 'tiktok_unlock' }, needSelectOutbound: true },
-}
-
 interface RoutingRule {
   type?: string; domain?: string[]; ip?: string[]; protocol?: string[]
   port?: string | number; sourcePort?: string | number; network?: string
@@ -54,21 +46,27 @@ interface RoutingPanelProps {
   isRemote: boolean
 }
 
-function getRuleDisplayInfo(rule: RoutingRule) {
+function getRuleDisplayInfo(rule: RoutingRule, t: (key: string) => string) {
   if (rule.protocol?.length) return { ruleType: 'protocol', matchCondition: rule.protocol.join(', ') }
-  if (rule.domain?.length) return { ruleType: 'domain', matchCondition: rule.domain.length > 2 ? `${rule.domain.slice(0, 2).join(', ')} 等 ${rule.domain.length} 项` : rule.domain.join(', ') }
-  if (rule.ip?.length) return { ruleType: 'ip', matchCondition: rule.ip.length > 2 ? `${rule.ip.slice(0, 2).join(', ')} 等 ${rule.ip.length} 项` : rule.ip.join(', ') }
+  if (rule.domain?.length) return { ruleType: 'domain', matchCondition: rule.domain.length > 2 ? `${rule.domain.slice(0, 2).join(', ')} +${rule.domain.length - 2}` : rule.domain.join(', ') }
+  if (rule.ip?.length) return { ruleType: 'ip', matchCondition: rule.ip.length > 2 ? `${rule.ip.slice(0, 2).join(', ')} +${rule.ip.length - 2}` : rule.ip.join(', ') }
   if (rule.inboundTag?.length) return { ruleType: 'inboundTag', matchCondition: rule.inboundTag.join(', ') }
   if (rule.port) return { ruleType: 'port', matchCondition: String(rule.port) }
-  if (rule.sourcePort) return { ruleType: 'sourcePort', matchCondition: String(rule.sourcePort) }
+  if (rule.sourcePort) return { ruleType: t('routing.sourcePort'), matchCondition: String(rule.sourcePort) }
   if (rule.network) return { ruleType: 'network', matchCondition: rule.network }
-  return { ruleType: '未知', matchCondition: '' }
+  return { ruleType: t('routing.unknown'), matchCondition: '' }
 }
 
-function getRuleFriendlyName(rule: RoutingRule) {
-  if (!rule.marktag) return null
-  const preset = Object.values(QUICK_RULES).find(p => p.rule.marktag === rule.marktag)
-  return preset ? preset.name : rule.marktag
+function useQuickRules() {
+  const { t } = useTranslation('xray')
+  return useMemo(() => ({
+    ban_bt: { name: t('routing.banBt'), rule: { type: 'field', protocol: ['bittorrent'], marktag: 'ban_bt', outboundTag: 'block' }, needSelectOutbound: false },
+    ban_geoip_cn: { name: t('routing.banGeoipCn'), rule: { type: 'field', ip: ['geoip:cn'], marktag: 'ban_geoip_cn', outboundTag: 'block' }, needSelectOutbound: false },
+    fix_openai: { name: t('routing.fixOpenai'), rule: { type: 'field', domain: ['geosite:openai'], marktag: 'fix_openai', outboundTag: 'direct' }, needSelectOutbound: false },
+    ban_private: { name: t('routing.banPrivate'), rule: { type: 'field', ip: ['geoip:private'], marktag: 'ban_private', outboundTag: 'block' }, needSelectOutbound: false },
+    rfc_emby: { name: 'RFC EMBY', rule: { type: 'field', domain: ['rfc.uhdnow.com'], network: 'tcp', marktag: 'rfc_emby' }, needSelectOutbound: true },
+    tiktok_unlock: { name: t('routing.tiktokUnlock').split(' (')[0], rule: { type: 'field', domain: ['geosite:tiktok'], marktag: 'tiktok_unlock' }, needSelectOutbound: true },
+  }), [t])
 }
 
 function outboundBadgeVariant(tag: string) {
@@ -77,13 +75,13 @@ function outboundBadgeVariant(tag: string) {
   return 'secondary' as const
 }
 
-function SortableRuleItem({ rule, index, isSelected, onClick }: {
-  rule: RoutingRule; index: number; isSelected: boolean; onClick: () => void
+function SortableRuleItem({ rule, index, isSelected, onClick, t, quickRules }: {
+  rule: RoutingRule; index: number; isSelected: boolean; onClick: () => void; t: (key: string) => string; quickRules: any
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: `rule-${index}` })
   const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.5 : 1 }
-  const { ruleType, matchCondition } = getRuleDisplayInfo(rule)
-  const friendlyName = getRuleFriendlyName(rule)
+  const { ruleType, matchCondition } = getRuleDisplayInfo(rule, t)
+  const friendlyName = rule.marktag ? (Object.values(quickRules).find((p: any) => p.rule.marktag === rule.marktag) as any)?.name || rule.marktag : null
   return (
     <div
       ref={setNodeRef} style={style}
@@ -100,13 +98,16 @@ function SortableRuleItem({ rule, index, isSelected, onClick }: {
       </span>
       <span className='text-muted-foreground text-xs'>→</span>
       <Badge variant={outboundBadgeVariant(rule.outboundTag || '')} className='shrink-0 text-xs'>
-        {rule.outboundTag || '未设置'}
+        {rule.outboundTag || t('routing.notSet')}
       </Badge>
     </div>
   )
 }
 
 export function RoutingPanel({ serverId, serverName, isRemote }: RoutingPanelProps) {
+  const { t } = useTranslation('xray')
+  const { t: tc } = useTranslation('common')
+  const QUICK_RULES = useQuickRules()
   const queryClient = useQueryClient()
 
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null)
@@ -197,8 +198,8 @@ export function RoutingPanel({ serverId, serverName, isRemote }: RoutingPanelPro
     },
     onSuccess: async (data) => {
       queryClient.invalidateQueries({ queryKey: routingQueryKey })
-      if (data.success) { await restartXray(); toast.success(isRemote ? '路由规则已添加并重启 Xray' : (data.message || '路由规则已添加')) }
-      else toast.error(data.message || '添加失败')
+      if (data.success) { await restartXray(); toast.success(isRemote ? t('routing.ruleAdded') : (data.message || t('routing.ruleAddedLocal'))) }
+      else toast.error(data.message || t('routing.addFailed'))
     },
     onError: handleServerError,
   })
@@ -210,8 +211,8 @@ export function RoutingPanel({ serverId, serverName, isRemote }: RoutingPanelPro
     },
     onSuccess: async (data) => {
       queryClient.invalidateQueries({ queryKey: routingQueryKey })
-      if (data.success) { await restartXray(); toast.success(isRemote ? '路由规则已删除并重启 Xray' : (data.message || '路由规则已删除')) }
-      else toast.error(data.message || '删除失败')
+      if (data.success) { await restartXray(); toast.success(isRemote ? t('routing.ruleDeleted') : (data.message || t('routing.ruleDeletedLocal'))) }
+      else toast.error(data.message || t('routing.deleteFailed'))
       setSelectedIndex(null)
     },
     onError: handleServerError,
@@ -219,14 +220,14 @@ export function RoutingPanel({ serverId, serverName, isRemote }: RoutingPanelPro
 
   const reorderMutation = useMutation({
     mutationFn: async (newRules: RoutingRule[]) => {
-      if (!isRemote) return { success: false, message: '本地服务器暂不支持排序' }
+      if (!isRemote) return { success: false, message: t('routing.localSortNotSupported') }
       const apiRules = rawRules.filter(r => r.outboundTag === 'api' || r.inboundTag?.includes('api'))
       return (await api.post(`/api/admin/remote/routing?server_id=${serverId}`, { action: 'set', routing: { ...routingData?.routing, rules: [...apiRules, ...newRules] } })).data
     },
     onSuccess: async (data) => {
       queryClient.invalidateQueries({ queryKey: routingQueryKey })
-      if (data.success) { await restartXray(); toast.success('规则顺序已更新并重启 Xray') }
-      else toast.error(data.message || '排序失败')
+      if (data.success) { await restartXray(); toast.success(t('routing.orderUpdated')) }
+      else toast.error(data.message || t('routing.orderFailed'))
     },
     onError: handleServerError,
   })
@@ -266,7 +267,7 @@ export function RoutingPanel({ serverId, serverName, isRemote }: RoutingPanelPro
   }
 
   const handleAddCustomRule = () => {
-    if (!customOutbound) { toast.error('请选择出站'); return }
+    if (!customOutbound) { toast.error(t('routing.selectOutboundRequired')); return }
     const rule: any = { type: 'field', outboundTag: customOutbound }
     const split = (v: string) => v.split(',').map(s => s.trim()).filter(Boolean)
     if (customDomain.trim()) rule.domain = split(customDomain)
@@ -281,7 +282,7 @@ export function RoutingPanel({ serverId, serverName, isRemote }: RoutingPanelPro
     if (customAttrs.trim()) rule.attrs = customAttrs.trim()
     if (customMarktag.trim()) rule.marktag = customMarktag.trim()
     if (!rule.domain && !rule.ip && !rule.protocol && !rule.port && !rule.sourcePort && !rule.network && !rule.source && !rule.user && !rule.inboundTag && !rule.attrs) {
-      toast.error('请至少填写一个匹配条件'); return
+      toast.error(t('routing.fillAtLeastOne')); return
     }
     addRuleMutation.mutate(rule)
     setIsCustomRuleDialogOpen(false); resetCustomForm()
@@ -289,29 +290,34 @@ export function RoutingPanel({ serverId, serverName, isRemote }: RoutingPanelPro
 
   const isLoading = routingLoading || outboundsLoading
   const selectedRule = selectedIndex !== null ? rules[selectedIndex] : null
+  const getFriendlyName = (rule: RoutingRule) => {
+    if (!rule.marktag) return null
+    const preset = Object.values(QUICK_RULES).find((p: any) => p.rule.marktag === rule.marktag) as any
+    return preset ? preset.name : rule.marktag
+  }
 
   return (
     <>
       <div className='space-y-3'>
         <div className='flex items-center justify-between'>
-          <p className='text-sm text-muted-foreground'>路由规则（共 {rules.length} 个）{isRemote && ' · 可拖拽排序'}</p>
+          <p className='text-sm text-muted-foreground'>{t('routing.routingRules', { count: rules.length })}{isRemote && ` · ${t('routing.canDragSort')}`}</p>
           <div className='flex items-center gap-2'>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button size='sm'><Plus className='size-4 mr-1' />快捷添加<ChevronDown className='size-4 ml-1' /></Button>
+                <Button size='sm'><Plus className='size-4 mr-1' />{t('routing.quickAdd')}<ChevronDown className='size-4 ml-1' /></Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align='end' className='w-56'>
-                <DropdownMenuItem onClick={() => handleQuickAdd('ban_bt')}>禁止 BT</DropdownMenuItem>
-                <DropdownMenuItem onClick={() => handleQuickAdd('ban_geoip_cn')}>禁止访问大陆 IP</DropdownMenuItem>
-                <DropdownMenuItem onClick={() => handleQuickAdd('fix_openai')}>OpenAI 直连</DropdownMenuItem>
-                <DropdownMenuItem onClick={() => handleQuickAdd('ban_private')}>禁止内网访问</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleQuickAdd('ban_bt')}>{t('routing.banBt')}</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleQuickAdd('ban_geoip_cn')}>{t('routing.banGeoipCn')}</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleQuickAdd('fix_openai')}>{t('routing.fixOpenai')}</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleQuickAdd('ban_private')}>{t('routing.banPrivate')}</DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => handleQuickAdd('rfc_emby')}>RFC EMBY (需选择出站)</DropdownMenuItem>
-                <DropdownMenuItem onClick={() => handleQuickAdd('tiktok_unlock')}>抖音解锁 (需选择出站)</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleQuickAdd('rfc_emby')}>{t('routing.rfcEmby')}</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleQuickAdd('tiktok_unlock')}>{t('routing.tiktokUnlock')}</DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
             <Button variant='outline' size='sm' onClick={() => { resetCustomForm(); setIsCustomRuleDialogOpen(true) }}>
-              <Plus className='size-4 mr-1' />自定义规则
+              <Plus className='size-4 mr-1' />{t('routing.customRule')}
             </Button>
           </div>
         </div>
@@ -319,30 +325,28 @@ export function RoutingPanel({ serverId, serverName, isRemote }: RoutingPanelPro
         {isLoading ? (
           <div className='text-center py-8'>
             <RefreshCw className='size-6 animate-spin mx-auto mb-2' />
-            <p className='text-sm text-muted-foreground'>加载中...</p>
+            <p className='text-sm text-muted-foreground'>{tc('actions.loading')}</p>
           </div>
         ) : rules.length === 0 ? (
-          <EmptyStateCard title='暂无路由规则' description='点击"快捷添加"或"自定义规则"添加' />
+          <EmptyStateCard title={t('routing.noRules')} description={t('routing.noRulesDesc')} />
         ) : (
           <div className='flex gap-3' style={{ minHeight: 300 }}>
-            {/* 左侧：规则列表 */}
             <div className='w-[40%] shrink-0 space-y-1.5 overflow-y-auto max-h-[60vh] pr-1'>
               <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
                 <SortableContext items={sortableIds} strategy={verticalListSortingStrategy}>
                   {rules.map((rule, i) => (
-                    <SortableRuleItem key={`rule-${i}`} rule={rule} index={i} isSelected={selectedIndex === i} onClick={() => setSelectedIndex(i)} />
+                    <SortableRuleItem key={`rule-${i}`} rule={rule} index={i} isSelected={selectedIndex === i} onClick={() => setSelectedIndex(i)} t={t} quickRules={QUICK_RULES} />
                   ))}
                 </SortableContext>
               </DndContext>
             </div>
-            {/* 右侧：规则详情 */}
             <div className='flex-1 min-w-0 border rounded-lg p-4 bg-card overflow-y-auto max-h-[60vh]'>
               {selectedRule ? (
                 <div className='space-y-4'>
                   <div className='flex items-center justify-between'>
-                    <h4 className='font-medium text-sm'>{getRuleFriendlyName(selectedRule) || `规则 ${selectedIndex! + 1}`}</h4>
+                    <h4 className='font-medium text-sm'>{getFriendlyName(selectedRule) || t('routing.rule', { index: selectedIndex! + 1 })}</h4>
                     <Button variant='outline' size='sm' className='h-7 text-xs text-red-600 hover:text-red-700' onClick={() => setDeletingIndex(selectedIndex)}>
-                      <Trash2 className='size-3 mr-1' />删除
+                      <Trash2 className='size-3 mr-1' />{tc('actions.delete')}
                     </Button>
                   </div>
                   <div className='space-y-2 text-sm'>
@@ -356,7 +360,7 @@ export function RoutingPanel({ serverId, serverName, isRemote }: RoutingPanelPro
                     {selectedRule.user?.length && <div><span className='text-muted-foreground'>user: </span>{selectedRule.user.join(', ')}</div>}
                     {selectedRule.inboundTag?.length && <div><span className='text-muted-foreground'>inboundTag: </span>{selectedRule.inboundTag.join(', ')}</div>}
                     {selectedRule.attrs && <div><span className='text-muted-foreground'>attrs: </span>{selectedRule.attrs}</div>}
-                    <div><span className='text-muted-foreground'>outboundTag: </span><Badge variant={outboundBadgeVariant(selectedRule.outboundTag || '')} className='text-xs'>{selectedRule.outboundTag || '未设置'}</Badge></div>
+                    <div><span className='text-muted-foreground'>outboundTag: </span><Badge variant={outboundBadgeVariant(selectedRule.outboundTag || '')} className='text-xs'>{selectedRule.outboundTag || t('routing.notSet')}</Badge></div>
                     {selectedRule.marktag && <div><span className='text-muted-foreground'>marktag: </span>{selectedRule.marktag}</div>}
                   </div>
                   <div>
@@ -365,34 +369,34 @@ export function RoutingPanel({ serverId, serverName, isRemote }: RoutingPanelPro
                   </div>
                 </div>
               ) : (
-                <div className='flex items-center justify-center h-full text-sm text-muted-foreground'>点击左侧规则查看详情</div>
+                <div className='flex items-center justify-center h-full text-sm text-muted-foreground'>{t('routing.clickToView')}</div>
               )}
             </div>
           </div>
         )}
       </div>
 
-      {/* 选择出站 */}
+      {/* Select Outbound */}
       <Dialog open={isOutboundSelectDialogOpen} onOpenChange={setIsOutboundSelectDialogOpen}>
         <DialogContent className='max-w-md'>
-          <DialogHeader><DialogTitle>选择出站</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{t('routing.selectOutbound')}</DialogTitle></DialogHeader>
           <Select value={selectedOutbound} onValueChange={setSelectedOutbound}>
-            <SelectTrigger><SelectValue placeholder='选择出站' /></SelectTrigger>
+            <SelectTrigger><SelectValue placeholder={t('routing.selectOutboundPlaceholder')} /></SelectTrigger>
             <SelectContent>
               {outbounds.map((o: any) => <SelectItem key={o.tag} value={o.tag}>{o.tag} ({o.protocol})</SelectItem>)}
             </SelectContent>
           </Select>
           <DialogFooter>
-            <Button variant='outline' onClick={() => setIsOutboundSelectDialogOpen(false)}>取消</Button>
-            <Button onClick={handleConfirmOutbound} disabled={!selectedOutbound}>确认</Button>
+            <Button variant='outline' onClick={() => setIsOutboundSelectDialogOpen(false)}>{tc('actions.cancel')}</Button>
+            <Button onClick={handleConfirmOutbound} disabled={!selectedOutbound}>{tc('actions.confirm')}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* 自定义规则 */}
+      {/* Custom Rule */}
       <Dialog open={isCustomRuleDialogOpen} onOpenChange={setIsCustomRuleDialogOpen}>
         <DialogContent className='max-w-lg max-h-[85vh] flex flex-col'>
-          <DialogHeader><DialogTitle>添加自定义规则</DialogTitle><DialogDescription>支持 Xray 所有路由字段，空字段不提交</DialogDescription></DialogHeader>
+          <DialogHeader><DialogTitle>{t('routing.addCustomRule')}</DialogTitle><DialogDescription>{t('routing.customRuleDesc')}</DialogDescription></DialogHeader>
           <div className='flex-1 overflow-y-auto space-y-3 py-2'>
             <div className='grid grid-cols-2 gap-3'>
               <div className='space-y-1'>
@@ -414,15 +418,15 @@ export function RoutingPanel({ serverId, serverName, isRemote }: RoutingPanelPro
                 <Input placeholder='80, 443, 1000-2000' value={customPort} onChange={e => setCustomPort(e.target.value)} className='text-xs' />
               </div>
               <div className='space-y-1'>
-                <Label className='text-xs'>sourcePort</Label>
-                <Input placeholder='来源端口' value={customSourcePort} onChange={e => setCustomSourcePort(e.target.value)} className='text-xs' />
+                <Label className='text-xs'>{t('routing.sourcePort')}</Label>
+                <Input placeholder={t('routing.sourcePort')} value={customSourcePort} onChange={e => setCustomSourcePort(e.target.value)} className='text-xs' />
               </div>
             </div>
             <div className='grid grid-cols-3 gap-3'>
               <div className='space-y-1'>
                 <Label className='text-xs'>network</Label>
                 <Select value={customNetwork} onValueChange={setCustomNetwork}>
-                  <SelectTrigger className='text-xs'><SelectValue placeholder='不限' /></SelectTrigger>
+                  <SelectTrigger className='text-xs'><SelectValue placeholder={t('routing.noLimit')} /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value='tcp'>tcp</SelectItem>
                     <SelectItem value='udp'>udp</SelectItem>
@@ -432,63 +436,62 @@ export function RoutingPanel({ serverId, serverName, isRemote }: RoutingPanelPro
               </div>
               <div className='space-y-1'>
                 <Label className='text-xs'>source</Label>
-                <Input placeholder='来源 IP' value={customSource} onChange={e => setCustomSource(e.target.value)} className='text-xs' />
+                <Input placeholder='source IP' value={customSource} onChange={e => setCustomSource(e.target.value)} className='text-xs' />
               </div>
               <div className='space-y-1'>
                 <Label className='text-xs'>user</Label>
-                <Input placeholder='用户' value={customUser} onChange={e => setCustomUser(e.target.value)} className='text-xs' />
+                <Input placeholder='user' value={customUser} onChange={e => setCustomUser(e.target.value)} className='text-xs' />
               </div>
             </div>
             <div className='grid grid-cols-2 gap-3'>
               <div className='space-y-1'>
-                <Label className='text-xs'>inboundTag</Label>
-                <Input placeholder='入站标签' value={customInboundTag} onChange={e => setCustomInboundTag(e.target.value)} className='text-xs' />
+                <Label className='text-xs'>{t('routing.inboundTag')}</Label>
+                <Input placeholder={t('routing.inboundTag')} value={customInboundTag} onChange={e => setCustomInboundTag(e.target.value)} className='text-xs' />
               </div>
               <div className='space-y-1'>
-                <Label className='text-xs'>attrs</Label>
-                <Input placeholder='属性匹配' value={customAttrs} onChange={e => setCustomAttrs(e.target.value)} className='text-xs' />
+                <Label className='text-xs'>{t('routing.attrMatch')}</Label>
+                <Input placeholder={t('routing.attrMatch')} value={customAttrs} onChange={e => setCustomAttrs(e.target.value)} className='text-xs' />
               </div>
             </div>
             <div className='grid grid-cols-2 gap-3'>
               <div className='space-y-1'>
-                <Label className='text-xs'>出站 *</Label>
+                <Label className='text-xs'>{t('routing.outbound')} *</Label>
                 <Select value={customOutbound} onValueChange={setCustomOutbound}>
-                  <SelectTrigger className='text-xs'><SelectValue placeholder='选择出站' /></SelectTrigger>
+                  <SelectTrigger className='text-xs'><SelectValue placeholder={t('routing.selectOutboundPlaceholder')} /></SelectTrigger>
                   <SelectContent>
                     {outbounds.map((o: any) => <SelectItem key={o.tag} value={o.tag}>{o.tag} ({o.protocol})</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
               <div className='space-y-1'>
-                <Label className='text-xs'>标记 (可选)</Label>
+                <Label className='text-xs'>{t('routing.mark')}</Label>
                 <Input placeholder='marktag' value={customMarktag} onChange={e => setCustomMarktag(e.target.value)} className='text-xs' />
               </div>
             </div>
           </div>
           <DialogFooter>
-            <Button variant='outline' onClick={() => setIsCustomRuleDialogOpen(false)}>取消</Button>
-            <Button onClick={handleAddCustomRule} disabled={!customOutbound}>添加</Button>
+            <Button variant='outline' onClick={() => setIsCustomRuleDialogOpen(false)}>{tc('actions.cancel')}</Button>
+            <Button onClick={handleAddCustomRule} disabled={!customOutbound}>{t('routing.addBtn')}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* 删除确认 */}
+      {/* Delete Confirm */}
       <AlertDialog open={deletingIndex !== null} onOpenChange={o => !o && setDeletingIndex(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>确认删除规则</AlertDialogTitle>
-            <AlertDialogDescription>确定要删除此路由规则吗？{isRemote ? '删除后将自动重启 Xray 生效。' : '此操作无法撤销。'}</AlertDialogDescription>
+            <AlertDialogTitle>{t('routing.confirmDeleteRule')}</AlertDialogTitle>
+            <AlertDialogDescription>{t('routing.confirmDeleteRuleDesc')}{isRemote ? ` ${t('routing.deleteAutoRestart')}` : ` ${t('routing.deleteIrreversible')}`}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>取消</AlertDialogCancel>
+            <AlertDialogCancel>{tc('actions.cancel')}</AlertDialogCancel>
             <AlertDialogAction className='bg-red-600 hover:bg-red-700' onClick={() => {
               if (deletingIndex !== null) removeRuleMutation.mutate({ index: deletingIndex, rule: rules[deletingIndex] })
               setDeletingIndex(null)
-            }}>确认删除</AlertDialogAction>
+            }}>{t('routing.confirmDelete')}</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
     </>
   )
 }
-

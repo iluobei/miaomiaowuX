@@ -1,0 +1,45 @@
+{
+  "validation": {
+    "required": "此项为必填",
+    "passwordMinLength": "密码至少 8 位",
+    "passwordMismatch": "两次输入的密码不一致",
+    "usernameEmpty": "用户名不能为空",
+    "invalidFormat": "格式无效"
+  },
+  "clashValidator": {
+    "proxyNotObject": "代理节点 #{{index}} 不是有效的对象",
+    "proxyMissingName": "代理节点 #{{index}} 缺少name字段或name为空",
+    "proxyDuplicateName": "代理节点名称重复: \"{{name}}\"，已自动移除",
+    "proxyNameNotFirst": "代理节点 \"{{name}}\" 的name字段不是第一个字段，已自动调整",
+    "groupNotObject": "代理组 #{{index}} 不是有效的对象",
+    "groupMissingName": "代理组 #{{index}} 缺少name字段或name为空",
+    "groupDuplicateName": "代理组名称重复: \"{{name}}\"",
+    "groupNameNotFirst": "代理组 \"{{name}}\" 的name字段不是第一个字段，已自动调整",
+    "groupEmpty": "代理组 \"{{name}}\" 的proxies、use、filter和include-all字段都为空或不存在",
+    "groupAutoCorrect": "代理组 \"{{name}}\" 中的节点引用 \"{{proxy}}\" 已自动修正为 \"{{corrected}}\"",
+    "groupMissingNode": "代理组 \"{{name}}\" 引用了不存在的节点: \"{{node}}\"",
+    "groupDuplicateProxies": "代理组 \"{{name}}\" 的proxies字段包含重复引用，已自动去重",
+    "circularReference": "检测到代理组循环引用: {{cycle}}",
+    "validationPassed": "✅ 配置校验通过",
+    "location": "位置: {{location}}",
+    "itemCount": "{{count}} 个项目",
+    "nameNotFirst": "name字段不是第一个字段",
+    "nameFieldAdjust": "{{count}} 个代理组的 name 字段位置需要调整",
+    "affected": "受影响: {{items}}",
+    "andMore": "等 {{count}} 个",
+    "errorsFound": "❌ 发现 {{count}} 个错误:\n",
+    "warningsFound": "⚠️ 发现 {{count}} 个警告:\n",
+    "autoFixed": "🔧 已自动修复 {{count}} 个问题"
+  },
+  "server": {
+    "unauthorized": "未授权，请重新登录",
+    "forbidden": "无权访问",
+    "notFound": "资源不存在",
+    "internalError": "服务器内部错误",
+    "networkError": "网络连接失败，请检查网络",
+    "timeout": "请求超时",
+    "unknown": "未知错误",
+    "somethingWentWrong": "出错了！",
+    "contentNotFound": "未找到内容"
+  }
+}

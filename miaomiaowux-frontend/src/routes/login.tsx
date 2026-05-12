@@ -1,5 +1,6 @@
 // @ts-nocheck
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useForm } from 'react-hook-form'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { createFileRoute, redirect, useNavigate } from '@tanstack/react-router'
@@ -60,6 +61,7 @@ type SetupFormValues = {
 }
 
 function LoginPage() {
+  const { t } = useTranslation('auth')
   // Check if initial setup is needed
   const { data: setupStatus, isLoading: isCheckingSetup } = useQuery({
     queryKey: ['setup-status'],
@@ -75,8 +77,8 @@ function LoginPage() {
       <div className='login-pixel-bg flex min-h-svh items-center justify-center'>
         <Card className='w-full max-w-sm'>
           <CardHeader className='space-y-2 text-center'>
-            <CardTitle>加载中...</CardTitle>
-            <CardDescription>正在检查系统状态</CardDescription>
+            <CardTitle>{t('login.loading')}</CardTitle>
+            <CardDescription>{t('login.checkingStatus')}</CardDescription>
           </CardHeader>
         </Card>
       </div>
@@ -95,6 +97,7 @@ function handleLoginSuccess(
   auth: ReturnType<typeof useAuthStore>['auth'],
   queryClient: ReturnType<typeof useQueryClient>,
   navigate: ReturnType<typeof useNavigate>,
+  t: (key: string) => string,
 ) {
   auth.setAccessToken(payload.token)
   queryClient.invalidateQueries({ queryKey: ['traffic-summary'] })
@@ -105,11 +108,12 @@ function handleLoginSuccess(
     role: payload.role,
     is_admin: payload.is_admin,
   })
-  toast.success('登录成功')
+  toast.success(t('login.success'))
   navigate({ to: '/' })
 }
 
 function LoginView() {
+  const { t } = useTranslation('auth')
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const { auth } = useAuthStore()
@@ -132,12 +136,12 @@ function LoginView() {
         setTwoFactorToken(payload.two_factor_token)
         return
       }
-      handleLoginSuccess(payload, auth, queryClient, navigate)
+      handleLoginSuccess(payload, auth, queryClient, navigate, t)
       form.reset()
     },
     onError: (error) => {
       handleServerError(error)
-      toast.error('登录失败，请检查账号或密码')
+      toast.error(t('login.failed'))
     },
   })
 
@@ -150,7 +154,7 @@ function LoginView() {
       <TwoFactorStep
         twoFactorToken={twoFactorToken}
         onBack={() => setTwoFactorToken(null)}
-        onSuccess={(payload) => handleLoginSuccess(payload, auth, queryClient, navigate)}
+        onSuccess={(payload) => handleLoginSuccess(payload, auth, queryClient, navigate, t)}
       />
     )
   }
@@ -159,13 +163,13 @@ function LoginView() {
     <div className='flex min-h-svh items-center justify-center login-pixel-bg px-4 py-12'>
       <Card className='w-full max-w-sm shadow-lg'>
         <CardHeader className='space-y-2 text-center'>
-          <CardTitle className='text-2xl font-semibold'>登录妙妙屋</CardTitle>
-          <CardDescription>请输入管理员账号以访问控制台。</CardDescription>
+          <CardTitle className='text-2xl font-semibold'>{t('login.title')}</CardTitle>
+          <CardDescription>{t('login.description')}</CardDescription>
         </CardHeader>
         <CardContent>
           <form className='space-y-6' onSubmit={onSubmit}>
             <div className='space-y-2'>
-              <Label htmlFor='username'>用户名</Label>
+              <Label htmlFor='username'>{t('login.username')}</Label>
               <Input
                 id='username'
                 name='username'
@@ -173,18 +177,18 @@ function LoginView() {
                 autoCapitalize='none'
                 autoComplete='username'
                 autoFocus
-                placeholder='请输入用户名'
+                placeholder={t('login.usernamePlaceholder')}
                 {...form.register('username', { required: true })}
               />
             </div>
             <div className='space-y-2'>
-              <Label htmlFor='password'>密码</Label>
+              <Label htmlFor='password'>{t('login.password')}</Label>
               <Input
                 id='password'
                 name='password'
                 type='password'
                 autoComplete='current-password'
-                placeholder='请输入密码'
+                placeholder={t('login.passwordPlaceholder')}
                 {...form.register('password', { required: true })}
               />
             </div>
@@ -195,11 +199,11 @@ function LoginView() {
                 onCheckedChange={(checked) => form.setValue('remember_me', checked === true)}
               />
               <Label htmlFor='remember_me' className='text-sm font-normal cursor-pointer'>
-                记住我
+                {t('login.rememberMe')}
               </Label>
             </div>
             <Button type='submit' className='w-full' disabled={login.isPending}>
-              {login.isPending ? '登录中...' : '登录'}
+              {login.isPending ? t('login.loggingIn') : t('login.loginButton')}
             </Button>
           </form>
         </CardContent>
@@ -217,6 +221,7 @@ function TwoFactorStep({
   onBack: () => void
   onSuccess: (payload: LoginResponse) => void
 }) {
+  const { t } = useTranslation('auth')
   const [otpCode, setOtpCode] = useState('')
   const [useRecovery, setUseRecovery] = useState(false)
   const [recoveryCode, setRecoveryCode] = useState('')
@@ -232,7 +237,7 @@ function TwoFactorStep({
     onSuccess: (payload) => onSuccess(payload),
     onError: (error) => {
       handleServerError(error)
-      toast.error('验证码无效')
+      toast.error(t('twoFactor.invalidCode'))
       setOtpCode('')
     },
   })
@@ -246,12 +251,12 @@ function TwoFactorStep({
       return response.data as LoginResponse
     },
     onSuccess: (payload) => {
-      toast.success('恢复码验证成功，两步验证已重设')
+      toast.success(t('twoFactor.recoverySuccess'))
       onSuccess(payload)
     },
     onError: (error) => {
       handleServerError(error)
-      toast.error('恢复码无效')
+      toast.error(t('twoFactor.invalidRecovery'))
     },
   })
 
@@ -259,9 +264,9 @@ function TwoFactorStep({
     <div className='login-pixel-bg flex min-h-svh items-center justify-center px-4 py-12'>
       <Card className='w-full max-w-sm shadow-lg'>
         <CardHeader className='space-y-2 text-center'>
-          <CardTitle className='text-2xl font-semibold'>两步验证</CardTitle>
+          <CardTitle className='text-2xl font-semibold'>{t('twoFactor.title')}</CardTitle>
           <CardDescription>
-            {useRecovery ? '请输入恢复码' : '请输入验证器应用中的 6 位验证码'}
+            {useRecovery ? t('twoFactor.recoveryDesc') : t('twoFactor.codeDesc')}
           </CardDescription>
         </CardHeader>
         <CardContent className='space-y-6'>
@@ -270,7 +275,7 @@ function TwoFactorStep({
               <Input
                 value={recoveryCode}
                 onChange={(e) => setRecoveryCode(e.target.value)}
-                placeholder='输入 8 位恢复码'
+                placeholder={t('twoFactor.recoveryPlaceholder')}
                 autoFocus
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && recoveryCode.trim()) {
@@ -283,7 +288,7 @@ function TwoFactorStep({
                 onClick={() => verifyRecovery.mutate(recoveryCode.trim())}
                 disabled={!recoveryCode.trim() || verifyRecovery.isPending}
               >
-                {verifyRecovery.isPending ? '验证中...' : '使用恢复码登录'}
+                {verifyRecovery.isPending ? t('twoFactor.verifying') : t('twoFactor.useRecoveryLogin')}
               </Button>
             </div>
           ) : (
@@ -313,7 +318,7 @@ function TwoFactorStep({
                 onClick={() => verify2FA.mutate(otpCode)}
                 disabled={otpCode.length !== 6 || verify2FA.isPending}
               >
-                {verify2FA.isPending ? '验证中...' : '验证'}
+                {verify2FA.isPending ? t('twoFactor.verifying') : t('twoFactor.verify')}
               </Button>
             </div>
           )}
@@ -324,7 +329,7 @@ function TwoFactorStep({
               onClick={onBack}
             >
               <ArrowLeft className='size-3' />
-              返回
+              {t('twoFactor.back')}
             </button>
             <button
               type='button'
@@ -335,7 +340,7 @@ function TwoFactorStep({
                 setRecoveryCode('')
               }}
             >
-              {useRecovery ? '使用验证码' : '使用恢复码'}
+              {useRecovery ? t('twoFactor.useVerificationCode') : t('twoFactor.useRecoveryCode')}
             </button>
           </div>
         </CardContent>
@@ -345,6 +350,7 @@ function TwoFactorStep({
 }
 
 function InitialSetupView() {
+  const { t } = useTranslation('auth')
   const queryClient = useQueryClient()
   const [backupFile, setBackupFile] = useState<File | null>(null)
   const [domain, setDomain] = useState('')
@@ -370,8 +376,8 @@ function InitialSetupView() {
     onSuccess: (data) => {
       setDomainVerifyResult(data)
       setDomainVerified(data.match)
-      if (data.match) toast.success('域名验证通过')
-      else toast.error(data.message || '域名解析IP与服务器IP不一致，请检查DNS设置')
+      if (data.match) toast.success(t('setup.domainVerified'))
+      else toast.error(data.message || t('setup.domainMismatch'))
     },
     onError: (error) => {
       handleServerError(error)
@@ -396,8 +402,8 @@ function InitialSetupView() {
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['setup-status'] })
-      let msg = '首次初始化成功！请使用刚才创建的账号登录。'
-      if (data.nginx_setup) msg += ' Nginx 反代已自动配置。'
+      let msg = t('setup.success')
+      if (data.nginx_setup) msg += ' ' + t('setup.nginxConfigured')
       toast.success(msg)
       form.reset()
       if (data.redirect_url) {
@@ -408,7 +414,7 @@ function InitialSetupView() {
     },
     onError: (error) => {
       handleServerError(error)
-      toast.error('初始化失败，请重试')
+      toast.error(t('setup.failed'))
     },
   })
 
@@ -422,7 +428,7 @@ function InitialSetupView() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['setup-status'] })
-      toast.success('备份恢复成功！请刷新页面后登录。')
+      toast.success(t('setup.restoreSuccess'))
       setBackupFile(null)
       setTimeout(() => {
         window.location.reload()
@@ -430,7 +436,7 @@ function InitialSetupView() {
     },
     onError: (error) => {
       handleServerError(error)
-      toast.error('备份恢复失败')
+      toast.error(t('setup.restoreFailed'))
     },
   })
 
@@ -445,16 +451,16 @@ function InitialSetupView() {
     <div className='flex min-h-svh items-center justify-center login-pixel-bg px-4 py-12'>
       <Card className='w-full max-w-md shadow-lg'>
         <CardHeader className='space-y-2 text-center'>
-          <CardTitle className='text-2xl font-semibold'>欢迎使用妙妙屋</CardTitle>
+          <CardTitle className='text-2xl font-semibold'>{t('setup.welcome')}</CardTitle>
           <CardDescription>
-            这是首次启动，请创建管理员账号。首次注册的用户将自动成为管理员。
+            {t('setup.firstAdminDesc')}
           </CardDescription>
         </CardHeader>
         <CardContent>
           <form className='space-y-4' onSubmit={onSubmit}>
             <div className='space-y-2'>
               <Label htmlFor='setup-username'>
-                用户名 <span className='text-destructive'>*</span>
+                {t('setup.username')} <span className='text-destructive'>*</span>
               </Label>
               <Input
                 id='setup-username'
@@ -463,30 +469,30 @@ function InitialSetupView() {
                 autoCapitalize='none'
                 autoComplete='username'
                 autoFocus
-                placeholder='请输入用户名'
+                placeholder={t('setup.usernamePlaceholder')}
                 {...form.register('username', { required: true })}
               />
             </div>
             <div className='space-y-2'>
               <Label htmlFor='setup-password'>
-                密码 <span className='text-destructive'>*</span>
+                {t('setup.password')} <span className='text-destructive'>*</span>
               </Label>
               <Input
                 id='setup-password'
                 name='password'
                 type='password'
                 autoComplete='new-password'
-                placeholder='请输入密码'
+                placeholder={t('setup.passwordPlaceholder')}
                 {...form.register('password', { required: true })}
               />
             </div>
             <div className='space-y-2'>
-              <Label htmlFor='setup-domain'>MMWX 域名</Label>
+              <Label htmlFor='setup-domain'>{t('setup.domainLabel')}</Label>
               <div className='flex gap-2'>
                 <Input
                   id='setup-domain'
                   type='text'
-                  placeholder='例如：mmwx.example.com'
+                  placeholder={t('setup.domainPlaceholder')}
                   value={domain}
                   onChange={(e) => {
                     setDomain(e.target.value)
@@ -500,7 +506,7 @@ function InitialSetupView() {
                   disabled={!domainHasValue || verifyDomain.isPending}
                   onClick={() => verifyDomain.mutate(domain.trim())}
                 >
-                  {verifyDomain.isPending ? <Loader2 className='size-4 animate-spin' /> : '验证'}
+                  {verifyDomain.isPending ? <Loader2 className='size-4 animate-spin' /> : t('setup.verifyButton')}
                 </Button>
               </div>
               {domainVerifyResult && (
@@ -512,50 +518,50 @@ function InitialSetupView() {
                   )}
                   <span>
                     {domainVerifyResult.match
-                      ? `域名解析正确，指向 ${domainVerifyResult.server_ip}`
-                      : `域名解析IP(${domainVerifyResult.domain_ips?.join(', ') || '无'})与服务器IP(${domainVerifyResult.server_ip || '未知'})不一致，请添加DNS A记录`}
+                      ? t('setup.domainCorrect', { serverIp: domainVerifyResult.server_ip })
+                      : t('setup.domainMismatchDetailed', { domainIp: domainVerifyResult.domain_ips?.join(', ') || t('setup.none'), serverIp: domainVerifyResult.server_ip || t('setup.unknown') })}
                   </span>
                 </div>
               )}
               <p className='text-xs text-muted-foreground'>
-                可选。填写后将自动配置 Nginx 反代和 HTTPS，并设置为主服务器地址。
+                {t('setup.domainHint')}
               </p>
             </div>
             <div className='space-y-2'>
-              <Label htmlFor='setup-nickname'>昵称</Label>
+              <Label htmlFor='setup-nickname'>{t('setup.nickname')}</Label>
               <Input
                 id='setup-nickname'
                 name='nickname'
                 type='text'
                 autoComplete='name'
-                placeholder='留空则使用用户名'
+                placeholder={t('setup.nicknamePlaceholder')}
                 {...form.register('nickname')}
               />
             </div>
             <div className='space-y-2'>
-              <Label htmlFor='setup-email'>邮箱</Label>
+              <Label htmlFor='setup-email'>{t('setup.email')}</Label>
               <Input
                 id='setup-email'
                 name='email'
                 type='email'
                 autoComplete='email'
-                placeholder='可选'
+                placeholder={t('setup.emailPlaceholder')}
                 {...form.register('email')}
               />
             </div>
             <div className='space-y-2'>
-              <Label htmlFor='setup-avatar'>头像地址</Label>
+              <Label htmlFor='setup-avatar'>{t('setup.avatarUrl')}</Label>
               <Input
                 id='setup-avatar'
                 name='avatar_url'
                 type='url'
                 autoComplete='url'
-                placeholder='可选，填写头像图片URL'
+                placeholder={t('setup.avatarPlaceholder')}
                 {...form.register('avatar_url')}
               />
             </div>
             <Button type='submit' className='w-full' disabled={submitDisabled}>
-              {setup.isPending ? '创建中...' : '创建管理员账号'}
+              {setup.isPending ? t('setup.creating') : t('setup.createAdmin')}
             </Button>
           </form>
 
@@ -565,13 +571,13 @@ function InitialSetupView() {
               <span className='w-full border-t' />
             </div>
             <div className='relative flex justify-center text-xs uppercase'>
-              <span className='bg-card px-2 text-muted-foreground'>或</span>
+              <span className='bg-card px-2 text-muted-foreground'>{t('setup.or')}</span>
             </div>
           </div>
 
           {/* Restore from backup */}
           <div className='space-y-3'>
-            <Label>从备份恢复</Label>
+            <Label>{t('setup.restoreFromBackup')}</Label>
             <Input
               type='file'
               accept='.zip'
@@ -586,11 +592,11 @@ function InitialSetupView() {
               className='w-full'
             >
               <Upload className='size-4 mr-2' />
-              {restoreBackup.isPending ? '恢复中...' : '从备份恢复'}
+              {restoreBackup.isPending ? t('setup.restoring') : t('setup.restoreFromBackup')}
             </Button>
             <div className='flex items-start gap-2 text-xs text-muted-foreground'>
               <AlertTriangle className='size-4 shrink-0 text-amber-500' />
-              <span>如果您有之前的备份文件，可以在这里恢复数据</span>
+              <span>{t('setup.backupHint')}</span>
             </div>
           </div>
         </CardContent>

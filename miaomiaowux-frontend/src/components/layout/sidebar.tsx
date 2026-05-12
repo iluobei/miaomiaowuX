@@ -1,58 +1,28 @@
 import { Link } from '@tanstack/react-router'
 import { useQuery } from '@tanstack/react-query'
 import { Activity, Users, Package, Settings, Shield, Server, LayoutTemplate, Network } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { useAuthStore } from '@/stores/auth-store'
 import { useLayoutStore } from '@/stores/layout-store'
 import { profileQueryFn } from '@/lib/profile'
 import { cn } from '@/lib/utils'
 
 const baseNavLinks = [
-  {
-    title: '流量信息',
-    to: '/',
-    icon: Activity,
-  },
+  { titleKey: 'nav.trafficInfo' as const, to: '/', icon: Activity },
 ]
 
 const adminNavLinks = [
-  {
-    title: '节点管理',
-    to: '/nodes',
-    icon: Network,
-  },
-  {
-    title: '证书管理',
-    to: '/certificates',
-    icon: Shield,
-  },
-  {
-    title: '服务管理',
-    to: '/xray-servers',
-    icon: Server,
-  },
-  {
-    title: '用户管理',
-    to: '/users',
-    icon: Users,
-  },
-  {
-    title: '套餐管理',
-    to: '/packages',
-    icon: Package,
-  },
-  {
-    title: '模板管理',
-    to: '/templates',
-    icon: LayoutTemplate,
-  },
-  {
-    title: '系统设置',
-    to: '/system-settings',
-    icon: Settings,
-  },
+  { titleKey: 'nav.nodeManagement' as const, to: '/nodes', icon: Network },
+  { titleKey: 'nav.certificateManagement' as const, to: '/certificates', icon: Shield },
+  { titleKey: 'nav.serviceManagement' as const, to: '/xray-servers', icon: Server },
+  { titleKey: 'nav.userManagement' as const, to: '/users', icon: Users },
+  { titleKey: 'nav.packageManagement' as const, to: '/packages', icon: Package },
+  { titleKey: 'nav.templateManagement' as const, to: '/templates', icon: LayoutTemplate },
+  { titleKey: 'nav.systemSettings' as const, to: '/system-settings', icon: Settings },
 ]
 
 export function Sidebar() {
+  const { t } = useTranslation()
   const { auth } = useAuthStore()
   const { sidebarCollapsed } = useLayoutStore()
 
@@ -77,11 +47,13 @@ export function Sidebar() {
         {/* Navigation Links */}
         <nav className="flex-1 overflow-y-auto py-3 px-3">
           <div className="flex flex-col gap-2">
-            {allNavLinks.map(({ title, to, icon: Icon }) => (
+            {allNavLinks.map(({ titleKey, to, icon: Icon }) => {
+              const label = t(titleKey)
+              return (
               <Link
                 key={to}
                 to={to}
-                title={title}
+                title={label}
                 className={cn(
                   'pixel-button inline-flex items-center gap-2 py-2 h-9 text-sm font-semibold uppercase tracking-widest bg-background/75 text-foreground border-[color:rgba(137,110,96,0.45)] shadow-sm hover:bg-accent/35 hover:text-accent-foreground hover:shadow-[0_0_12px_rgba(217,119,87,0.4)] dark:bg-input/30 dark:border-[color:rgba(255,255,255,0.18)] dark:hover:bg-accent/45 dark:hover:text-accent-foreground dark:shadow-[0_2px_8px_rgba(0,0,0,0.3)] dark:hover:shadow-[0_0_15px_rgba(217,119,87,0.5)] transition-all duration-200 w-full justify-center',
                   sidebarCollapsed && 'px-2'
@@ -91,9 +63,10 @@ export function Sidebar() {
                 }}
               >
                 <Icon className="size-[18px] shrink-0" />
-                {!sidebarCollapsed && <span>{title}</span>}
+                {!sidebarCollapsed && <span>{label}</span>}
               </Link>
-            ))}
+              )
+            })}
           </div>
         </nav>
       </div>

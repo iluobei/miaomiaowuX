@@ -1,0 +1,113 @@
+{
+  "title": "模板管理",
+  "subtitle": "mihomo 订阅模板配置",
+  "unsaved": "未保存",
+  "resetTooltip": "重置为默认模板",
+  "collapsePreview": "收起配置预览",
+  "expandPreview": "展开配置预览",
+  "previewTitle": "配置预览",
+  "visualEdit": "可视化编辑",
+  "yamlCode": "YAML 代码",
+  "enableRegionGroups": "开启区域代理组",
+  "enableRegionGroupsDesc": "自动添加按地区分类的代理组",
+  "addProxyGroup": "添加代理组",
+  "newProxyGroup": "新代理组 {{index}}",
+  "yamlPlaceholder": "YAML 内容...",
+  "emptyDesc": "尚未创建模板，点击下方按钮创建默认模板",
+  "createDefault": "创建默认模板",
+  "draftRecovery": {
+    "title": "恢复本地缓存",
+    "description": "检测到未保存的本地缓存，是否恢复？",
+    "discard": "放弃",
+    "recover": "恢复"
+  },
+  "dnsSwitchConfirm": {
+    "title": "切换 DNS 模式",
+    "description": "当前有未保存的更改，切换模式将丢失这些更改。是否继续？",
+    "confirm": "确认切换"
+  },
+  "resetConfirm": {
+    "title": "重置模板",
+    "description": "将恢复为当前 DNS 模式的默认模板，所有未保存的更改将丢失。是否继续？",
+    "confirm": "确认重置"
+  },
+  "proxyGroupEditor": {
+    "groupTypes": {
+      "select": "手动选择",
+      "url-test": "自动测速",
+      "fallback": "故障转移",
+      "load-balance": "负载均衡",
+      "relay": "链式代理"
+    },
+    "hidden": "隐藏",
+    "hasFilter": "有过滤",
+    "relayPrefix": "中转: {{name}}",
+    "setRelayGroup": "设置中转代理组",
+    "selectRelayGroup": "选择中转代理组",
+    "clear": "清除",
+    "groupName": "组名称",
+    "groupNamePlaceholder": "代理组名称",
+    "groupType": "组类型",
+    "nodeSource": "节点来源",
+    "providersAndNodes": "代理集合+节点",
+    "proxyNodes": "代理节点",
+    "proxyProviders": "代理集合",
+    "regionProxyGroups": "区域代理组",
+    "proxyOrder": "代理顺序 (拖拽排序)",
+    "selectRefGroups": "选择要引用的代理组",
+    "templateVariables": "模板变量 ({{count}})",
+    "filterKeywords": "筛选关键词 (filter)",
+    "filterPlaceholder": "香港, HK, 港",
+    "filterDescription": "匹配节点名称，用逗号分隔",
+    "excludeKeywords": "排除关键词 (exclude-filter)",
+    "excludePlaceholder": "游戏, IPLC",
+    "excludeDescription": "排除匹配的节点",
+    "includeType": "包含类型 (include-type)",
+    "includeTypePlaceholder": "选择要包含的代理类型",
+    "excludeType": "排除类型 (exclude-type)",
+    "excludeTypePlaceholder": "选择要排除的代理类型",
+    "testUrl": "测试 URL",
+    "testInterval": "测试间隔 (秒)",
+    "tolerance": "容差 (ms)",
+    "icon": "图标 (icon)",
+    "iconPlaceholder": "URL 或 emoji",
+    "hideGroup": "隐藏此组 (hidden)"
+  },
+  "keywordFilter": {
+    "defaultPlaceholder": "输入关键词，用逗号分隔",
+    "variable": "变量: {{name}}",
+    "regex": "正则:"
+  },
+  "proxyGroupSelect": {
+    "defaultPlaceholder": "选择代理组",
+    "searchPlaceholder": "搜索代理组...",
+    "noResults": "没有找到代理组"
+  },
+  "proxyTypeSelect": {
+    "defaultPlaceholder": "选择代理类型",
+    "deselectAll": "取消全选",
+    "selectAll": "全选"
+  },
+  "preview": {
+    "defaultTitle": "预览",
+    "copiedToClipboard": "已复制到剪贴板",
+    "copyFailed": "复制失败",
+    "generating": "正在生成预览...",
+    "clickRefresh": "点击刷新按钮生成预览"
+  },
+  "v3": {
+    "proxyNodesDisplay": "⛓️‍💥 代理节点",
+    "proxyProvidersDisplay": "📦 代理集合",
+    "regionProxyGroupsDisplay": "🌏 区域代理组",
+    "defaultGroupName": "新代理组"
+  },
+  "toast": {
+    "saveSuccess": "模板保存成功",
+    "saveFailed": "保存失败",
+    "defaultCreated": "默认模板已创建",
+    "createFailed": "创建失败",
+    "loadFailed": "加载模板失败",
+    "resetFailed": "重置失败",
+    "previewFailed": "预览生成失败"
+  }
+}

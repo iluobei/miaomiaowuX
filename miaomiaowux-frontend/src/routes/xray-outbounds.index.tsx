@@ -3,6 +3,7 @@ import { createFileRoute, useSearch } from '@tanstack/react-router'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useMemo, useState } from 'react'
 import { toast } from 'sonner'
+import { useTranslation } from 'react-i18next'
 import { Edit2, RefreshCw, Trash2, Eye, Plus, Server, GripVertical, Cloud } from 'lucide-react'
 import {
   DndContext,
@@ -77,6 +78,8 @@ interface SortableOutboundCardProps {
   onView: (outbound: XrayOutbound) => void
   onDelete: (item: OutboundItem) => void
   isDraggingEnabled: boolean
+  t: (key: string) => string
+  tc: (key: string) => string
 }
 
 function SortableOutboundCard({
@@ -87,6 +90,8 @@ function SortableOutboundCard({
   onView,
   onDelete,
   isDraggingEnabled,
+  t,
+  tc,
 }: SortableOutboundCardProps) {
   const {
     attributes,
@@ -156,14 +161,14 @@ function SortableOutboundCard({
           <>
             {outbound.settings?.domainStrategy && (
               <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">域名策略</span>
+                <span className="text-sm text-muted-foreground">{t('outbounds.domainStrategy')}</span>
                 <span className="text-sm font-medium">{outbound.settings.domainStrategy}</span>
               </div>
             )}
             <div className="flex items-center justify-between">
-              <span className="text-sm text-muted-foreground">类型</span>
+              <span className="text-sm text-muted-foreground">{t('outbounds.type')}</span>
               <span className="text-sm font-medium">
-                {outbound.protocol === 'freedom' ? '直连出站' : '阻止出站'}
+                {outbound.protocol === 'freedom' ? t('outbounds.directOutbound') : t('outbounds.blockOutbound')}
               </span>
             </div>
           </>
@@ -171,15 +176,15 @@ function SortableOutboundCard({
           // Regular outbounds: show address, port, user count
           <>
             <div className="flex items-center justify-between">
-              <span className="text-sm text-muted-foreground">服务器地址</span>
+              <span className="text-sm text-muted-foreground">{t('outbounds.address')}</span>
               <span className="text-sm font-medium truncate max-w-[200px]" title={address as string}>{address}</span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-sm text-muted-foreground">服务器端口</span>
+              <span className="text-sm text-muted-foreground">{t('outbounds.portLabel')}</span>
               <span className="text-sm font-medium">{port}</span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-sm text-muted-foreground">用户数</span>
+              <span className="text-sm text-muted-foreground">{t('outbounds.userCount')}</span>
               <span className="text-sm font-medium">{userCount}</span>
             </div>
           </>
@@ -193,7 +198,7 @@ function SortableOutboundCard({
             onClick={() => onEditFreedom(item)}
           >
             <Edit2 className="h-4 w-4 mr-1" />
-            编辑
+            {tc('actions.edit')}
           </Button>
         )}
         <Button
@@ -202,7 +207,7 @@ function SortableOutboundCard({
           onClick={() => onView(outbound)}
         >
           <Eye className="h-4 w-4 mr-1" />
-          查看
+          {tc('actions.view')}
         </Button>
         {!isSimpleOutbound(outbound.protocol) && (
           <Button
@@ -212,7 +217,7 @@ function SortableOutboundCard({
             className="text-red-600 hover:text-red-700"
           >
             <Trash2 className="h-4 w-4 mr-1" />
-            删除
+            {tc('actions.delete')}
           </Button>
         )}
       </CardFooter>
@@ -221,12 +226,14 @@ function SortableOutboundCard({
 }
 
 function XrayOutboundsPage() {
+  const { t } = useTranslation('xray')
+  const { t: tc } = useTranslation('common')
   const queryClient = useQueryClient()
   const search = useSearch({ from: '/xray-outbounds/' })
   const { selectedRemoteServerId, setSelectedServer } = useServerStore()
   const isRemoteMode = selectedRemoteServerId !== null
 
-  // 从 URL 参数读取并设置选中的远程服务器（仅在首次加载时）
+  // Read remote server from URL params on first load
   useEffect(() => {
     if (search.remote_server_id) {
       setSelectedServer(search.remote_server_id)
@@ -258,7 +265,7 @@ function XrayOutboundsPage() {
     })
   )
 
-  // 获取远程服务器信息
+  // Fetch remote server info
   const { data: remoteServerData } = useQuery({
     queryKey: ['remote-server', selectedRemoteServerId],
     queryFn: async () => {
@@ -269,7 +276,7 @@ function XrayOutboundsPage() {
     enabled: isRemoteMode,
   })
 
-  // 获取出站数据 - 仅远程服务器
+  // Fetch outbound data - remote server only
   const { data: outboundsData, isLoading } = useQuery({
     queryKey: ['remote-outbounds', selectedRemoteServerId],
     queryFn: async () => {
@@ -280,7 +287,7 @@ function XrayOutboundsPage() {
         success: true,
         outbounds: outbounds.map((outbound: any) => ({
           server_id: selectedRemoteServerId,
-          server_name: remoteServerData?.name || '远程服务器',
+          server_name: remoteServerData?.name || '',
           outbound,
         })),
       }
@@ -288,7 +295,7 @@ function XrayOutboundsPage() {
     enabled: isRemoteMode,
   })
 
-  // 获取远程服务器列表
+  // Fetch remote server list
   const { data: remoteServersData } = useQuery({
     queryKey: ['remote-servers'],
     queryFn: async () => {
@@ -297,7 +304,7 @@ function XrayOutboundsPage() {
     },
   })
 
-  // 远程服务器 mutations
+  // Remote server mutations
   const remoteUpdateOutboundMutation = useMutation({
     mutationFn: async ({ outbound }: { outbound: XrayOutbound }) => {
       await api.post(`/api/admin/remote/outbounds?server_id=${selectedRemoteServerId}`, {
@@ -312,7 +319,7 @@ function XrayOutboundsPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['remote-outbounds', selectedRemoteServerId] })
-      toast.success('出站已更新')
+      toast.success(t('outbounds.outboundUpdated'))
       setEditingFreedomOutbound(null)
     },
     onError: handleServerError,
@@ -328,7 +335,7 @@ function XrayOutboundsPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['remote-outbounds', selectedRemoteServerId] })
-      toast.success('出站已删除')
+      toast.success(t('outbounds.outboundDeleted'))
     },
     onError: handleServerError,
   })
@@ -344,9 +351,9 @@ function XrayOutboundsPage() {
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['remote-outbounds', selectedRemoteServerId] })
       if (data.success) {
-        toast.success(data.message || '出站已添加')
+        toast.success(data.message || t('outbounds.outboundAdded'))
       } else {
-        toast.error(data.message || '添加出站失败', {
+        toast.error(data.message || t('outbounds.outboundAddFailed'), {
           description: data.error,
         })
       }
@@ -355,7 +362,7 @@ function XrayOutboundsPage() {
   })
 
   const handleDelete = (item: OutboundItem) => {
-    if (confirm(`确定要删除出站 "${item.outbound.tag}" 吗？`)) {
+    if (confirm(t('outbounds.confirmDeletePrompt', { tag: item.outbound.tag }))) {
       remoteDeleteMutation.mutate({ outbound: item.outbound })
     }
   }
@@ -390,7 +397,7 @@ function XrayOutboundsPage() {
   const handleOutboundSubmit = async (serverIds: number[], outbound: XrayOutbound, tag: string) => {
     const trimmedTag = tag?.trim() || outbound.tag || ''
     if (!trimmedTag) {
-      toast.error('请填写标签')
+      toast.error(t('outbounds.fillTag'))
       return
     }
 
@@ -401,10 +408,10 @@ function XrayOutboundsPage() {
 
     try {
       await remoteAddOutboundMutation.mutateAsync({ outbound: baseOutbound })
-      toast.success('出站已添加到远程服务器')
+      toast.success(t('outbounds.outboundAddedToRemote'))
       setIsWizardDialogOpen(false)
     } catch (error) {
-      // 错误已通过 handleServerError 处理
+      // Error handled by handleServerError
     }
   }
 
@@ -414,7 +421,7 @@ function XrayOutboundsPage() {
   const filteredOutbounds = useMemo(() => {
     let result: OutboundItem[] = outbounds
 
-    // 过滤默认出站
+    // Filter default outbounds
     if (hideDefaultOutbounds) {
       result = result.filter((item) => {
         const tag = item.outbound.tag?.toLowerCase()
@@ -480,12 +487,12 @@ function XrayOutboundsPage() {
     <div className="container mx-auto py-8 px-4 pt-24">
       <div className="mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold mb-2">Xray 出站管理</h1>
+          <h1 className="text-3xl font-bold mb-2">{t('outbounds.title')}</h1>
           <p className="text-gray-600 flex items-center gap-2">
             <Cloud className="h-4 w-4 text-green-500" />
             {isRemoteMode
-              ? `远程服务器 ${remoteServerData?.name || '远程服务器'} 的出站配置（共 ${filteredOutbounds.length} 个）`
-              : '请先选择一个远程服务器'}
+              ? t('outbounds.remoteServerConfig', { name: remoteServerData?.name || '', count: filteredOutbounds.length })
+              : t('outbounds.selectServerFirst')}
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -495,7 +502,7 @@ function XrayOutboundsPage() {
             size="sm"
             onClick={() => setHideDefaultOutbounds(!hideDefaultOutbounds)}
           >
-            {hideDefaultOutbounds ? '隐藏默认出站' : '显示默认出站'}
+            {hideDefaultOutbounds ? t('outbounds.hideDefaultOutbounds') : t('outbounds.showDefaultOutbounds')}
           </Button>
           <ViewToggle view={viewMode} onViewChange={setViewMode} />
           <Button
@@ -505,7 +512,7 @@ function XrayOutboundsPage() {
             }}
           >
             <Plus className="h-4 w-4 mr-2" />
-            添加出站
+            {t('outbounds.addOutbound')}
           </Button>
         </div>
       </div>
@@ -513,12 +520,12 @@ function XrayOutboundsPage() {
       {isLoading ? (
         <div className="text-center py-8">
           <RefreshCw className="h-8 w-8 animate-spin mx-auto mb-2" />
-          <p className="text-gray-600">加载中...</p>
+          <p className="text-gray-600">{tc('actions.loading')}</p>
         </div>
       ) : filteredOutbounds.length === 0 ? (
         <EmptyStateCard
-          title="暂无出站配置"
-          description="点击上方按钮添加出站配置"
+          title={t('outbounds.noOutbounds')}
+          description={t('outbounds.noOutboundsDesc')}
         />
       ) : viewMode === 'card' ? (
         <DndContext
@@ -538,7 +545,9 @@ function XrayOutboundsPage() {
                   onEditFreedom={handleEditFreedom}
                   onView={setViewingOutbound}
                   onDelete={handleDelete}
-                  isDraggingEnabled={false} // 先关闭拖动功能，禁止拖动
+                  isDraggingEnabled={false}
+                  t={t}
+                  tc={tc}
                 />
               ))}
             </div>
@@ -571,12 +580,12 @@ function XrayOutboundsPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>标签</TableHead>
-                <TableHead>服务器</TableHead>
-                <TableHead>协议</TableHead>
-                <TableHead>地址</TableHead>
-                <TableHead>端口</TableHead>
-                <TableHead className="text-right">操作</TableHead>
+                <TableHead>{t('fields.tag')}</TableHead>
+                <TableHead>{t('outbounds.serverInfo')}</TableHead>
+                <TableHead>{t('inbounds.protocolLabel')}</TableHead>
+                <TableHead>{t('outbounds.address')}</TableHead>
+                <TableHead>{t('outbounds.portLabel')}</TableHead>
+                <TableHead className="text-right">{tc('actions.edit')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -611,15 +620,15 @@ function XrayOutboundsPage() {
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-1">
                         {outbound.protocol === 'freedom' && (
-                          <Button variant="ghost" size="sm" className="h-7 px-2" onClick={() => handleEditFreedom(item)} title="编辑">
+                          <Button variant="ghost" size="sm" className="h-7 px-2" onClick={() => handleEditFreedom(item)} title={tc('actions.edit')}>
                             <Edit2 className="h-3.5 w-3.5" />
                           </Button>
                         )}
-                        <Button variant="ghost" size="sm" className="h-7 px-2" onClick={() => setViewingOutbound(outbound)} title="查看">
+                        <Button variant="ghost" size="sm" className="h-7 px-2" onClick={() => setViewingOutbound(outbound)} title={tc('actions.view')}>
                           <Eye className="h-3.5 w-3.5" />
                         </Button>
                         {!isSimpleOutbound(outbound.protocol) && (
-                          <Button variant="ghost" size="sm" className="h-7 px-2 text-red-500 hover:text-red-600" onClick={() => handleDelete(item)} title="删除">
+                          <Button variant="ghost" size="sm" className="h-7 px-2 text-red-500 hover:text-red-600" onClick={() => handleDelete(item)} title={tc('actions.delete')}>
                             <Trash2 className="h-3.5 w-3.5" />
                           </Button>
                         )}
@@ -637,22 +646,22 @@ function XrayOutboundsPage() {
       <Dialog open={!!editingFreedomOutbound} onOpenChange={(open) => !open && setEditingFreedomOutbound(null)}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>编辑 Freedom 出站 - {editingFreedomOutbound?.outbound.tag}</DialogTitle>
+            <DialogTitle>{t('outbounds.editFreedomOutbound')} - {editingFreedomOutbound?.outbound.tag}</DialogTitle>
             <DialogDescription>
-              配置域名策略 (domainStrategy)
+              {t('outbounds.configDomainStrategy')}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-6 py-4">
             <div className="space-y-2">
-              <label className="text-sm font-medium">服务器</label>
+              <label className="text-sm font-medium">{t('outbounds.serverInfo')}</label>
               <div className="text-sm text-muted-foreground">{editingFreedomOutbound?.server_name}</div>
             </div>
 
             <div className="space-y-4">
               <div>
-                <label className="text-sm font-medium">域名策略</label>
+                <label className="text-sm font-medium">{t('outbounds.domainStrategy')}</label>
                 <p className="text-xs text-muted-foreground mt-1 mb-3">
-                  当目标地址为域名时，配置 Xray 连接远端服务器的行为模式
+                  {t('outbounds.domainStrategyWhenTarget')}
                 </p>
               </div>
 
@@ -663,90 +672,59 @@ function XrayOutboundsPage() {
                   className="w-full justify-start"
                   onClick={() => setFreedomDomainStrategy('AsIs')}
                 >
-                  AsIs (默认)
+                  {t('outbounds.asIsDefault')}
                 </Button>
                 <p className="text-xs text-muted-foreground pl-4">
-                  不对域名进行特殊处理，直接使用 Go 自带的 Dial 发起连接，优先级固定为 RFC6724 默认值（通常 IPv6 优先）
+                  {t('outbounds.asIsDesc')}
                 </p>
               </div>
 
               {/* UseIP options */}
               <div className="space-y-2">
-                <p className="text-sm font-medium text-muted-foreground">UseIP 系列 (解析失败回落到 AsIs)</p>
+                <p className="text-sm font-medium text-muted-foreground">{t('outbounds.useIpSeries')} ({t('outbounds.useIpFallbackDesc')})</p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  {[
-                    { value: 'UseIP', label: '使用 IP', desc: '使用解析出的 IP' },
-                    { value: 'UseIPv6v4', label: 'IPv6 优先', desc: '优先使用 IPv6，其次 IPv4' },
-                    { value: 'UseIPv6', label: '仅 IPv6', desc: '仅使用 IPv6 出站' },
-                    { value: 'UseIPv4v6', label: 'IPv4 优先', desc: '优先使用 IPv4，其次 IPv6' },
-                    { value: 'UseIPv4', label: '仅 IPv4', desc: '仅使用 IPv4 出站' },
-                  ].map((strategy) => (
+                  {['UseIP', 'UseIPv6v4', 'UseIPv6', 'UseIPv4v6', 'UseIPv4'].map((value) => (
                     <Button
-                      key={strategy.value}
-                      variant={freedomDomainStrategy === strategy.value ? 'default' : 'outline'}
+                      key={value}
+                      variant={freedomDomainStrategy === value ? 'default' : 'outline'}
                       size="sm"
-                      className="justify-start h-auto py-2"
-                      onClick={() => setFreedomDomainStrategy(strategy.value)}
+                      className="justify-start"
+                      onClick={() => setFreedomDomainStrategy(value)}
                     >
-                      <div className="text-left">
-                        <div>{strategy.value}</div>
-                        <div className="text-xs opacity-70">{strategy.label}</div>
-                      </div>
+                      {value}
                     </Button>
                   ))}
                 </div>
                 <p className="text-xs text-muted-foreground pl-4">
-                  使用内置 DNS 解析域名。解析不符合要求时回落到 AsIs。
+                  {t('outbounds.useIpDesc')}
                 </p>
               </div>
 
               {/* ForceIP options */}
               <div className="space-y-2">
-                <p className="text-sm font-medium text-muted-foreground">ForceIP 系列 (解析失败连接失败)</p>
+                <p className="text-sm font-medium text-muted-foreground">{t('outbounds.forceIpSeries')} ({t('outbounds.forceIpFailDesc')})</p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  {[
-                    { value: 'ForceIP', label: '强制使用 IP', desc: '强制使用解析出的 IP' },
-                    { value: 'ForceIPv6v4', label: '强制 IPv6 优先', desc: '强制优先使用 IPv6' },
-                    { value: 'ForceIPv6', label: '强制仅 IPv6', desc: '强制仅使用 IPv6 出站' },
-                    { value: 'ForceIPv4v6', label: '强制 IPv4 优先', desc: '强制优先使用 IPv4' },
-                    { value: 'ForceIPv4', label: '强制仅 IPv4', desc: '强制仅使用 IPv4 出站' },
-                  ].map((strategy) => (
+                  {['ForceIP', 'ForceIPv6v4', 'ForceIPv6', 'ForceIPv4v6', 'ForceIPv4'].map((value) => (
                     <Button
-                      key={strategy.value}
-                      variant={freedomDomainStrategy === strategy.value ? 'default' : 'outline'}
+                      key={value}
+                      variant={freedomDomainStrategy === value ? 'default' : 'outline'}
                       size="sm"
-                      className="justify-start h-auto py-2"
-                      onClick={() => setFreedomDomainStrategy(strategy.value)}
+                      className="justify-start"
+                      onClick={() => setFreedomDomainStrategy(value)}
                     >
-                      <div className="text-left">
-                        <div>{strategy.value}</div>
-                        <div className="text-xs opacity-70">{strategy.label}</div>
-                      </div>
+                      {value}
                     </Button>
                   ))}
                 </div>
                 <p className="text-xs text-muted-foreground pl-4">
-                  强制使用内置 DNS 解析域名。解析结果不符合要求时，连接将无法建立。
+                  {t('outbounds.forceIpDesc')}
                 </p>
               </div>
 
               {/* Current selection display */}
               <div className="mt-4 p-3 bg-muted rounded-lg">
                 <p className="text-sm">
-                  当前选择: <span className="font-medium">{freedomDomainStrategy}</span>
-                  <span className="text-muted-foreground ml-2">
-                    ({freedomDomainStrategy === 'AsIs' ? '默认' :
-                      freedomDomainStrategy === 'UseIP' ? '使用 IP' :
-                      freedomDomainStrategy === 'UseIPv6v4' ? 'IPv6 优先' :
-                      freedomDomainStrategy === 'UseIPv6' ? '仅 IPv6' :
-                      freedomDomainStrategy === 'UseIPv4v6' ? 'IPv4 优先' :
-                      freedomDomainStrategy === 'UseIPv4' ? '仅 IPv4' :
-                      freedomDomainStrategy === 'ForceIP' ? '强制使用 IP' :
-                      freedomDomainStrategy === 'ForceIPv6v4' ? '强制 IPv6 优先' :
-                      freedomDomainStrategy === 'ForceIPv6' ? '强制仅 IPv6' :
-                      freedomDomainStrategy === 'ForceIPv4v6' ? '强制 IPv4 优先' :
-                      freedomDomainStrategy === 'ForceIPv4' ? '强制仅 IPv4' : ''})
-                  </span>
+                  {t('outbounds.currentSelection')}: <span className="font-medium">{freedomDomainStrategy}</span>
                 </p>
               </div>
             </div>
@@ -757,10 +735,10 @@ function XrayOutboundsPage() {
               variant="outline"
               onClick={() => setEditingFreedomOutbound(null)}
             >
-              取消
+              {tc('actions.cancel')}
             </Button>
             <Button onClick={handleFreedomSubmit} disabled={remoteUpdateOutboundMutation.isPending}>
-              {remoteUpdateOutboundMutation.isPending ? '保存中...' : '保存'}
+              {remoteUpdateOutboundMutation.isPending ? tc('actions.saving') : tc('actions.save')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -770,9 +748,9 @@ function XrayOutboundsPage() {
       <Dialog open={!!viewingOutbound} onOpenChange={(open) => !open && setViewingOutbound(null)}>
         <DialogContent className="max-w-3xl max-h-[90vh]">
           <DialogHeader>
-            <DialogTitle>查看出站配置 - {viewingOutbound?.tag}</DialogTitle>
+            <DialogTitle>{t('outbounds.viewOutbound')} - {viewingOutbound?.tag}</DialogTitle>
             <DialogDescription>
-              完整的出站配置 JSON
+              {t('outbounds.viewOutboundJson')}
             </DialogDescription>
           </DialogHeader>
           <div className="overflow-auto max-h-[60vh]">
@@ -781,7 +759,7 @@ function XrayOutboundsPage() {
             </pre>
           </div>
           <DialogFooter>
-            <Button onClick={() => setViewingOutbound(null)}>关闭</Button>
+            <Button onClick={() => setViewingOutbound(null)}>{tc('actions.close')}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -795,9 +773,9 @@ function XrayOutboundsPage() {
       >
         <DialogContent className="w-[95vw] !max-w-none md:w-[90vw] lg:w-[80vw] max-h-[90vh] overflow-hidden sm:max-w-none flex flex-col">
           <DialogHeader>
-            <DialogTitle>添加出站 - 向导模式</DialogTitle>
+            <DialogTitle>{t('outbounds.addOutboundWizard')}</DialogTitle>
             <DialogDescription>
-              基于 Xray 官方示例配置，通过向导快速生成出站配置
+              {t('outbounds.addOutboundWizardDesc')}
             </DialogDescription>
           </DialogHeader>
           <div className="flex-1 overflow-y-auto">

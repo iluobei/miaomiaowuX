@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
@@ -9,9 +10,9 @@ import {
   PROXY_NODES_MARKER,
   PROXY_PROVIDERS_MARKER,
   REGION_PROXY_GROUPS_MARKER,
-  PROXY_NODES_DISPLAY,
-  PROXY_PROVIDERS_DISPLAY,
-  REGION_PROXY_GROUPS_DISPLAY,
+  getProxyNodesDisplay,
+  getProxyProvidersDisplay,
+  getRegionProxyGroupsDisplay,
 } from '@/lib/template-v3-utils'
 import {
   DndContext,
@@ -62,9 +63,9 @@ function SortableItem({ id, onRemove }: SortableItemProps) {
   }
 
   const getDisplayName = () => {
-    if (id === PROXY_NODES_MARKER) return PROXY_NODES_DISPLAY
-    if (id === PROXY_PROVIDERS_MARKER) return PROXY_PROVIDERS_DISPLAY
-    if (id === REGION_PROXY_GROUPS_MARKER) return REGION_PROXY_GROUPS_DISPLAY
+    if (id === PROXY_NODES_MARKER) return getProxyNodesDisplay()
+    if (id === PROXY_PROVIDERS_MARKER) return getProxyProvidersDisplay()
+    if (id === REGION_PROXY_GROUPS_MARKER) return getRegionProxyGroupsDisplay()
     return id
   }
 
@@ -102,9 +103,9 @@ function DragOverlayItem({ id }: { id: string }) {
   const isMarker = id === PROXY_NODES_MARKER || id === PROXY_PROVIDERS_MARKER || id === REGION_PROXY_GROUPS_MARKER
 
   const getDisplayName = () => {
-    if (id === PROXY_NODES_MARKER) return PROXY_NODES_DISPLAY
-    if (id === PROXY_PROVIDERS_MARKER) return PROXY_PROVIDERS_DISPLAY
-    if (id === REGION_PROXY_GROUPS_MARKER) return REGION_PROXY_GROUPS_DISPLAY
+    if (id === PROXY_NODES_MARKER) return getProxyNodesDisplay()
+    if (id === PROXY_PROVIDERS_MARKER) return getProxyProvidersDisplay()
+    if (id === REGION_PROXY_GROUPS_MARKER) return getRegionProxyGroupsDisplay()
     return id
   }
 
@@ -132,8 +133,10 @@ export function ProxyGroupSelect({
   showNodesMarker = false,
   showProvidersMarker = false,
   showRegionGroupsMarker = false,
-  placeholder = '选择代理组',
+  placeholder,
 }: ProxyGroupSelectProps) {
+  const { t } = useTranslation('templates')
+  const resolvedPlaceholder = placeholder ?? t('proxyGroupSelect.defaultPlaceholder')
   const [open, setOpen] = useState(false)
   const [activeId, setActiveId] = useState<string | null>(null)
   const [internalOrder, setInternalOrder] = useState<string[]>(value)
@@ -244,15 +247,15 @@ export function ProxyGroupSelect({
         <Popover open={open} onOpenChange={setOpen}>
           <PopoverTrigger asChild>
             <Button variant="outline" role="combobox" aria-expanded={open} className="justify-between">
-              {placeholder}
+              {resolvedPlaceholder}
               <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
             </Button>
           </PopoverTrigger>
           <PopoverContent className="w-[300px] p-0">
             <Command>
-              <CommandInput placeholder="搜索代理组..." />
+              <CommandInput placeholder={t('proxyGroupSelect.searchPlaceholder')} />
               <CommandList>
-                <CommandEmpty>没有找到代理组</CommandEmpty>
+                <CommandEmpty>{t('proxyGroupSelect.noResults')}</CommandEmpty>
                 <CommandGroup>
                   {availableGroups.map(groupName => (
                     <CommandItem key={groupName} value={groupName} onSelect={() => handleSelect(groupName)}>

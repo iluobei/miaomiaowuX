@@ -1,8 +1,9 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Link } from '@tanstack/react-router'
-import { LogOut, Settings2, ExternalLink, BookOpen, HardDrive, RefreshCw, Bug, Palette } from 'lucide-react'
+import { LogOut, Settings2, ExternalLink, BookOpen, HardDrive, RefreshCw, Bug, Palette, Languages } from 'lucide-react'
 import { toast } from 'sonner'
+import { useTranslation } from 'react-i18next'
 import useDialogState from '@/hooks/use-dialog-state'
 import { SignOutDialog } from '@/components/sign-out-dialog'
 import { BackupDialog } from '@/components/backup-dialog'
@@ -25,6 +26,7 @@ import { api } from '@/lib/api'
 import { handleServerError } from '@/lib/handle-server-error'
 
 export function UserMenu() {
+  const { t, i18n } = useTranslation()
   const [open, setOpen] = useDialogState<boolean>()
   const [backupDialogOpen, setBackupDialogOpen] = useState(false)
   const [updateDialogOpen, setUpdateDialogOpen] = useState(false)
@@ -66,12 +68,12 @@ export function UserMenu() {
       return response.data
     },
     onSuccess: () => {
-      toast.success('Debug日志已开启')
+      toast.success(t('userMenu.debugEnabled'))
       queryClient.invalidateQueries({ queryKey: ['debug-status'] })
     },
     onError: (error) => {
       handleServerError(error)
-      toast.error('开启Debug日志失败')
+      toast.error(t('userMenu.debugEnableFailed'))
     },
   })
 
@@ -82,7 +84,7 @@ export function UserMenu() {
       return response.data as { message: string; download_url: string; log_path: string }
     },
     onSuccess: async (data) => {
-      toast.success('Debug日志已关闭')
+      toast.success(t('userMenu.debugDisabled'))
       queryClient.invalidateQueries({ queryKey: ['debug-status'] })
 
       // 自动下载日志文件
@@ -102,10 +104,10 @@ export function UserMenu() {
           link.remove()
           window.URL.revokeObjectURL(url)
 
-          toast.success('日志文件已下载')
+          toast.success(t('userMenu.logDownloaded'))
         } catch (error) {
           console.error('下载日志失败:', error)
-          toast.error('下载日志文件失败')
+          toast.error(t('userMenu.logDownloadFailed'))
         } finally {
           setIsDownloading(false)
         }
@@ -113,7 +115,7 @@ export function UserMenu() {
     },
     onError: (error) => {
       handleServerError(error)
-      toast.error('关闭Debug日志失败')
+      toast.error(t('userMenu.debugDisableFailed'))
     },
   })
 
@@ -125,7 +127,7 @@ export function UserMenu() {
     }
   }
 
-  const displayName = profile?.nickname || profile?.username || '用户'
+  const displayName = profile?.nickname || profile?.username || t('userMenu.user')
   const fallbackAvatar = profile?.is_admin ? '/images/admin-avatar.webp' : '/images/user-avatar.png'
   const avatarSrc = profile?.avatar_url?.trim() ? profile.avatar_url.trim() : fallbackAvatar
   const fallbackText = displayName.slice(0, 2)
@@ -139,13 +141,13 @@ export function UserMenu() {
           <Button
             variant='outline'
             size='sm'
-            aria-label={`用户菜单: ${displayName}`}
+            aria-label={displayName}
             className='h-9 min-w-0 justify-center gap-2 px-2 py-2 overflow-hidden sm:min-w-[120px] sm:gap-2 sm:px-3'
           >
-            <span className='sr-only'>{`用户菜单: ${displayName}`}</span>
+            <span className='sr-only'>{displayName}</span>
             <Avatar className='size-7 border-[1.5px] border-[color:rgba(241,140,110,0.45)] shadow-[2px_2px_0_rgba(0,0,0,0.2)]'>
               <AvatarImage src={avatarSrc} alt={displayName} />
-              <AvatarFallback>{fallbackText || '用户'}</AvatarFallback>
+              <AvatarFallback>{fallbackText || t('userMenu.user')}</AvatarFallback>
             </Avatar>
             <div className='hidden sm:flex sm:flex-col sm:items-center sm:leading-tight'>
               <span className='text-sm font-semibold truncate max-w-[70px]'>{displayName}</span>
@@ -159,22 +161,22 @@ export function UserMenu() {
           <div className='flex flex-col items-center gap-2 text-center'>
             <Avatar className='size-12'>
               <AvatarImage src={avatarSrc} alt={displayName} />
-              <AvatarFallback>{fallbackText || '用户'}</AvatarFallback>
+              <AvatarFallback>{fallbackText || t('userMenu.user')}</AvatarFallback>
             </Avatar>
             <div className='space-y-1'>
               <p className='text-sm font-semibold leading-tight'>{displayName}</p>
-              <p className='text-xs text-muted-foreground'>{profile?.username || '未登录'}</p>
+              <p className='text-xs text-muted-foreground'>{profile?.username || t('userMenu.notLoggedIn')}</p>
               {emailText ? (
                 <p className='text-xs text-muted-foreground break-all'>{emailText}</p>
               ) : (
-                <p className='text-xs text-muted-foreground'>未填写邮箱</p>
+                <p className='text-xs text-muted-foreground'>{t('userMenu.noEmail')}</p>
               )}
             </div>
           </div>
           <DropdownMenuSeparator />
           <DropdownMenuItem asChild className='cursor-pointer justify-center'>
             <Link to='/settings' className='flex items-center gap-2'>
-              <Settings2 className='size-4' /> 个人设置
+              <Settings2 className='size-4' /> {t('userMenu.settings')}
             </Link>
           </DropdownMenuItem>
 
@@ -186,7 +188,7 @@ export function UserMenu() {
             <div className='flex items-center gap-2'>
               <Bug className='size-4' />
               <div className='flex flex-col'>
-                <span className='text-sm'>Debug 日志</span>
+                <span className='text-sm'>{t('userMenu.debugLog')}</span>
                 {debugStatus?.enabled && debugStatus.file_size && (
                   <span className='text-xs text-muted-foreground'>
                     {debugStatus.file_size} · {debugStatus.duration}
@@ -214,8 +216,8 @@ export function UserMenu() {
             <Palette className='size-4 shrink-0' />
             <div className='flex flex-1 gap-1'>
               {[
-                { value: 'miaomiaowu', label: '妙妙屋' },
-                { value: 'flat', label: '扁平' },
+                { value: 'miaomiaowu', label: t('userMenu.themeMiaomiaowu') },
+                { value: 'flat', label: t('userMenu.themeFlat') },
               ].map((opt) => (
                 <button
                   key={opt.value}
@@ -240,21 +242,53 @@ export function UserMenu() {
             </div>
           </DropdownMenuItem>
 
+          {/* 语言切换 */}
+          <DropdownMenuItem
+            className='cursor-pointer px-2'
+            onSelect={(e) => e.preventDefault()}
+          >
+            <Languages className='size-4 shrink-0' />
+            <div className='flex flex-1 gap-1'>
+              {[
+                { value: 'zh-CN', label: '中文' },
+                { value: 'en', label: 'English' },
+              ].map((opt) => (
+                <button
+                  key={opt.value}
+                  type='button'
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    if (i18n.language !== opt.value) {
+                      i18n.changeLanguage(opt.value)
+                    }
+                  }}
+                  className={`flex-1 px-2 py-0.5 text-xs border transition-colors ${
+                    i18n.language === opt.value
+                      ? 'bg-primary text-primary-foreground border-primary'
+                      : 'bg-background hover:bg-muted border-border'
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          </DropdownMenuItem>
+
           <DropdownMenuItem asChild className='cursor-pointer justify-center'>
             <a href='https://docs.miaomiaowu.net' target='_blank' rel='noopener noreferrer' className='flex items-center gap-2'>
-              <BookOpen className='size-4' /> 使用帮助
+              <BookOpen className='size-4' /> {t('userMenu.help')}
             </a>
           </DropdownMenuItem>
           {profile?.is_admin && (
             <DropdownMenuItem onClick={() => setBackupDialogOpen(true)} className='cursor-pointer justify-center'>
-              <HardDrive className='size-4' /> 备份数据
+              <HardDrive className='size-4' /> {t('userMenu.backup')}
             </DropdownMenuItem>
           )}
           {profile?.is_admin && (
             <DropdownMenuItem onClick={() => setUpdateDialogOpen(true)} className='cursor-pointer justify-center'>
               <RefreshCw className='size-4' />
               <span className='relative'>
-                检查更新
+                {t('userMenu.checkUpdate')}
                 {hasUpdate && (
                   <span className='absolute mt-2 -right-1.5 -top-1.5 flex size-1.5'>
                     <span className='absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-75'></span>
@@ -273,12 +307,12 @@ export function UserMenu() {
               className='flex items-center gap-2'
             >
               <ExternalLink className='size-4' />
-              版本 v{currentVersion}
+              {t('userMenu.version')} v{currentVersion}
             </a>
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem onClick={() => setOpen(true)} className='cursor-pointer justify-center'>
-            <LogOut className='size-4' /> 退出登录
+            <LogOut className='size-4' /> {t('userMenu.signOut')}
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>

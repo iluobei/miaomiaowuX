@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Label } from '@/components/ui/label'
@@ -19,8 +20,10 @@ export function ProxyTypeSelect({
   value,
   onChange,
   label,
-  placeholder = '选择代理类型',
+  placeholder,
 }: ProxyTypeSelectProps) {
+  const { t } = useTranslation('templates')
+  const resolvedPlaceholder = placeholder ?? t('proxyTypeSelect.defaultPlaceholder')
   const [open, setOpen] = useState(false)
 
   const handleToggle = (type: ProxyType) => {
@@ -57,7 +60,7 @@ export function ProxyTypeSelect({
                 </span>
               </span>
             ) : (
-              <span className="text-muted-foreground">{placeholder}</span>
+              <span className="text-muted-foreground">{resolvedPlaceholder}</span>
             )}
             <ChevronDown className="h-4 w-4 opacity-50" />
           </Button>
@@ -70,7 +73,7 @@ export function ProxyTypeSelect({
               className="w-full justify-start"
               onClick={handleSelectAll}
             >
-              {value.length === PROXY_TYPES.length ? '取消全选' : '全选'}
+              {value.length === PROXY_TYPES.length ? t('proxyTypeSelect.deselectAll') : t('proxyTypeSelect.selectAll')}
             </Button>
           </div>
           <ScrollArea className="h-[200px]">

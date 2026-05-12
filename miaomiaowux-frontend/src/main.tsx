@@ -15,6 +15,8 @@ import { FontProvider } from './context/font-provider'
 import { ThemeProvider } from './context/theme-provider'
 // Generated Routes
 import { routeTree } from './routeTree.gen'
+// i18n
+import '@/lib/i18n'
 // Styles
 import './styles/index.css'
 

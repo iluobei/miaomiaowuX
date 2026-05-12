@@ -1,4 +1,5 @@
 // @ts-nocheck
+import { useTranslation } from 'react-i18next'
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -32,27 +33,28 @@ function generateBase64Key(byteLength: number): string {
 }
 
 export function FormField({ field, value, onChange, error, onPublicKeyGenerated, ss2022Method }: FormFieldProps) {
+  const { t } = useTranslation('xray')
+
   // Check if this is a Shadowsocks 2022 PSK field
   // Identify by field name and label containing PSK
   const isSS2022PskField = field.generateKey && field.type === 'password' &&
     (field.name === 'serverPassword' || field.name === 'password') &&
-    field.label?.includes('PSK')
+    field.label?.includes('psk')
 
   // If field has generateKey flag and is for x25519, use KeyGeneratorField
   if (field.generateKey && field.type === 'password' && !isSS2022PskField) {
     return (
       <KeyGeneratorField
-        label={field.label}
+        label={t(field.label)}
         value={value || ''}
         onChange={onChange}
-        description={field.description}
+        description={field.description ? t(field.description) : undefined}
         placeholder={field.placeholder}
         onPublicKeyGenerated={onPublicKeyGenerated}
       />
     )
   }
 
-  // 生成随机密码
   const generateRandomPassword = (length = 16) => {
     const charset = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*'
     let password = ''
@@ -128,7 +130,7 @@ export function FormField({ field, value, onChange, error, onPublicKeyGenerated,
                 variant="outline"
                 size="icon"
                 onClick={() => onChange(generateSS2022Key())}
-                title="生成 Base64 PSK 密钥"
+                title={t('formField.generatePsk')}
               >
                 <Wand2 className="h-4 w-4" />
               </Button>
@@ -149,7 +151,7 @@ export function FormField({ field, value, onChange, error, onPublicKeyGenerated,
               variant="outline"
               size="icon"
               onClick={() => onChange(generateRandomPassword())}
-              title="生成随机密码"
+              title={t('formField.generatePassword')}
             >
               <RefreshCw className="h-4 w-4" />
             </Button>
@@ -194,7 +196,7 @@ export function FormField({ field, value, onChange, error, onPublicKeyGenerated,
                   onClick={() => onChange(String(option.value))}
                   className="whitespace-nowrap"
                 >
-                  {option.label}
+                  {option.label.startsWith('fields.') ? t(option.label) : option.label}
                 </Button>
               ))}
             </div>
@@ -204,12 +206,12 @@ export function FormField({ field, value, onChange, error, onPublicKeyGenerated,
         return (
           <Select value={value || field.defaultValue} onValueChange={onChange}>
             <SelectTrigger className={error ? 'border-red-500' : ''}>
-              <SelectValue placeholder={field.placeholder || '请选择'} />
+              <SelectValue placeholder={field.placeholder || t('formField.pleaseSelect')} />
             </SelectTrigger>
             <SelectContent>
               {field.options?.map((option) => (
                 <SelectItem key={option.value} value={String(option.value)}>
-                  {option.label}
+                  {option.label.startsWith('fields.') ? t(option.label) : option.label}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -225,7 +227,7 @@ export function FormField({ field, value, onChange, error, onPublicKeyGenerated,
               onCheckedChange={onChange}
             />
             <Label htmlFor={field.name} className="text-sm font-normal cursor-pointer">
-              {field.label}
+              {t(field.label)}
             </Label>
           </div>
         )
@@ -240,7 +242,7 @@ export function FormField({ field, value, onChange, error, onPublicKeyGenerated,
       <div className="space-y-1">
         {renderField()}
         {field.description && (
-          <p className="text-xs text-muted-foreground">{field.description}</p>
+          <p className="text-xs text-muted-foreground">{t(field.description)}</p>
         )}
         {error && <p className="text-xs text-red-500">{error}</p>}
       </div>
@@ -250,12 +252,12 @@ export function FormField({ field, value, onChange, error, onPublicKeyGenerated,
   return (
     <div className="space-y-2">
       <Label htmlFor={field.name}>
-        {field.label}
+        {t(field.label)}
         {field.required && <span className="text-red-500 ml-1">*</span>}
       </Label>
       {renderField()}
       {field.description && (
-        <p className="text-xs text-muted-foreground">{field.description}</p>
+        <p className="text-xs text-muted-foreground">{t(field.description)}</p>
       )}
       {error && <p className="text-xs text-red-500">{error}</p>}
     </div>

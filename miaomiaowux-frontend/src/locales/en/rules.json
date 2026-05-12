@@ -1,0 +1,31 @@
+{
+  "title": "Rule Configuration",
+  "subtitle": "View, edit and save subscription rules with version history.",
+  "noPermission": "Access Denied",
+  "noPermissionDesc": "Only administrators can access the rule configuration page.",
+  "fileList": {
+    "title": "Rule Files",
+    "description": "Select a YAML file to edit",
+    "empty": "No YAML files found."
+  },
+  "editor": {
+    "noFile": "No file selected",
+    "latestVersion": "Latest v{{version}}",
+    "autoValidate": "YAML format is auto-validated while editing",
+    "saving": "Saving...",
+    "save": "Save Changes",
+    "revert": "Revert Changes",
+    "saveHint": "A new version will be created after saving",
+    "saveFailed": "Save failed, invalid YAML format",
+    "saveSuccess": "Rules saved",
+    "contentEmpty": "Content cannot be empty",
+    "yamlParseFailed": "YAML parse failed"
+  },
+  "history": {
+    "title": "Version History",
+    "description": "Recently saved versions are shown here",
+    "empty": "No history yet. Versions are created automatically after saving.",
+    "version": "Version v{{version}}",
+    "unknownTime": "Unknown time"
+  }
+}

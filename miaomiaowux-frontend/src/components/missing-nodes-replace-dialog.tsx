@@ -1,4 +1,5 @@
 import { useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import { ButtonGroup } from '@/components/ui/button-group'
 import {
@@ -32,10 +33,11 @@ export function MissingNodesReplaceDialog({
   onReplacementChoiceChange,
   replacementOptions = [],
   onConfirm,
-  confirmText = '确认替换',
-  cancelText = '取消',
+  confirmText,
+  cancelText,
   maxOptionColumns = 4,
 }: MissingNodesReplaceDialogProps) {
+  const { t } = useTranslation('nodes')
   const options = useMemo(() => {
     const unique = new Set<string>(['DIRECT', 'REJECT', ...replacementOptions])
     return Array.from(unique)
@@ -45,9 +47,9 @@ export function MissingNodesReplaceDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className='max-w-md'>
         <DialogHeader>
-          <DialogTitle>发现缺失节点</DialogTitle>
+          <DialogTitle>{t('missingNodesDialog.title')}</DialogTitle>
           <DialogDescription>
-            以下节点在 rules 中被引用，但不存在于 proxy-groups 中
+            {t('missingNodesDialog.description')}
           </DialogDescription>
         </DialogHeader>
 
@@ -64,7 +66,7 @@ export function MissingNodesReplaceDialog({
           </div>
 
           <div className='space-y-2'>
-            <Label>选择替换为：</Label>
+            <Label>{t('missingNodesDialog.replaceLabel')}</Label>
             <ButtonGroup
               mode='adaptive-full'
               maxColumns={maxOptionColumns}
@@ -82,7 +84,7 @@ export function MissingNodesReplaceDialog({
               ))}
             </ButtonGroup>
             <p className='text-muted-foreground text-xs'>
-              将把上述缺失的节点替换为{' '}
+              {t('missingNodesDialog.replaceHint')}{' '}
               <span className='font-semibold'>{replacementChoice}</span>
             </p>
           </div>
@@ -90,9 +92,9 @@ export function MissingNodesReplaceDialog({
 
         <DialogFooter>
           <Button variant='outline' onClick={() => onOpenChange(false)}>
-            {cancelText}
+            {cancelText || t('actions.cancel', { ns: 'common' })}
           </Button>
-          <Button onClick={onConfirm}>{confirmText}</Button>
+          <Button onClick={onConfirm}>{confirmText || t('missingNodesDialog.confirmReplace')}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

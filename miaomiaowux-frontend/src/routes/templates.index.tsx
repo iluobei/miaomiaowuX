@@ -5,6 +5,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { Plus, Save, RefreshCw, RotateCcw } from 'lucide-react'
 
+import { useTranslation } from 'react-i18next'
 import { Topbar } from '@/components/layout/topbar'
 import { api } from '@/lib/api'
 import { useMediaQuery } from '@/hooks/use-media-query'
@@ -60,6 +61,7 @@ function getDefaultTemplateName(mode: 'redir-host' | 'fake-ip'): string {
 }
 
 function TemplatesPage() {
+  const { t } = useTranslation('templates')
   const queryClient = useQueryClient()
   const isMobile = useMediaQuery('(max-width: 767px)')
   const isTablet = useMediaQuery('(min-width: 768px) and (max-width: 1024px)')
@@ -140,11 +142,11 @@ function TemplatesPage() {
       queryClient.invalidateQueries({ queryKey: ['rule-templates'] })
       queryClient.invalidateQueries({ queryKey: ['rule-template', templateName] })
       localStorage.removeItem(TEMPLATE_DRAFT_KEY)
-      toast.success('模板保存成功')
+      toast.success(t('toast.saveSuccess'))
       setIsDirty(false)
     },
     onError: (error: any) => {
-      toast.error(error.response?.data?.error || '保存失败')
+      toast.error(error.response?.data?.error || t('toast.saveFailed'))
     },
   })
 
@@ -161,10 +163,10 @@ function TemplatesPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['rule-templates'] })
       setTemplateName(DEFAULT_TEMPLATE_NAME)
-      toast.success('默认模板已创建')
+      toast.success(t('toast.defaultCreated'))
     },
     onError: (error: any) => {
-      toast.error(error.response?.data?.error || '创建失败')
+      toast.error(error.response?.data?.error || t('toast.createFailed'))
     },
   })
 
@@ -276,7 +278,7 @@ function TemplatesPage() {
       const response = await api.get(`/api/admin/rule-templates/${encodeURIComponent(name)}`)
       applyTemplateContent(response.data.content)
     } catch (error: any) {
-      toast.error(error.response?.data?.error || '加载模板失败')
+      toast.error(error.response?.data?.error || t('toast.loadFailed'))
     }
   }
 
@@ -299,7 +301,7 @@ function TemplatesPage() {
       const response = await api.get(`/api/admin/rule-templates/${encodeURIComponent(name)}`)
       applyTemplateContent(response.data.content)
     } catch (error: any) {
-      toast.error(error.response?.data?.error || '重置失败')
+      toast.error(error.response?.data?.error || t('toast.resetFailed'))
     }
   }
 
@@ -308,7 +310,7 @@ function TemplatesPage() {
       const response = await api.get(`/api/admin/rule-templates/${encodeURIComponent(REDIR_HOST_TEMPLATE)}`)
       createMutation.mutate({ name: DEFAULT_TEMPLATE_NAME, content: response.data.content })
     } catch (error: any) {
-      toast.error(error.response?.data?.error || '创建失败')
+      toast.error(error.response?.data?.error || t('toast.createFailed'))
     }
   }
 
@@ -381,7 +383,7 @@ function TemplatesPage() {
   }
 
   const handleAddProxyGroup = () => {
-    setProxyGroups([...proxyGroups, createDefaultFormState(`新代理组 ${proxyGroups.length + 1}`)])
+    setProxyGroups([...proxyGroups, createDefaultFormState(t('newProxyGroup', { index: proxyGroups.length + 1 }))])
     setIsDirty(true)
   }
 
@@ -396,7 +398,7 @@ function TemplatesPage() {
       })
       setPreviewContent(response.data.content)
     } catch (error: any) {
-      toast.error(error.response?.data?.error || '预览生成失败')
+      toast.error(error.response?.data?.error || t('toast.previewFailed'))
     } finally {
       setIsPreviewLoading(false)
     }
@@ -415,14 +417,14 @@ function TemplatesPage() {
         <main className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 pt-24">
           <Card>
             <CardHeader>
-              <CardTitle>模板管理</CardTitle>
+              <CardTitle>{t('title')}</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="flex flex-col items-center justify-center py-12 gap-4">
-                <p className="text-muted-foreground">尚未创建模板，点击下方按钮创建默认模板</p>
+                <p className="text-muted-foreground">{t('emptyDesc')}</p>
                 <Button onClick={handleCreateDefault} disabled={createMutation.isPending}>
                   <Plus className="h-4 w-4 mr-2" />
-                  创建默认模板
+                  {t('createDefault')}
                 </Button>
               </div>
             </CardContent>
@@ -440,7 +442,7 @@ function TemplatesPage() {
         <main className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 pt-24">
           <Card>
             <CardContent className="flex items-center justify-center py-12">
-              <span className="text-muted-foreground">加载中...</span>
+              <span className="text-muted-foreground">{t('actions.loading', { ns: 'common' })}</span>
             </CardContent>
           </Card>
         </main>
@@ -455,11 +457,11 @@ function TemplatesPage() {
       {/* Header */}
       <div className={cn("flex justify-between gap-4", isMobile ? "flex-col" : "items-center")}>
         <div>
-          <h2 className="text-lg font-semibold">模板管理</h2>
-          <p className="text-sm text-muted-foreground">mihomo 订阅模板配置</p>
+          <h2 className="text-lg font-semibold">{t('title')}</h2>
+          <p className="text-sm text-muted-foreground">{t('subtitle')}</p>
         </div>
         <div className={cn("flex items-center gap-2 flex-wrap", isMobile ? "justify-between" : "")}>
-          {isDirty && <Badge variant="secondary">未保存</Badge>}
+          {isDirty && <Badge variant="secondary">{t('unsaved')}</Badge>}
           <div className="flex items-center gap-1 border rounded-md p-0.5">
             <Button
               variant={dnsMode === 'redir-host' ? 'default' : 'ghost'}
@@ -478,13 +480,13 @@ function TemplatesPage() {
               fake-ip
             </Button>
           </div>
-          <Button variant="outline" onClick={handleReset} size={isMobile ? "sm" : "default"} title="重置为默认模板">
+          <Button variant="outline" onClick={handleReset} size={isMobile ? "sm" : "default"} title={t('resetTooltip')}>
             <RotateCcw className="h-4 w-4 mr-1.5" />
-            重置
+            {t('actions.reset', { ns: 'common' })}
           </Button>
           <Button onClick={handleSave} disabled={saveMutation.isPending} size={isMobile ? "sm" : "default"}>
             <Save className="h-4 w-4 mr-1.5" />
-            保存
+            {t('actions.save', { ns: 'common' })}
           </Button>
         </div>
       </div>
@@ -494,11 +496,11 @@ function TemplatesPage() {
         <Collapsible open={isPreviewOpen} onOpenChange={setIsPreviewOpen}>
           <CollapsibleTrigger asChild>
             <Button variant="outline" className="w-full h-8 text-sm">
-              {isPreviewOpen ? '收起配置预览' : '展开配置预览'}
+              {isPreviewOpen ? t('collapsePreview') : t('expandPreview')}
             </Button>
           </CollapsibleTrigger>
           <CollapsibleContent className="mt-2 h-[250px]">
-            <TemplatePreview content={previewContent} isLoading={isPreviewLoading} onRefresh={handlePreview} title="配置预览" className="h-full" />
+            <TemplatePreview content={previewContent} isLoading={isPreviewLoading} onRefresh={handlePreview} title={t('previewTitle')} className="h-full" />
           </CollapsibleContent>
         </Collapsible>
       )}
@@ -509,8 +511,8 @@ function TemplatesPage() {
         <div className={cn("flex flex-col overflow-hidden", isMobile ? "w-full min-h-[500px]" : isTablet ? "w-[55%]" : "w-[40%]")}>
           <Tabs value={editorTab} onValueChange={handleTabChange} className="flex flex-col h-full overflow-hidden">
             <TabsList className="flex-shrink-0 w-full grid grid-cols-2">
-              <TabsTrigger value="visual">可视化编辑</TabsTrigger>
-              <TabsTrigger value="yaml">YAML 代码</TabsTrigger>
+              <TabsTrigger value="visual">{t('visualEdit')}</TabsTrigger>
+              <TabsTrigger value="yaml">{t('yamlCode')}</TabsTrigger>
             </TabsList>
 
             <TabsContent value="visual" className="flex-1 min-h-0 overflow-hidden mt-4 flex flex-col data-[state=inactive]:hidden">
@@ -518,8 +520,8 @@ function TemplatesPage() {
                 <div className="space-y-3 pb-4 pr-3">
                   <div className="flex items-center justify-between p-3 border rounded-lg bg-muted/30">
                     <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
-                      <Label htmlFor="region-toggle" className="font-medium">开启区域代理组</Label>
-                      <span className="text-xs text-muted-foreground">自动添加按地区分类的代理组</span>
+                      <Label htmlFor="region-toggle" className="font-medium">{t('enableRegionGroups')}</Label>
+                      <span className="text-xs text-muted-foreground">{t('enableRegionGroupsDesc')}</span>
                     </div>
                     <Switch id="region-toggle" checked={enableRegionProxyGroups} onCheckedChange={handleRegionProxyGroupsToggle} />
                   </div>
@@ -543,7 +545,7 @@ function TemplatesPage() {
                   ))}
                   <Button variant="outline" className="w-full mt-2" onClick={handleAddProxyGroup}>
                     <Plus className="h-4 w-4 mr-2" />
-                    添加代理组
+                    {t('addProxyGroup')}
                   </Button>
                 </div>
               </ScrollArea>
@@ -554,7 +556,7 @@ function TemplatesPage() {
                 value={templateContent}
                 onChange={(e) => handleYamlChange(e.target.value)}
                 className="flex-1 font-mono text-xs sm:text-sm resize-none p-4"
-                placeholder="YAML 内容..."
+                placeholder={t('yamlPlaceholder')}
               />
             </TabsContent>
           </Tabs>
@@ -563,7 +565,7 @@ function TemplatesPage() {
         {/* Preview panel - desktop/tablet only */}
         {!isMobile && (
           <div className={cn("border-l pl-4 flex overflow-hidden", isTablet ? "w-[45%]" : "w-[60%]")}>
-            <TemplatePreview content={previewContent} isLoading={isPreviewLoading} onRefresh={handlePreview} className="flex-1 h-full" title="配置预览" />
+            <TemplatePreview content={previewContent} isLoading={isPreviewLoading} onRefresh={handlePreview} className="flex-1 h-full" title={t('previewTitle')} />
           </div>
         )}
       </div>
@@ -572,12 +574,12 @@ function TemplatesPage() {
       <AlertDialog open={isDraftRecoveryOpen} onOpenChange={setIsDraftRecoveryOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>恢复本地缓存</AlertDialogTitle>
-            <AlertDialogDescription>检测到未保存的本地缓存，是否恢复？</AlertDialogDescription>
+            <AlertDialogTitle>{t('draftRecovery.title')}</AlertDialogTitle>
+            <AlertDialogDescription>{t('draftRecovery.description')}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={handleDiscardDraft}>放弃</AlertDialogCancel>
-            <AlertDialogAction onClick={handleRecoverDraft}>恢复</AlertDialogAction>
+            <AlertDialogCancel onClick={handleDiscardDraft}>{t('draftRecovery.discard')}</AlertDialogCancel>
+            <AlertDialogAction onClick={handleRecoverDraft}>{t('draftRecovery.recover')}</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
@@ -586,12 +588,12 @@ function TemplatesPage() {
       <AlertDialog open={isSwitchConfirmOpen} onOpenChange={setIsSwitchConfirmOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>切换 DNS 模式</AlertDialogTitle>
-            <AlertDialogDescription>当前有未保存的更改，切换模式将丢失这些更改。是否继续？</AlertDialogDescription>
+            <AlertDialogTitle>{t('dnsSwitchConfirm.title')}</AlertDialogTitle>
+            <AlertDialogDescription>{t('dnsSwitchConfirm.description')}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setPendingSwitchMode(null)}>取消</AlertDialogCancel>
-            <AlertDialogAction onClick={handleConfirmSwitch}>确认切换</AlertDialogAction>
+            <AlertDialogCancel onClick={() => setPendingSwitchMode(null)}>{t('actions.cancel', { ns: 'common' })}</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmSwitch}>{t('dnsSwitchConfirm.confirm')}</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
@@ -600,12 +602,12 @@ function TemplatesPage() {
       <AlertDialog open={isResetConfirmOpen} onOpenChange={setIsResetConfirmOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>重置模板</AlertDialogTitle>
-            <AlertDialogDescription>将恢复为当前 DNS 模式的默认模板，所有未保存的更改将丢失。是否继续？</AlertDialogDescription>
+            <AlertDialogTitle>{t('resetConfirm.title')}</AlertDialogTitle>
+            <AlertDialogDescription>{t('resetConfirm.description')}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>取消</AlertDialogCancel>
-            <AlertDialogAction onClick={handleConfirmReset}>确认重置</AlertDialogAction>
+            <AlertDialogCancel>{t('actions.cancel', { ns: 'common' })}</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmReset}>{t('resetConfirm.confirm')}</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

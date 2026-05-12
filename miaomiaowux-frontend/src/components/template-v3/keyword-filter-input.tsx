@@ -2,6 +2,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { keywordsToRegex } from '@/lib/template-v3-utils'
+import { useTranslation } from 'react-i18next'
 
 interface KeywordFilterInputProps {
   value: string
@@ -18,10 +19,12 @@ export function KeywordFilterInput({
   onChange,
   onVariableCleared,
   label,
-  placeholder = '输入关键词，用逗号分隔',
+  placeholder,
   description,
   fromVariable,
 }: KeywordFilterInputProps) {
+  const { t } = useTranslation('templates')
+  const resolvedPlaceholder = placeholder ?? t('keywordFilter.defaultPlaceholder')
   const regex = keywordsToRegex(value)
 
   return (
@@ -30,7 +33,7 @@ export function KeywordFilterInput({
         <Label>{label}</Label>
         {fromVariable && (
           <Badge variant="outline" className="text-xs border-dashed border-amber-500 text-amber-600">
-            变量: {fromVariable}
+            {t('keywordFilter.variable', { name: fromVariable })}
           </Badge>
         )}
       </div>
@@ -42,7 +45,7 @@ export function KeywordFilterInput({
             onVariableCleared()
           }
         }}
-        placeholder={placeholder}
+        placeholder={resolvedPlaceholder}
         className={fromVariable ? 'border-dashed border-amber-500/50 bg-amber-50/30 dark:bg-amber-950/10' : ''}
       />
       {description && (
@@ -50,7 +53,7 @@ export function KeywordFilterInput({
       )}
       {regex && (
         <div className="flex items-center gap-2">
-          <span className="text-xs text-muted-foreground">正则:</span>
+          <span className="text-xs text-muted-foreground">{t('keywordFilter.regex')}</span>
           <Badge variant="secondary" className="font-mono text-xs">
             {regex}
           </Badge>

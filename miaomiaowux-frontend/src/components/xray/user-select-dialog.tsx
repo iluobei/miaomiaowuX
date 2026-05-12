@@ -1,5 +1,6 @@
 // @ts-nocheck
 import { useState, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import {
   Dialog,
   DialogContent,
@@ -25,12 +26,13 @@ interface UserSelectDialogProps {
 }
 
 export function UserSelectDialog({ open, onOpenChange, onSelect, fields, ss2022Method }: UserSelectDialogProps) {
+  const { t } = useTranslation('xray')
+  const { t: tc } = useTranslation('common')
   const [users, setUsers] = useState<any[]>([])
   const [loading, setLoading] = useState(false)
   const [selectedUserIds, setSelectedUserIds] = useState<Set<number>>(new Set())
   const [searchTerm, setSearchTerm] = useState('')
 
-  // 加载用户列表
   useEffect(() => {
     if (open) {
       loadUsers()
@@ -42,13 +44,11 @@ export function UserSelectDialog({ open, onOpenChange, onSelect, fields, ss2022M
   const loadUsers = async () => {
     setLoading(true)
     try {
-      // 调用API获取用户列表
       const response = await api.get('/api/admin/users')
-      // 确保返回的是数组
       const userData = Array.isArray(response.data) ? response.data : (response.data?.users || [])
       setUsers(userData)
     } catch (error) {
-      toast.error('加载用户失败', {
+      toast.error(t('userSelect.loadFailed'), {
         description: error.response?.data?.message || error.message,
       })
       setUsers([])
@@ -67,7 +67,6 @@ export function UserSelectDialog({ open, onOpenChange, onSelect, fields, ss2022M
     setSelectedUserIds(newSelection)
   }
 
-  // 生成随机密码
   const generateRandomPassword = (length = 16) => {
     const charset = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*'
     let password = ''
@@ -110,12 +109,10 @@ export function UserSelectDialog({ open, onOpenChange, onSelect, fields, ss2022M
   }
 
   const handleConfirm = async () => {
-    // 检查并更新缺少邮箱的用户
     const usersToUpdate = users.filter((user) =>
       selectedUserIds.has(user.id) && !user.email
     )
 
-    // 为没有邮箱的用户生成邮箱并保存
     for (const user of usersToUpdate) {
       const generatedEmail = `mmw@${user.username}.me`
       try {
@@ -123,39 +120,31 @@ export function UserSelectDialog({ open, onOpenChange, onSelect, fields, ss2022M
           username: user.username,
           email: generatedEmail,
         })
-        // 更新本地用户数据
         user.email = generatedEmail
       } catch (error) {
         console.error(`Failed to update email for user ${user.username}:`, error)
-        toast.error(`无法为用户 ${user.username} 更新邮箱`)
+        toast.error(t('userSelect.updateEmailFailed', { username: user.username }))
       }
     }
 
     const selectedUsers = users
       .filter((user) => selectedUserIds.has(user.id))
       .map((user) => {
-        // 根据fields构建用户对象
         const userObj: any = {}
 
-        // 检查是否有用户名或ID字段（用于判断是否是Trojan等只有密码的协议）
         const hasUserOrIdField = fields.some(f => f.name === 'user' || f.name === 'id')
 
         fields.forEach((field) => {
-          // 映射用户数据到字段
           if (field.name === 'id') {
             userObj[field.name] = generateUUID()
           } else if (field.name === 'user') {
-            // 对于需要用户名的协议（如Socks5/HTTP）
             userObj[field.name] = user.username || user.email
           } else if (field.name === 'email') {
-            // 如果没有user/id字段（如Trojan），使用用户名作为email
-            // 如果有user/id字段，优先使用用户的email，如果没有则使用用户名
             userObj[field.name] = hasUserOrIdField
               ? (user.email || user.username)
               : user.username
           } else if (field.name === 'password' || field.name === 'pass') {
-            // Check if this is a Shadowsocks 2022 PSK field
-            const isSS2022PskField = field.label?.includes('PSK')
+            const isSS2022PskField = field.label?.includes('psk')
             if (isSS2022PskField) {
               userObj[field.name] = generateSS2022Key()
             } else {
@@ -171,7 +160,6 @@ export function UserSelectDialog({ open, onOpenChange, onSelect, fields, ss2022M
     onSelect(selectedUsers)
   }
 
-  // 过滤用户
   const filteredUsers = users.filter((user) => {
     const searchLower = searchTerm.toLowerCase()
     return (
@@ -184,28 +172,26 @@ export function UserSelectDialog({ open, onOpenChange, onSelect, fields, ss2022M
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[80vh] overflow-hidden flex flex-col">
         <DialogHeader>
-          <DialogTitle>选择用户</DialogTitle>
-          <DialogDescription>从用户列表中选择要添加的用户</DialogDescription>
+          <DialogTitle>{t('userSelect.title')}</DialogTitle>
+          <DialogDescription>{t('userSelect.desc')}</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4 flex-1 overflow-hidden flex flex-col">
-          {/* 搜索框 */}
           <div className="space-y-2">
-            <Label>搜索用户</Label>
+            <Label>{t('userSelect.searchUser')}</Label>
             <Input
-              placeholder="输入邮箱或用户名搜索"
+              placeholder={t('userSelect.searchPlaceholder')}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
 
-          {/* 用户列表 */}
           <div className="flex-1 overflow-y-auto border rounded-lg p-4">
             {loading ? (
-              <p className="text-sm text-muted-foreground text-center py-8">加载中...</p>
+              <p className="text-sm text-muted-foreground text-center py-8">{t('userSelect.loading')}</p>
             ) : filteredUsers.length === 0 ? (
               <p className="text-sm text-muted-foreground text-center py-8">
-                {searchTerm ? '未找到匹配的用户' : '暂无用户'}
+                {searchTerm ? t('userSelect.noMatch') : t('userSelect.noUsers')}
               </p>
             ) : (
               <div className="space-y-2">
@@ -232,16 +218,16 @@ export function UserSelectDialog({ open, onOpenChange, onSelect, fields, ss2022M
           </div>
 
           <div className="text-sm text-muted-foreground">
-            已选择 {selectedUserIds.size} 个用户
+            {t('userSelect.selectedCount', { count: selectedUserIds.size })}
           </div>
         </div>
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>
-            取消
+            {tc('actions.cancel')}
           </Button>
           <Button onClick={handleConfirm} disabled={selectedUserIds.size === 0}>
-            确认添加
+            {t('userSelect.confirmAdd')}
           </Button>
         </DialogFooter>
       </DialogContent>

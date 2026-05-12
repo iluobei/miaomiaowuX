@@ -9,6 +9,7 @@ import {
   Circle,
 } from 'lucide-react'
 import { toast } from 'sonner'
+import { useTranslation } from 'react-i18next'
 import { api } from '@/lib/api'
 import {
   Dialog,
@@ -41,15 +42,18 @@ interface UpdateProgress {
   message: string
 }
 
-const STEPS = [
-  { key: 'checking', label: '检查版本' },
-  { key: 'downloading', label: '下载更新' },
-  { key: 'backing_up', label: '备份当前版本' },
-  { key: 'replacing', label: '替换文件' },
-  { key: 'restarting', label: '重启服务' },
-] as const
+const STEP_KEYS = ['checking', 'downloading', 'backing_up', 'replacing', 'restarting'] as const
+
+const STEP_LABEL_MAP = {
+  checking: 'update.steps.checking',
+  downloading: 'update.steps.downloading',
+  backing_up: 'update.steps.backingUp',
+  replacing: 'update.steps.replacing',
+  restarting: 'update.steps.restarting',
+} as const
 
 export function UpdateDialog({ open, onOpenChange }: UpdateDialogProps) {
+  const { t } = useTranslation('common')
   const [isUpdating, setIsUpdating] = useState(false)
   const [updateProgress, setUpdateProgress] = useState<UpdateProgress | null>(null)
   const updateCompleteRef = useRef(false)
@@ -93,7 +97,7 @@ export function UpdateDialog({ open, onOpenChange }: UpdateDialogProps) {
 
       const reader = response.body?.getReader()
       if (!reader) {
-        throw new Error('无法读取响应流')
+        throw new Error(t('update.cannotReadStream'))
       }
 
       const decoder = new TextDecoder()
@@ -115,7 +119,7 @@ export function UpdateDialog({ open, onOpenChange }: UpdateDialogProps) {
 
               if (progress.step === 'done') {
                 updateCompleteRef.current = true
-                toast.success('更新成功，页面将在 3 秒后刷新')
+                toast.success(t('update.updateSuccess'))
                 setTimeout(() => {
                   window.location.reload()
                 }, 3000)
@@ -136,12 +140,12 @@ export function UpdateDialog({ open, onOpenChange }: UpdateDialogProps) {
       // Stream ended without done/error
       if (!updateCompleteRef.current) {
         setIsUpdating(false)
-        toast.error('连接意外关闭')
+        toast.error(t('update.connectionClosed'))
       }
     } catch (error) {
       if (!updateCompleteRef.current) {
         setIsUpdating(false)
-        toast.error(`更新失败: ${error instanceof Error ? error.message : '未知错误'}`)
+        toast.error(t('update.updateFailed', { error: error instanceof Error ? error.message : t('update.unknownError') }))
       }
     }
   }, [auth.accessToken])
@@ -154,38 +158,38 @@ export function UpdateDialog({ open, onOpenChange }: UpdateDialogProps) {
   const isCheckingOrRefetching = isLoading || isRefetching
 
   // Get current step index for UI
-  const currentStepIndex = STEPS.findIndex(s => s.key === updateProgress?.step)
+  const currentStepIndex = STEP_KEYS.findIndex(k => k === updateProgress?.step)
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className='sm:max-w-md overflow-hidden'>
         <DialogHeader>
           <DialogTitle className='flex items-center gap-2'>
-            <RefreshCw className='size-5' /> 检查更新
+            <RefreshCw className='size-5' /> {t('update.title')}
           </DialogTitle>
-          <DialogDescription>检查是否有新版本可用</DialogDescription>
+          <DialogDescription>{t('update.description')}</DialogDescription>
         </DialogHeader>
 
         <div className='space-y-4'>
           {isCheckingOrRefetching ? (
             <div className='text-center py-8'>
               <RefreshCw className='size-8 animate-spin mx-auto mb-3 text-primary' />
-              <p className='text-sm text-muted-foreground'>正在检查更新...</p>
+              <p className='text-sm text-muted-foreground'>{t('update.checking')}</p>
             </div>
           ) : updateInfo?.has_update ? (
             <div className='space-y-4'>
               <div className='flex items-center gap-2 text-amber-500'>
                 <AlertTriangle className='size-5' />
-                <span className='font-medium'>发现新版本！</span>
+                <span className='font-medium'>{t('update.newVersion')}</span>
               </div>
 
               <div className='bg-muted/50 rounded-lg p-3 space-y-2'>
                 <div className='flex justify-between text-sm'>
-                  <span className='text-muted-foreground'>当前版本</span>
+                  <span className='text-muted-foreground'>{t('update.currentVersion')}</span>
                   <span className='font-mono'>v{updateInfo.current_version}</span>
                 </div>
                 <div className='flex justify-between text-sm'>
-                  <span className='text-muted-foreground'>最新版本</span>
+                  <span className='text-muted-foreground'>{t('update.latestVersion')}</span>
                   <span className='font-mono text-green-600'>
                     v{updateInfo.latest_version}
                   </span>
@@ -194,7 +198,7 @@ export function UpdateDialog({ open, onOpenChange }: UpdateDialogProps) {
 
               {updateInfo.release_notes && !isUpdating && (
                 <div className='space-y-2 overflow-hidden'>
-                  <p className='text-sm font-medium'>更新内容：</p>
+                  <p className='text-sm font-medium'>{t('update.releaseNotes')}</p>
                   <div className='bg-muted/30 rounded-lg p-3 max-h-40 overflow-y-auto overflow-x-hidden'>
                     <p className='text-sm text-muted-foreground whitespace-pre-wrap break-all'>
                       {updateInfo.release_notes}
@@ -207,13 +211,13 @@ export function UpdateDialog({ open, onOpenChange }: UpdateDialogProps) {
               {isUpdating && (
                 <div className='space-y-4'>
                   <div className='space-y-2'>
-                    {STEPS.map((step, index) => {
+                    {STEP_KEYS.map((stepKey, index) => {
                       const isCompleted = index < currentStepIndex
-                      const isCurrent = step.key === updateProgress?.step
+                      const isCurrent = stepKey === updateProgress?.step
                       const isPending = index > currentStepIndex || currentStepIndex === -1
 
                       return (
-                        <div key={step.key} className='flex items-center gap-3'>
+                        <div key={stepKey} className='flex items-center gap-3'>
                           {isCompleted ? (
                             <CheckCircle className='size-5 text-green-500 shrink-0' />
                           ) : isCurrent ? (
@@ -230,9 +234,9 @@ export function UpdateDialog({ open, onOpenChange }: UpdateDialogProps) {
                                   : ''
                             }
                           >
-                            {step.label}
+                            {t(STEP_LABEL_MAP[stepKey])}
                           </span>
-                          {isCurrent && step.key === 'downloading' && updateProgress && (
+                          {isCurrent && stepKey === 'downloading' && updateProgress && (
                             <span className='ml-auto text-sm font-mono'>
                               {updateProgress.progress}%
                             </span>
@@ -249,7 +253,7 @@ export function UpdateDialog({ open, onOpenChange }: UpdateDialogProps) {
 
                   <div className='bg-blue-50 dark:bg-blue-950/30 rounded-lg p-3'>
                     <p className='text-sm text-blue-600 dark:text-blue-400'>
-                      {updateProgress?.message || '正在准备更新...'}
+                      {updateProgress?.message || t('update.preparing')}
                     </p>
                   </div>
                 </div>
@@ -263,12 +267,12 @@ export function UpdateDialog({ open, onOpenChange }: UpdateDialogProps) {
                     className='w-full'
                   >
                     <Download className='size-4 mr-2' />
-                    立即更新
+                    {t('update.updateNow')}
                   </Button>
 
                   {!updateInfo.download_url && (
                     <p className='text-xs text-destructive text-center'>
-                      未找到适合当前系统的下载文件
+                      {t('update.noDownload')}
                     </p>
                   )}
 
@@ -279,7 +283,7 @@ export function UpdateDialog({ open, onOpenChange }: UpdateDialogProps) {
                       onClick={() => window.open(updateInfo.release_url, '_blank')}
                     >
                       <ExternalLink className='size-4 mr-2' />
-                      查看 GitHub Release
+                      {t('update.viewRelease')}
                     </Button>
                   )}
                 </div>
@@ -288,9 +292,9 @@ export function UpdateDialog({ open, onOpenChange }: UpdateDialogProps) {
           ) : (
             <div className='text-center py-8'>
               <CheckCircle className='size-12 text-green-500 mx-auto mb-3' />
-              <p className='font-medium text-lg'>已是最新版本</p>
+              <p className='font-medium text-lg'>{t('update.upToDate')}</p>
               <p className='text-sm text-muted-foreground mt-1'>
-                当前版本：v{updateInfo?.current_version}
+                {t('update.currentVersionLabel', { version: updateInfo?.current_version })}
               </p>
               <Button
                 variant='outline'
@@ -300,7 +304,7 @@ export function UpdateDialog({ open, onOpenChange }: UpdateDialogProps) {
                 className='mt-4'
               >
                 <Download className='size-4 mr-2' />
-                强制重新安装
+                {t('update.forceReinstall')}
               </Button>
             </div>
           )}
@@ -314,7 +318,7 @@ export function UpdateDialog({ open, onOpenChange }: UpdateDialogProps) {
             <RefreshCw
               className={`size-4 mr-2 ${isCheckingOrRefetching ? 'animate-spin' : ''}`}
             />
-            重新检查
+            {t('update.recheck')}
           </Button>
         </div>
       </DialogContent>

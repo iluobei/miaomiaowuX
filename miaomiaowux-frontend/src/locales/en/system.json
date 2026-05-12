@@ -1,0 +1,62 @@
+{
+  "title": "System Settings",
+  "description": "Manage subscription sync and feature toggles",
+  "shortLink": {
+    "title": "Short Links",
+    "description": "When enabled, subscription links will use short codes to hide token info",
+    "enableLabel": "Enable Short Links",
+    "updated": "Short link settings updated"
+  },
+  "intervals": {
+    "title": "Scheduled Tasks",
+    "description": "Configure task intervals. Restart required for changes to take effect.",
+    "speedCollect": "Speed Collection Interval (s)",
+    "trafficCollect": "Traffic Collection Interval (s)",
+    "trafficCheck": "Traffic Quota Check Interval (s)",
+    "heartbeat": "Heartbeat Interval (s)",
+    "updated": "Task intervals updated, restart required"
+  },
+  "masterUrl": {
+    "title": "Master Server URL",
+    "description": "Install commands for remote servers will use this URL",
+    "label": "Server URL",
+    "placeholder": "https://example.com or http://1.2.3.4:12889",
+    "hint": "Format: protocol + domain or IP (with port), e.g. https://panel.example.com or http://1.2.3.4:12889. Leave empty to use current URL.",
+    "updated": "Master server URL updated"
+  },
+  "telegram": {
+    "title": "Telegram Notifications",
+    "description": "Configure Telegram Bot for system event notifications",
+    "enableLabel": "Enable Notifications",
+    "botToken": "Bot Token",
+    "botTokenPlaceholder": "Enter Telegram Bot Token",
+    "chatId": "Chat ID",
+    "chatIdPlaceholder": "Enter Telegram Chat ID",
+    "sendTest": "Send Test Notification",
+    "testSent": "Test notification sent",
+    "configUpdated": "Notification settings updated",
+    "events": {
+      "title": "Notification Events",
+      "login": "User Login",
+      "subscribe": "Subscription Fetch",
+      "serverOnline": "Server Online",
+      "serverOffline": "Server Offline",
+      "dailyTraffic": "Daily Traffic Report",
+      "dailyTrafficTime": "Report Time",
+      "trafficThreshold": "Traffic Threshold Alert",
+      "thresholdPercent": "Alert Threshold (%)"
+    }
+  },
+  "apiToken": {
+    "title": "API Token",
+    "description": "Access all backend APIs without login",
+    "currentLabel": "Current API Token",
+    "regenerateConfirm": "Are you sure you want to regenerate the API Token? The old token will be invalidated.",
+    "regenerated": "API Token has been regenerated",
+    "copied": "API Token copied to clipboard",
+    "usageHint": "Use this Token in the MM-Authorization header to access APIs",
+    "warning": "• This Token grants full access to all backend APIs without login\n• Keep this Token secure — leaks may cause data security issues\n• The Token is printed in logs on server startup\n• Click refresh to regenerate — the old Token is immediately invalidated"
+  },
+  "configUpdated": "Settings updated",
+  "configUpdateFailed": "Failed to update settings"
+}

@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Flag } from 'lucide-react'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Button } from '@/components/ui/button'
@@ -16,6 +17,7 @@ interface FlagEmojiPickerProps {
 }
 
 export function FlagEmojiPicker({ onSelect, onAutoDetect, disabled, loading, className, currentFlag, stopPropagation }: FlagEmojiPickerProps) {
+  const { t } = useTranslation('common')
   const [open, setOpen] = useState(false)
 
   return (
@@ -38,7 +40,7 @@ export function FlagEmojiPicker({ onSelect, onAutoDetect, disabled, loading, cla
       <PopoverContent className='w-72 p-2' align='start' onClick={stopPropagation ? (e) => e.stopPropagation() : undefined}>
         {onAutoDetect && (
           <Button variant='outline' size='sm' className='w-full mb-2 text-xs' onClick={() => { onAutoDetect(); setOpen(false) }}>
-            🌐 自动检测地区
+            🌐 {t('flagPicker.autoDetect')}
           </Button>
         )}
         <div className='grid grid-cols-8 gap-1'>

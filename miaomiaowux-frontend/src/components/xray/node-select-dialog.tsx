@@ -1,5 +1,6 @@
 // @ts-nocheck
 import { useState, useEffect, useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 import {
   Dialog,
   DialogContent,
@@ -53,6 +54,8 @@ interface NodeSelectDialogProps {
 }
 
 export function NodeSelectDialog({ open, onOpenChange, onSelect, protocolFilter }: NodeSelectDialogProps) {
+  const { t } = useTranslation('xray')
+  const { t: tc } = useTranslation('common')
   const [nodes, setNodes] = useState<ParsedNode[]>([])
   const [loading, setLoading] = useState(false)
   const [selectedNodeId, setSelectedNodeId] = useState<number | null>(null)
@@ -76,7 +79,7 @@ export function NodeSelectDialog({ open, onOpenChange, onSelect, protocolFilter 
       const nodeData = response.data?.nodes || []
       setNodes(nodeData)
     } catch (error) {
-      toast.error('加载节点失败', {
+      toast.error(t('nodeSelect.loadFailed'), {
         description: error.response?.data?.message || error.message,
       })
       setNodes([])
@@ -143,7 +146,7 @@ export function NodeSelectDialog({ open, onOpenChange, onSelect, protocolFilter 
       onSelect(selectedNode, clashConfig)
       onOpenChange(false)
     } catch (error) {
-      toast.error('解析节点配置失败')
+      toast.error(t('nodeSelect.parseFailed'))
     }
   }
 
@@ -151,16 +154,16 @@ export function NodeSelectDialog({ open, onOpenChange, onSelect, protocolFilter 
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-3xl max-h-[80vh] overflow-hidden flex flex-col">
         <DialogHeader>
-          <DialogTitle>从节点导入</DialogTitle>
-          <DialogDescription>选择一个节点，将其配置导入到出站</DialogDescription>
+          <DialogTitle>{t('nodeSelect.importFromNode')}</DialogTitle>
+          <DialogDescription>{t('nodeSelect.importDesc')}</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4 flex-1 overflow-hidden flex flex-col">
           {/* Search box */}
           <div className="space-y-2">
-            <Label>搜索节点</Label>
+            <Label>{t('nodeSelect.searchNode')}</Label>
             <Input
-              placeholder="输入节点名称、协议或标签搜索"
+              placeholder={t('nodeSelect.searchPlaceholder')}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
@@ -174,7 +177,7 @@ export function NodeSelectDialog({ open, onOpenChange, onSelect, protocolFilter 
                 variant={tagFilter === 'all' ? 'default' : 'outline'}
                 onClick={() => setTagFilter('all')}
               >
-                全部
+                {t('nodeSelect.all')}
               </Button>
               {uniqueTags.map((tag) => (
                 <Button
@@ -192,10 +195,10 @@ export function NodeSelectDialog({ open, onOpenChange, onSelect, protocolFilter 
           {/* Node list */}
           <div className="flex-1 overflow-y-auto border rounded-lg p-4">
             {loading ? (
-              <p className="text-sm text-muted-foreground text-center py-8">加载中...</p>
+              <p className="text-sm text-muted-foreground text-center py-8">{t('nodeSelect.loading')}</p>
             ) : filteredNodes.length === 0 ? (
               <p className="text-sm text-muted-foreground text-center py-8">
-                {searchTerm || tagFilter !== 'all' ? '未找到匹配的节点' : '暂无可用节点'}
+                {searchTerm || tagFilter !== 'all' ? t('nodeSelect.noMatch') : t('nodeSelect.noNodes')}
               </p>
             ) : (
               <div className="space-y-2">
@@ -251,16 +254,16 @@ export function NodeSelectDialog({ open, onOpenChange, onSelect, protocolFilter 
           </div>
 
           <div className="text-sm text-muted-foreground">
-            {selectedNodeId ? '已选择 1 个节点' : '请选择一个节点'}
+            {selectedNodeId ? t('nodeSelect.selected') : t('nodeSelect.selectNode')}
           </div>
         </div>
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>
-            取消
+            {tc('actions.cancel')}
           </Button>
           <Button onClick={handleConfirm} disabled={!selectedNodeId}>
-            确认导入
+            {t('nodeSelect.confirmImport')}
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next'
 import { useQuery } from '@tanstack/react-query'
 import { Shield, AlertCircle } from 'lucide-react'
 import { api } from '@/lib/api'
@@ -34,9 +35,10 @@ export function CertSelectField({
   value,
   onChange,
   remoteServerId = 0,
-  label = '选择证书',
+  label,
   description,
 }: CertSelectFieldProps) {
+  const { t } = useTranslation('xray')
   const { auth } = useAuthStore()
 
   // Fetch valid certificates
@@ -80,7 +82,7 @@ export function CertSelectField({
     <div className="space-y-2">
       <Label className="flex items-center gap-2">
         <Shield className="h-4 w-4" />
-        {label}
+        {label || t('certSelect.selectCert')}
       </Label>
       {description && (
         <p className="text-xs text-muted-foreground">{description}</p>
@@ -91,18 +93,18 @@ export function CertSelectField({
         disabled={isLoading}
       >
         <SelectTrigger>
-          <SelectValue placeholder={isLoading ? '加载中...' : '选择已申请的证书'} />
+          <SelectValue placeholder={isLoading ? t('certSelect.loading') : t('certSelect.selectAppliedCert')} />
         </SelectTrigger>
         <SelectContent>
           <SelectItem value="none">
-            <span className="text-muted-foreground">不使用托管证书</span>
+            <span className="text-muted-foreground">{t('certSelect.noManagedCert')}</span>
           </SelectItem>
           {certificates?.length === 0 && (
             <div className="px-2 py-4 text-center text-sm text-muted-foreground">
               <AlertCircle className="h-4 w-4 mx-auto mb-2" />
-              暂无可用证书
+              {t('certSelect.noCerts')}
               <br />
-              <span className="text-xs">请先在证书管理中申请证书</span>
+              <span className="text-xs">{t('certSelect.noCertsDesc')}</span>
             </div>
           )}
           {certificates?.map((cert) => {
@@ -113,7 +115,7 @@ export function CertSelectField({
                   <span>{cert.domain}</span>
                   {days !== null && days <= 30 && (
                     <Badge variant={days <= 7 ? 'destructive' : 'outline'} className="text-xs">
-                      {days}天后过期
+                      {t('certSelect.daysExpiry', { days })}
                     </Badge>
                   )}
                 </div>
@@ -124,8 +126,8 @@ export function CertSelectField({
       </Select>
       {selectedCert && (
         <div className="text-xs text-muted-foreground space-y-1">
-          <div>证书路径: {selectedCert.cert_path}</div>
-          <div>密钥路径: {selectedCert.key_path}</div>
+          <div>{t('certSelect.certPath')}: {selectedCert.cert_path}</div>
+          <div>{t('certSelect.keyPath')}: {selectedCert.key_path}</div>
         </div>
       )}
     </div>

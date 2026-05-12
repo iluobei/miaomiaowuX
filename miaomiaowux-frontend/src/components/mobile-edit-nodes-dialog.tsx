@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 import { ChevronDown, ChevronUp, Search, X, Edit2, Check, Plus, Settings2, GripVertical } from 'lucide-react'
 import {
   DndContext,
@@ -140,6 +141,7 @@ export function MobileEditNodesDialog({
   showSpecialNodesAtBottom = false,
   proxyProviderConfigs = [],
 }: MobileEditNodesDialogProps) {
+  const { t } = useTranslation('nodes')
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set())
   const [editingGroupName, setEditingGroupName] = useState<string | null>(null)
   const [editingGroupNewName, setEditingGroupNewName] = useState('')
@@ -334,7 +336,7 @@ export function MobileEditNodesDialog({
 
   // 添加新代理组
   const addNewGroup = () => {
-    const newGroupName = `新分组 ${proxyGroups.length + 1}`
+    const newGroupName = t('mobileEditDialog.newGroupName', { index: proxyGroups.length + 1 })
     const newGroup: ProxyGroup = {
       name: newGroupName,
       type: 'select',
@@ -346,10 +348,10 @@ export function MobileEditNodesDialog({
 
   // 代理组类型配置
   const proxyTypes = [
-    { value: 'select', label: '手动选择', hasUrl: false, hasStrategy: false },
-    { value: 'url-test', label: '自动选择', hasUrl: true, hasStrategy: false },
-    { value: 'fallback', label: '自动回退', hasUrl: true, hasStrategy: false },
-    { value: 'load-balance', label: '负载均衡', hasUrl: true, hasStrategy: true },
+    { value: 'select', label: t('editNodesDialog.proxyType.select'), hasUrl: false, hasStrategy: false },
+    { value: 'url-test', label: t('editNodesDialog.proxyType.urlTest'), hasUrl: true, hasStrategy: false },
+    { value: 'fallback', label: t('editNodesDialog.proxyType.fallback'), hasUrl: true, hasStrategy: false },
+    { value: 'load-balance', label: t('editNodesDialog.proxyType.loadBalance'), hasUrl: true, hasStrategy: true },
   ]
 
   // 处理代理组类型变更
@@ -401,9 +403,9 @@ export function MobileEditNodesDialog({
       <Sheet open={open} onOpenChange={onOpenChange}>
         <SheetContent side="bottom" className="h-[90vh] flex flex-col p-4">
           <SheetHeader className="shrink-0">
-            <SheetTitle>手动分组节点</SheetTitle>
+            <SheetTitle>{t('mobileEditDialog.title')}</SheetTitle>
             <SheetDescription>
-              点击分组展开查看节点，点击编辑按钮添加或移除节点
+              {t('mobileEditDialog.description')}
             </SheetDescription>
           </SheetHeader>
 
@@ -478,7 +480,7 @@ export function MobileEditNodesDialog({
                               onClick={() => startEditGroupName(group.name)}
                             >
                               <Edit2 className="h-3 w-3 mr-1" />
-                              重命名
+                              {t('mobileEditDialog.rename')}
                             </Button>
                             <Popover>
                               <PopoverTrigger asChild>
@@ -486,10 +488,10 @@ export function MobileEditNodesDialog({
                                   variant="outline"
                                   size="sm"
                                   className="h-7 text-xs px-2"
-                                  title="切换代理组类型"
+                                  title={t('editNodesDialog.switchGroupTypeBtn')}
                                 >
                                   <Settings2 className="h-3 w-3 mr-1" />
-                                  类型
+                                  {t('mobileEditDialog.type')}
                                 </Button>
                               </PopoverTrigger>
                               <PopoverContent className="w-48 p-2" align="start">
@@ -508,7 +510,7 @@ export function MobileEditNodesDialog({
 
                                   {group.type === 'load-balance' && (
                                     <div className="pt-2 border-t">
-                                      <p className="text-xs text-muted-foreground mb-1">策略</p>
+                                      <p className="text-xs text-muted-foreground mb-1">{t('editNodesDialog.strategy')}</p>
                                       <Select
                                         value={group.strategy || 'round-robin'}
                                         onValueChange={(value) => handleStrategyChange(group.name, value as ProxyGroup['strategy'])}
@@ -517,9 +519,9 @@ export function MobileEditNodesDialog({
                                           <SelectValue />
                                         </SelectTrigger>
                                         <SelectContent>
-                                          <SelectItem value="round-robin">轮询</SelectItem>
-                                          <SelectItem value="consistent-hashing">一致性哈希</SelectItem>
-                                          <SelectItem value="sticky-sessions">粘性会话</SelectItem>
+                                          <SelectItem value="round-robin">{t('editNodesDialog.strategyOptions.roundRobin')}</SelectItem>
+                                          <SelectItem value="consistent-hashing">{t('editNodesDialog.strategyOptions.consistentHashing')}</SelectItem>
+                                          <SelectItem value="sticky-sessions">{t('editNodesDialog.strategyOptions.stickySessions')}</SelectItem>
                                         </SelectContent>
                                       </Select>
                                     </div>
@@ -533,7 +535,7 @@ export function MobileEditNodesDialog({
                               className="h-7 text-xs"
                               onClick={() => openEditSheet(group.name)}
                             >
-                              添加节点
+                              {t('mobileEditDialog.addNodes')}
                             </Button>
                           </div>
                           <Button
@@ -561,7 +563,7 @@ export function MobileEditNodesDialog({
                       <div className="p-3 space-y-1.5">
                         {group.proxies.length === 0 && (group.use?.length || 0) === 0 ? (
                           <p className="text-sm text-muted-foreground text-center py-2">
-                            暂无节点，点击"添加节点"按钮添加
+                            {t('mobileEditDialog.noNodes')}
                           </p>
                         ) : (
                           <>
@@ -625,17 +627,17 @@ export function MobileEditNodesDialog({
                 onClick={addNewGroup}
               >
                 <Plus className="mr-2 h-4 w-4" />
-                添加代理组
+                {t('mobileEditDialog.addProxyGroup')}
               </Button>
             </div>
           </div>
 
           <SheetFooter className="shrink-0 pt-4">
             <Button variant="outline" onClick={() => onOpenChange(false)}>
-              取消
+              {t('actions.cancel', { ns: 'common' })}
             </Button>
             <Button onClick={() => { onSave(); onOpenChange(false); }}>
-              确定
+              {t('actions.confirm', { ns: 'common' })}
             </Button>
           </SheetFooter>
         </SheetContent>
@@ -645,9 +647,9 @@ export function MobileEditNodesDialog({
       <Sheet open={editSheetOpen} onOpenChange={setEditSheetOpen}>
         <SheetContent side="bottom" className="h-[80vh] flex flex-col p-4">
           <SheetHeader className="shrink-0">
-            <SheetTitle>编辑分组: {currentEditingGroup}</SheetTitle>
+            <SheetTitle>{t('mobileEditDialog.editGroupTitle', { name: currentEditingGroup })}</SheetTitle>
             <SheetDescription>
-              选择要添加到此分组的节点
+              {t('mobileEditDialog.editGroupDescription')}
             </SheetDescription>
           </SheetHeader>
 
@@ -656,7 +658,7 @@ export function MobileEditNodesDialog({
             <div className="relative shrink-0">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="搜索节点..."
+                placeholder={t('mobileEditDialog.searchNodes')}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-9"
@@ -671,7 +673,7 @@ export function MobileEditNodesDialog({
                   className="cursor-pointer"
                   onClick={() => setSelectedTag('all')}
                 >
-                  全部
+                  {t('mobileEditDialog.allTags')}
                 </Badge>
                 {allTags.map((tag) => (
                   <Badge
@@ -691,7 +693,7 @@ export function MobileEditNodesDialog({
               <div className="space-y-2">
                 {filteredAvailableNodes.length === 0 && proxyProviderConfigs.length === 0 && !showSpecialNodesAtBottom ? (
                   <p className="text-sm text-muted-foreground text-center py-8">
-                    {searchQuery || selectedTag !== 'all' ? '没有找到匹配的节点' : '暂无可用节点'}
+                    {searchQuery || selectedTag !== 'all' ? t('mobileEditDialog.noMatchingNodes') : t('mobileEditDialog.noAvailableNodes')}
                   </p>
                 ) : (
                   <>
@@ -728,7 +730,7 @@ export function MobileEditNodesDialog({
                     {proxyProviderConfigs.length > 0 && (
                       <>
                         <div className='pt-3 pb-1 border-t mt-3'>
-                          <span className='text-xs text-purple-600 dark:text-purple-400 font-medium'>📦 代理集合</span>
+                          <span className='text-xs text-purple-600 dark:text-purple-400 font-medium'>📦 {t('mobileEditDialog.proxyProviders')}</span>
                         </div>
                         {proxyProviderConfigs.map((config) => {
                           const isSelected = isProviderInCurrentGroup(config.name)
@@ -763,7 +765,7 @@ export function MobileEditNodesDialog({
                     {showSpecialNodesAtBottom && (
                       <>
                         <div className='pt-3 pb-1 border-t mt-3'>
-                          <span className='text-xs text-muted-foreground font-medium'>特殊节点</span>
+                          <span className='text-xs text-muted-foreground font-medium'>{t('mobileEditDialog.specialNodes')}</span>
                         </div>
                         {SPECIAL_NODES.map((nodeName) => {
                           const isSelected = isNodeInCurrentGroup(nodeName)
@@ -797,14 +799,14 @@ export function MobileEditNodesDialog({
           <SheetFooter className="shrink-0">
             <div className="flex items-center justify-between w-full">
               <span className="text-sm text-muted-foreground">
-                已选择 {proxyGroups.find(g => g.name === currentEditingGroup)?.proxies.length || 0} 个节点
+                {t('mobileEditDialog.selectedNodes', { count: proxyGroups.find(g => g.name === currentEditingGroup)?.proxies.length || 0 })}
                 {(proxyGroups.find(g => g.name === currentEditingGroup)?.use?.length || 0) > 0 && (
                   <span className="text-purple-600 dark:text-purple-400">
-                    {' '}+ {proxyGroups.find(g => g.name === currentEditingGroup)?.use?.length} 个集合
+                    {t('mobileEditDialog.selectedCollections', { count: proxyGroups.find(g => g.name === currentEditingGroup)?.use?.length })}
                   </span>
                 )}
               </span>
-              <Button onClick={closeEditSheet}>完成</Button>
+              <Button onClick={closeEditSheet}>{t('mobileEditDialog.done')}</Button>
             </div>
           </SheetFooter>
         </SheetContent>

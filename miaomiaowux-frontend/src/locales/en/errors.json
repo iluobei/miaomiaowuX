@@ -1,0 +1,45 @@
+{
+  "validation": {
+    "required": "This field is required",
+    "passwordMinLength": "Password must be at least 8 characters",
+    "passwordMismatch": "Passwords do not match",
+    "usernameEmpty": "Username cannot be empty",
+    "invalidFormat": "Invalid format"
+  },
+  "clashValidator": {
+    "proxyNotObject": "Proxy #{{index}} is not a valid object",
+    "proxyMissingName": "Proxy #{{index}} is missing the name field or name is empty",
+    "proxyDuplicateName": "Duplicate proxy name: \"{{name}}\", auto-removed",
+    "proxyNameNotFirst": "Proxy \"{{name}}\" name field is not the first field, auto-adjusted",
+    "groupNotObject": "Proxy group #{{index}} is not a valid object",
+    "groupMissingName": "Proxy group #{{index}} is missing the name field or name is empty",
+    "groupDuplicateName": "Duplicate proxy group name: \"{{name}}\"",
+    "groupNameNotFirst": "Proxy group \"{{name}}\" name field is not the first field, auto-adjusted",
+    "groupEmpty": "Proxy group \"{{name}}\" has empty proxies, use, filter, and include-all fields",
+    "groupAutoCorrect": "Proxy group \"{{name}}\" node reference \"{{proxy}}\" auto-corrected to \"{{corrected}}\"",
+    "groupMissingNode": "Proxy group \"{{name}}\" references non-existent node: \"{{node}}\"",
+    "groupDuplicateProxies": "Proxy group \"{{name}}\" has duplicate proxy references, auto-deduplicated",
+    "circularReference": "Circular reference detected in proxy groups: {{cycle}}",
+    "validationPassed": "✅ Config validation passed",
+    "location": "Location: {{location}}",
+    "itemCount": "{{count}} items",
+    "nameNotFirst": "name field is not the first field",
+    "nameFieldAdjust": "{{count}} proxy groups need name field position adjustment",
+    "affected": "Affected: {{items}}",
+    "andMore": "and {{count}} more",
+    "errorsFound": "❌ Found {{count}} errors:\n",
+    "warningsFound": "⚠️ Found {{count}} warnings:\n",
+    "autoFixed": "🔧 Auto-fixed {{count}} issues"
+  },
+  "server": {
+    "unauthorized": "Unauthorized, please sign in again",
+    "forbidden": "Access denied",
+    "notFound": "Resource not found",
+    "internalError": "Internal server error",
+    "networkError": "Network error, please check your connection",
+    "timeout": "Request timed out",
+    "unknown": "Unknown error",
+    "somethingWentWrong": "Something went wrong!",
+    "contentNotFound": "Content not found."
+  }
+}

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { createFileRoute, redirect } from '@tanstack/react-router'
+import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import { Bell, Copy, Eye, EyeOff, Link, RefreshCw, Timer } from 'lucide-react'
 import { Topbar } from '@/components/layout/topbar'
@@ -30,6 +31,7 @@ export const Route = createFileRoute('/system-settings')({
 })
 
 function SystemSettingsPage() {
+  const { t } = useTranslation('system')
   const queryClient = useQueryClient()
   const { auth } = useAuthStore()
   const [forceSyncExternal, setForceSyncExternal] = useState(false)
@@ -65,7 +67,7 @@ function SystemSettingsPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['master-url'] })
-      toast.success('主服务器地址已更新')
+      toast.success(t('masterUrl.updated'))
     },
     onError: handleServerError,
   })
@@ -89,7 +91,7 @@ function SystemSettingsPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['api-token'] })
-      toast.success('API Token 已重新生成')
+      toast.success(t('apiToken.regenerated'))
     },
     onError: handleServerError,
   })
@@ -97,7 +99,7 @@ function SystemSettingsPage() {
   const copyApiToken = () => {
     if (apiTokenData?.token) {
       navigator.clipboard.writeText(apiTokenData.token)
-      toast.success('API Token 已复制到剪贴板')
+      toast.success(t('apiToken.copied'))
     }
   }
   // 短链接全局开关（系统级设置）
@@ -118,7 +120,7 @@ function SystemSettingsPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['short-link-enabled'] })
       queryClient.invalidateQueries({ queryKey: ['user-subscriptions'] })
-      toast.success('短链接设置已更新')
+      toast.success(t('shortLink.updated'))
     },
     onError: handleServerError,
   })
@@ -174,7 +176,7 @@ function SystemSettingsPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['system-intervals'] })
-      toast.success('定时配置已更新，重启服务后生效')
+      toast.success(t('intervals.updated'))
     },
     onError: handleServerError,
   })
@@ -235,7 +237,7 @@ function SystemSettingsPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['notify-config'] })
-      toast.success('通知配置已更新')
+      toast.success(t('telegram.configUpdated'))
     },
     onError: handleServerError,
   })
@@ -245,7 +247,7 @@ function SystemSettingsPage() {
       await api.post('/api/admin/notify-config/test')
     },
     onSuccess: () => {
-      toast.success('测试通知已发送')
+      toast.success(t('telegram.testSent'))
     },
     onError: handleServerError,
   })
@@ -327,11 +329,11 @@ function SystemSettingsPage() {
       setEnableProxyProvider(variables.enable_proxy_provider)
       setProxyGroupsSourceUrl(variables.proxy_groups_source_url || '')
       setClientCompatibilityMode(variables.client_compatibility_mode)
-      toast.success('设置已更新')
+      toast.success(t('configUpdated'))
     },
     onError: (error) => {
       handleServerError(error)
-      toast.error('更新设置失败')
+      toast.error(t('configUpdateFailed'))
     },
   })
 
@@ -371,8 +373,8 @@ function SystemSettingsPage() {
       <Topbar />
       <main className='mx-auto w-full max-w-4xl px-4 py-8 sm:px-6 pt-24'>
         <section className='space-y-2'>
-          <h1 className='text-3xl font-semibold tracking-tight'>系统设置</h1>
-          <p className='text-muted-foreground'>管理订阅同步和功能开关</p>
+          <h1 className='text-3xl font-semibold tracking-tight'>{t('title')}</h1>
+          <p className='text-muted-foreground'>{t('description')}</p>
         </section>
 
         <div className='mt-8 space-y-6'>
@@ -417,13 +419,13 @@ function SystemSettingsPage() {
             <CardHeader className='pb-4'>
               <CardTitle className='flex items-center gap-2'>
                 <Link className='h-5 w-5' />
-                短链接
+                {t('shortLink.title')}
               </CardTitle>
-              <CardDescription>开启后，订阅链接将使用短码格式，隐藏 token 信息</CardDescription>
+              <CardDescription>{t('shortLink.description')}</CardDescription>
             </CardHeader>
             <CardContent>
               <div className='flex items-center justify-between'>
-                <Label htmlFor='short-link-toggle'>启用短链接</Label>
+                <Label htmlFor='short-link-toggle'>{t('shortLink.enableLabel')}</Label>
                 <Switch
                   id='short-link-toggle'
                   checked={enableShortLink}
@@ -442,14 +444,14 @@ function SystemSettingsPage() {
             <CardHeader className='pb-4'>
               <CardTitle className='flex items-center gap-2'>
                 <Timer className='h-5 w-5' />
-                定时配置
+                {t('intervals.title')}
               </CardTitle>
-              <CardDescription>配置各项定时任务的执行间隔，修改后需重启服务生效</CardDescription>
+              <CardDescription>{t('intervals.description')}</CardDescription>
             </CardHeader>
             <CardContent className='space-y-4'>
               <div className='grid grid-cols-2 gap-4'>
                 <div className='space-y-2'>
-                  <Label htmlFor='speed-interval'>网速采集间隔（秒）</Label>
+                  <Label htmlFor='speed-interval'>{t('intervals.speedCollect')}</Label>
                   <Input
                     id='speed-interval'
                     type='number'
@@ -459,7 +461,7 @@ function SystemSettingsPage() {
                   />
                 </div>
                 <div className='space-y-2'>
-                  <Label htmlFor='traffic-interval'>流量采集间隔（秒）</Label>
+                  <Label htmlFor='traffic-interval'>{t('intervals.trafficCollect')}</Label>
                   <Input
                     id='traffic-interval'
                     type='number'
@@ -469,7 +471,7 @@ function SystemSettingsPage() {
                   />
                 </div>
                 <div className='space-y-2'>
-                  <Label htmlFor='check-interval'>流量限额检查间隔（秒）</Label>
+                  <Label htmlFor='check-interval'>{t('intervals.trafficCheck')}</Label>
                   <Input
                     id='check-interval'
                     type='number'
@@ -479,7 +481,7 @@ function SystemSettingsPage() {
                   />
                 </div>
                 <div className='space-y-2'>
-                  <Label htmlFor='heartbeat-interval'>心跳间隔（秒）</Label>
+                  <Label htmlFor='heartbeat-interval'>{t('intervals.heartbeat')}</Label>
                   <Input
                     id='heartbeat-interval'
                     type='number'
@@ -498,7 +500,7 @@ function SystemSettingsPage() {
                 })}
                 disabled={updateIntervalsMutation.isPending}
               >
-                保存
+                {t('actions.save', { ns: 'common' })}
               </Button>
             </CardContent>
           </Card>
@@ -506,15 +508,15 @@ function SystemSettingsPage() {
           {/* 主服务器地址 */}
           <Card>
             <CardHeader className='pb-4'>
-              <CardTitle>主服务器地址</CardTitle>
-              <CardDescription>设置后，添加远程服务器时生成的安装命令将使用此地址</CardDescription>
+              <CardTitle>{t('masterUrl.title')}</CardTitle>
+              <CardDescription>{t('masterUrl.description')}</CardDescription>
             </CardHeader>
             <CardContent className='space-y-4'>
               <div className='space-y-2'>
-                <Label htmlFor='master-url'>服务器地址</Label>
+                <Label htmlFor='master-url'>{t('masterUrl.label')}</Label>
                 <Input
                   id='master-url'
-                  placeholder='https://example.com 或 http://1.2.3.4:12889'
+                  placeholder={t('masterUrl.placeholder')}
                   value={masterUrl}
                   onChange={(e) => setMasterUrl(e.target.value)}
                   onBlur={() => {
@@ -527,7 +529,7 @@ function SystemSettingsPage() {
                   disabled={updateMasterUrlMutation.isPending}
                 />
                 <p className='text-xs text-muted-foreground'>
-                  格式：协议 + 域名或 IP（含端口），例如 https://panel.example.com 或 http://1.2.3.4:12889。留空则自动使用当前访问地址。
+                  {t('masterUrl.hint')}
                 </p>
               </div>
             </CardContent>
@@ -538,13 +540,13 @@ function SystemSettingsPage() {
             <CardHeader className='pb-4'>
               <CardTitle className='flex items-center gap-2'>
                 <Bell className='h-5 w-5' />
-                Telegram 通知
+                {t('telegram.title')}
               </CardTitle>
-              <CardDescription>配置 Telegram Bot 推送系统事件通知</CardDescription>
+              <CardDescription>{t('telegram.description')}</CardDescription>
             </CardHeader>
             <CardContent className='space-y-4'>
               <div className='flex items-center justify-between'>
-                <Label htmlFor='notify-enabled'>启用通知</Label>
+                <Label htmlFor='notify-enabled'>{t('telegram.enableLabel')}</Label>
                 <Switch
                   id='notify-enabled'
                   checked={notifyConfig.notify_enabled}
@@ -554,13 +556,13 @@ function SystemSettingsPage() {
               </div>
 
               <div className='space-y-2'>
-                <Label htmlFor='bot-token'>Bot Token</Label>
+                <Label htmlFor='bot-token'>{t('telegram.botToken')}</Label>
                 <div className='flex items-center gap-2'>
                   <div className='flex-1 relative'>
                     <Input
                       id='bot-token'
                       type={showBotToken ? 'text' : 'password'}
-                      placeholder='输入 Telegram Bot Token'
+                      placeholder={t('telegram.botTokenPlaceholder')}
                       value={editingBotToken}
                       onChange={(e) => setEditingBotToken(e.target.value)}
                       onBlur={() => {
@@ -588,10 +590,10 @@ function SystemSettingsPage() {
               </div>
 
               <div className='space-y-2'>
-                <Label htmlFor='chat-id'>Chat ID</Label>
+                <Label htmlFor='chat-id'>{t('telegram.chatId')}</Label>
                 <Input
                   id='chat-id'
-                  placeholder='输入 Telegram Chat ID'
+                  placeholder={t('telegram.chatIdPlaceholder')}
                   value={notifyConfig.telegram_chat_id}
                   onChange={(e) => setNotifyConfig({ ...notifyConfig, telegram_chat_id: e.target.value })}
                   onBlur={() => {
@@ -609,13 +611,13 @@ function SystemSettingsPage() {
                 onClick={() => testNotifyMutation.mutate()}
                 disabled={testNotifyMutation.isPending || !notifyConfig.notify_enabled}
               >
-                {testNotifyMutation.isPending ? '发送中...' : '发送测试通知'}
+                {testNotifyMutation.isPending ? t('actions.sending', { ns: 'common' }) : t('telegram.sendTest')}
               </Button>
 
               <div className='border-t pt-4 space-y-3'>
-                <p className='text-sm font-medium text-muted-foreground'>通知事件</p>
+                <p className='text-sm font-medium text-muted-foreground'>{t('telegram.events.title')}</p>
                 <div className='flex items-center justify-between'>
-                  <Label htmlFor='notify-login'>用户登录</Label>
+                  <Label htmlFor='notify-login'>{t('telegram.events.login')}</Label>
                   <Switch
                     id='notify-login'
                     checked={notifyConfig.notify_login}
@@ -624,7 +626,7 @@ function SystemSettingsPage() {
                   />
                 </div>
                 <div className='flex items-center justify-between'>
-                  <Label htmlFor='notify-subscribe'>订阅获取</Label>
+                  <Label htmlFor='notify-subscribe'>{t('telegram.events.subscribe')}</Label>
                   <Switch
                     id='notify-subscribe'
                     checked={notifyConfig.notify_subscribe_fetch}
@@ -633,7 +635,7 @@ function SystemSettingsPage() {
                   />
                 </div>
                 <div className='flex items-center justify-between'>
-                  <Label htmlFor='notify-online'>服务器上线</Label>
+                  <Label htmlFor='notify-online'>{t('telegram.events.serverOnline')}</Label>
                   <Switch
                     id='notify-online'
                     checked={notifyConfig.notify_server_online}
@@ -642,7 +644,7 @@ function SystemSettingsPage() {
                   />
                 </div>
                 <div className='flex items-center justify-between'>
-                  <Label htmlFor='notify-offline'>服务器离线</Label>
+                  <Label htmlFor='notify-offline'>{t('telegram.events.serverOffline')}</Label>
                   <Switch
                     id='notify-offline'
                     checked={notifyConfig.notify_server_offline}
@@ -651,7 +653,7 @@ function SystemSettingsPage() {
                   />
                 </div>
                 <div className='flex items-center justify-between'>
-                  <Label htmlFor='notify-daily'>每日流量统计</Label>
+                  <Label htmlFor='notify-daily'>{t('telegram.events.dailyTraffic')}</Label>
                   <Switch
                     id='notify-daily'
                     checked={notifyConfig.notify_daily_traffic}
@@ -661,7 +663,7 @@ function SystemSettingsPage() {
                 </div>
                 {notifyConfig.notify_daily_traffic && (
                   <div className='ml-4 space-y-2'>
-                    <Label htmlFor='daily-time'>统计时间</Label>
+                    <Label htmlFor='daily-time'>{t('telegram.events.dailyTrafficTime')}</Label>
                     <Input
                       id='daily-time'
                       type='time'
@@ -673,7 +675,7 @@ function SystemSettingsPage() {
                   </div>
                 )}
                 <div className='flex items-center justify-between'>
-                  <Label htmlFor='notify-threshold'>流量超限告警</Label>
+                  <Label htmlFor='notify-threshold'>{t('telegram.events.trafficThreshold')}</Label>
                   <Switch
                     id='notify-threshold'
                     checked={notifyConfig.notify_traffic_threshold}
@@ -683,7 +685,7 @@ function SystemSettingsPage() {
                 </div>
                 {notifyConfig.notify_traffic_threshold && (
                   <div className='ml-4 space-y-2'>
-                    <Label htmlFor='threshold-pct'>告警阈值（%）</Label>
+                    <Label htmlFor='threshold-pct'>{t('telegram.events.thresholdPercent')}</Label>
                     <Input
                       id='threshold-pct'
                       type='number'
@@ -703,17 +705,17 @@ function SystemSettingsPage() {
           {/* API Token 设置 */}
           <Card>
             <CardHeader>
-              <CardTitle>API Token</CardTitle>
-              <CardDescription>用于无需登录直接访问所有后台 API 接口</CardDescription>
+              <CardTitle>{t('apiToken.title')}</CardTitle>
+              <CardDescription>{t('apiToken.description')}</CardDescription>
             </CardHeader>
             <CardContent className='space-y-4'>
               <div className='space-y-2'>
-                <Label>当前 API Token</Label>
+                <Label>{t('apiToken.currentLabel')}</Label>
                 <div className='flex items-center gap-2'>
                   <div className='flex-1 relative'>
                     <Input
                       type={showApiToken ? 'text' : 'password'}
-                      value={loadingApiToken ? '加载中...' : (apiTokenData?.token || '')}
+                      value={loadingApiToken ? t('actions.loading', { ns: 'common' }) : (apiTokenData?.token || '')}
                       readOnly
                       className='pr-10 font-mono text-sm'
                     />
@@ -745,7 +747,7 @@ function SystemSettingsPage() {
                     variant='outline'
                     size='icon'
                     onClick={() => {
-                      if (confirm('确定要重新生成 API Token 吗？旧的 Token 将失效。')) {
+                      if (confirm(t('apiToken.regenerateConfirm'))) {
                         regenerateApiTokenMutation.mutate()
                       }
                     }}
@@ -755,18 +757,12 @@ function SystemSettingsPage() {
                   </Button>
                 </div>
                 <p className='text-sm text-muted-foreground'>
-                  使用此 Token 在请求头 <code className='bg-muted px-1 py-0.5 rounded'>MM-Authorization</code> 中访问 API
+                  {t('apiToken.usageHint')}
                 </p>
               </div>
               <div className='rounded-lg border bg-muted/40 p-4'>
-                <p className='text-sm text-muted-foreground'>
-                  • 携带此 Token 可以不需要登录直接访问所有后台 API
-                  <br />
-                  • 请妥善保管此 Token，泄露可能导致数据安全问题
-                  <br />
-                  • 服务启动时会在日志中打印此 Token
-                  <br />
-                  • 点击刷新按钮可重新生成 Token，旧 Token 立即失效
+                <p className='text-sm text-muted-foreground whitespace-pre-line'>
+                  {t('apiToken.warning')}
                 </p>
               </div>
             </CardContent>

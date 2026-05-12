@@ -1,0 +1,113 @@
+{
+  "title": "Template Management",
+  "subtitle": "mihomo subscription template configuration",
+  "unsaved": "Unsaved",
+  "resetTooltip": "Reset to default template",
+  "collapsePreview": "Collapse Preview",
+  "expandPreview": "Expand Preview",
+  "previewTitle": "Config Preview",
+  "visualEdit": "Visual Editor",
+  "yamlCode": "YAML Code",
+  "enableRegionGroups": "Enable Region Proxy Groups",
+  "enableRegionGroupsDesc": "Automatically add region-based proxy groups",
+  "addProxyGroup": "Add Proxy Group",
+  "newProxyGroup": "New Group {{index}}",
+  "yamlPlaceholder": "YAML content...",
+  "emptyDesc": "No template found. Click the button below to create a default template.",
+  "createDefault": "Create Default Template",
+  "draftRecovery": {
+    "title": "Recover Local Cache",
+    "description": "Unsaved local cache detected. Recover it?",
+    "discard": "Discard",
+    "recover": "Recover"
+  },
+  "dnsSwitchConfirm": {
+    "title": "Switch DNS Mode",
+    "description": "You have unsaved changes. Switching mode will discard them. Continue?",
+    "confirm": "Confirm Switch"
+  },
+  "resetConfirm": {
+    "title": "Reset Template",
+    "description": "This will restore the default template for the current DNS mode. All unsaved changes will be lost. Continue?",
+    "confirm": "Confirm Reset"
+  },
+  "proxyGroupEditor": {
+    "groupTypes": {
+      "select": "Manual Select",
+      "url-test": "URL Test",
+      "fallback": "Fallback",
+      "load-balance": "Load Balance",
+      "relay": "Relay"
+    },
+    "hidden": "Hidden",
+    "hasFilter": "Filtered",
+    "relayPrefix": "Relay: {{name}}",
+    "setRelayGroup": "Set relay proxy group",
+    "selectRelayGroup": "Select relay proxy group",
+    "clear": "Clear",
+    "groupName": "Group Name",
+    "groupNamePlaceholder": "Proxy group name",
+    "groupType": "Group Type",
+    "nodeSource": "Node Source",
+    "providersAndNodes": "Providers + Nodes",
+    "proxyNodes": "Proxy Nodes",
+    "proxyProviders": "Proxy Providers",
+    "regionProxyGroups": "Region Proxy Groups",
+    "proxyOrder": "Proxy Order (drag to sort)",
+    "selectRefGroups": "Select proxy groups to reference",
+    "templateVariables": "Template Variables ({{count}})",
+    "filterKeywords": "Filter Keywords (filter)",
+    "filterPlaceholder": "HK, JP, US",
+    "filterDescription": "Match node names, separated by commas",
+    "excludeKeywords": "Exclude Keywords (exclude-filter)",
+    "excludePlaceholder": "Game, IPLC",
+    "excludeDescription": "Exclude matching nodes",
+    "includeType": "Include Type (include-type)",
+    "includeTypePlaceholder": "Select proxy types to include",
+    "excludeType": "Exclude Type (exclude-type)",
+    "excludeTypePlaceholder": "Select proxy types to exclude",
+    "testUrl": "Test URL",
+    "testInterval": "Test Interval (seconds)",
+    "tolerance": "Tolerance (ms)",
+    "icon": "Icon",
+    "iconPlaceholder": "URL or emoji",
+    "hideGroup": "Hide this group (hidden)"
+  },
+  "keywordFilter": {
+    "defaultPlaceholder": "Enter keywords, separated by commas",
+    "variable": "Variable: {{name}}",
+    "regex": "Regex:"
+  },
+  "proxyGroupSelect": {
+    "defaultPlaceholder": "Select proxy group",
+    "searchPlaceholder": "Search proxy groups...",
+    "noResults": "No proxy groups found"
+  },
+  "proxyTypeSelect": {
+    "defaultPlaceholder": "Select proxy type",
+    "deselectAll": "Deselect All",
+    "selectAll": "Select All"
+  },
+  "preview": {
+    "defaultTitle": "Preview",
+    "copiedToClipboard": "Copied to clipboard",
+    "copyFailed": "Copy failed",
+    "generating": "Generating preview...",
+    "clickRefresh": "Click refresh to generate preview"
+  },
+  "v3": {
+    "proxyNodesDisplay": "⛓️‍💥 Proxy Nodes",
+    "proxyProvidersDisplay": "📦 Proxy Providers",
+    "regionProxyGroupsDisplay": "🌏 Region Proxy Groups",
+    "defaultGroupName": "New Group"
+  },
+  "toast": {
+    "saveSuccess": "Template saved",
+    "saveFailed": "Save failed",
+    "defaultCreated": "Default template created",
+    "createFailed": "Create failed",
+    "loadFailed": "Failed to load template",
+    "resetFailed": "Reset failed",
+    "previewFailed": "Preview generation failed"
+  }
+}

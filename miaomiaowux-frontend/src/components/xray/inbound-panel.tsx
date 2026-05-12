@@ -1,6 +1,7 @@
 // @ts-nocheck
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import { Edit2, RefreshCw, Trash2, Eye, Plus } from 'lucide-react'
 
@@ -36,6 +37,8 @@ interface InboundPanelProps {
 }
 
 export function InboundPanel({ serverId, serverName }: InboundPanelProps) {
+  const { t } = useTranslation('xray')
+  const { t: tc } = useTranslation('common')
   const queryClient = useQueryClient()
 
   const [editingInbound, setEditingInbound] = useState<InboundItem | null>(null)
@@ -73,7 +76,7 @@ export function InboundPanel({ serverId, serverName }: InboundPanelProps) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['remote-inbounds', serverId] })
-      toast.success('入站已更新')
+      toast.success(t('inbounds.inboundUpdated'))
       setEditingInbound(null)
     },
     onError: handleServerError,
@@ -88,7 +91,7 @@ export function InboundPanel({ serverId, serverName }: InboundPanelProps) {
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['remote-inbounds', serverId] })
-      data.success ? toast.success(data.message || '入站已删除') : toast.error(data.message || '删除入站失败')
+      data.success ? toast.success(data.message || t('inbounds.inboundDeleted')) : toast.error(data.message || t('inbounds.inboundDeleteFailed'))
     },
     onError: handleServerError,
   })
@@ -102,7 +105,7 @@ export function InboundPanel({ serverId, serverName }: InboundPanelProps) {
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['remote-inbounds', serverId] })
-      data.success ? toast.success(data.message || '入站已添加') : toast.error(data.message || '添加入站失败')
+      data.success ? toast.success(data.message || t('inbounds.inboundAdded')) : toast.error(data.message || t('inbounds.inboundAddFailed'))
     },
     onError: handleServerError,
   })
@@ -139,10 +142,10 @@ export function InboundPanel({ serverId, serverName }: InboundPanelProps) {
 
   const handleInboundSubmit = async (serverIds: number[], inbound: XrayInbound, tag: string) => {
     const trimmedTag = tag?.trim() || inbound.tag || ''
-    if (!trimmedTag) { toast.error('请填写标签'); return }
+    if (!trimmedTag) { toast.error(t('inbounds.fillTag')); return }
     try {
       await remoteAddInboundMutation.mutateAsync({ inbound: { ...inbound, tag: trimmedTag } })
-      toast.success('入站已添加到远程服务器')
+      toast.success(t('inbounds.inboundAddedToRemote'))
       setIsWizardDialogOpen(false)
     } catch {}
   }
@@ -169,20 +172,20 @@ export function InboundPanel({ serverId, serverName }: InboundPanelProps) {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <p className="text-sm text-muted-foreground">
-          {serverName} 的入站配置（共 {filteredInbounds.length} 个）
+          {t('inbounds.configCount', { name: serverName, count: filteredInbounds.length })}
         </p>
         <Button size="sm" onClick={() => setIsWizardDialogOpen(true)}>
-          <Plus className="h-4 w-4 mr-1" />添加入站
+          <Plus className="h-4 w-4 mr-1" />{t('inbounds.addInbound')}
         </Button>
       </div>
 
       {isLoading ? (
         <div className="text-center py-8">
           <RefreshCw className="h-6 w-6 animate-spin mx-auto mb-2" />
-          <p className="text-sm text-muted-foreground">加载中...</p>
+          <p className="text-sm text-muted-foreground">{tc('actions.loading')}</p>
         </div>
       ) : filteredInbounds.length === 0 ? (
-        <EmptyStateCard title="暂无入站配置" description='点击"添加入站"按钮添加' />
+        <EmptyStateCard title={t('inbounds.noInbounds')} description={t('inbounds.noInboundsDescShort')} />
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-3">
           {filteredInbounds.map((item: InboundItem) => (
@@ -194,14 +197,14 @@ export function InboundPanel({ serverId, serverName }: InboundPanelProps) {
                 </div>
               </CardHeader>
               <CardContent className="space-y-1.5 text-sm">
-                <div className="flex justify-between"><span className="text-muted-foreground">端口</span><span>{item.inbound.port}</span></div>
-                <div className="flex justify-between"><span className="text-muted-foreground">用户数</span><span>{getUserCount(item.inbound)}</span></div>
-                {item.inbound.listen && <div className="flex justify-between"><span className="text-muted-foreground">监听</span><span>{item.inbound.listen}</span></div>}
+                <div className="flex justify-between"><span className="text-muted-foreground">{t('inbounds.portLabel')}</span><span>{item.inbound.port}</span></div>
+                <div className="flex justify-between"><span className="text-muted-foreground">{t('inbounds.userCount')}</span><span>{getUserCount(item.inbound)}</span></div>
+                {item.inbound.listen && <div className="flex justify-between"><span className="text-muted-foreground">{t('inbounds.listenAddress')}</span><span>{item.inbound.listen}</span></div>}
               </CardContent>
               <CardFooter className="flex gap-1.5 pt-2">
-                <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => handleEdit(item)}><Edit2 className="h-3 w-3 mr-1" />编辑</Button>
-                <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => setViewingInbound(item.inbound)}><Eye className="h-3 w-3 mr-1" />查看</Button>
-                <Button variant="outline" size="sm" className="h-7 text-xs text-red-600 hover:text-red-700" onClick={() => handleDelete(item)}><Trash2 className="h-3 w-3 mr-1" />删除</Button>
+                <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => handleEdit(item)}><Edit2 className="h-3 w-3 mr-1" />{tc('actions.edit')}</Button>
+                <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => setViewingInbound(item.inbound)}><Eye className="h-3 w-3 mr-1" />{tc('actions.view')}</Button>
+                <Button variant="outline" size="sm" className="h-7 text-xs text-red-600 hover:text-red-700" onClick={() => handleDelete(item)}><Trash2 className="h-3 w-3 mr-1" />{tc('actions.delete')}</Button>
               </CardFooter>
             </Card>
           ))}
@@ -212,28 +215,28 @@ export function InboundPanel({ serverId, serverName }: InboundPanelProps) {
       <Dialog open={!!editingInbound} onOpenChange={(open) => !open && setEditingInbound(null)}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>编辑入站 - {editingInbound?.inbound.tag}</DialogTitle>
-            <DialogDescription>编辑入站的用户配置</DialogDescription>
+            <DialogTitle>{t('inbounds.editInbound')} - {editingInbound?.inbound.tag}</DialogTitle>
+            <DialogDescription>{t('inbounds.editInboundUsers')}</DialogDescription>
           </DialogHeader>
           <form onSubmit={handleSubmit}>
             <div className="space-y-4 py-4">
-              <div className="space-y-2"><label className="text-sm font-medium">协议</label><div className="text-sm text-muted-foreground">{editingInbound?.inbound.protocol}</div></div>
-              <div className="space-y-2"><label className="text-sm font-medium">端口</label><div className="text-sm text-muted-foreground">{editingInbound?.inbound.port}</div></div>
+              <div className="space-y-2"><label className="text-sm font-medium">{t('inbounds.protocolLabel')}</label><div className="text-sm text-muted-foreground">{editingInbound?.inbound.protocol}</div></div>
+              <div className="space-y-2"><label className="text-sm font-medium">{t('inbounds.portLabel')}</label><div className="text-sm text-muted-foreground">{editingInbound?.inbound.port}</div></div>
               {editingInbound && (
                 <ArrayField
-                  label={editingInbound.inbound.protocol === 'socks' || editingInbound.inbound.protocol === 'http' ? '账户' : '用户'}
+                  label={editingInbound.inbound.protocol === 'socks' || editingInbound.inbound.protocol === 'http' ? t('inbounds.accounts') : t('inbounds.users')}
                   fields={getUserFields(editingInbound.inbound.protocol)}
                   values={editedUsers}
                   onChange={setEditedUsers}
-                  addButtonText={editingInbound.inbound.protocol === 'socks' || editingInbound.inbound.protocol === 'http' ? '添加账户' : '添加用户'}
+                  addButtonText={editingInbound.inbound.protocol === 'socks' || editingInbound.inbound.protocol === 'http' ? t('inbounds.addAccount') : t('inbounds.addUser')}
                   showUserSelect={true}
                   required
                 />
               )}
             </div>
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setEditingInbound(null)}>取消</Button>
-              <Button type="submit" disabled={remoteUpdateInboundMutation.isPending}>{remoteUpdateInboundMutation.isPending ? '保存中...' : '保存'}</Button>
+              <Button type="button" variant="outline" onClick={() => setEditingInbound(null)}>{tc('actions.cancel')}</Button>
+              <Button type="submit" disabled={remoteUpdateInboundMutation.isPending}>{remoteUpdateInboundMutation.isPending ? tc('actions.saving') : tc('actions.save')}</Button>
             </DialogFooter>
           </form>
         </DialogContent>
@@ -243,13 +246,13 @@ export function InboundPanel({ serverId, serverName }: InboundPanelProps) {
       <Dialog open={!!viewingInbound} onOpenChange={(open) => !open && setViewingInbound(null)}>
         <DialogContent className="max-w-3xl max-h-[90vh]">
           <DialogHeader>
-            <DialogTitle>查看入站配置 - {viewingInbound?.tag}</DialogTitle>
-            <DialogDescription>完整的入站配置 JSON</DialogDescription>
+            <DialogTitle>{t('inbounds.viewInbound')} - {viewingInbound?.tag}</DialogTitle>
+            <DialogDescription>{t('inbounds.viewInboundJson')}</DialogDescription>
           </DialogHeader>
           <div className="overflow-auto max-h-[60vh]">
             <pre className="bg-gray-50 dark:bg-gray-900 p-4 rounded-lg text-xs">{JSON.stringify(viewingInbound, null, 2)}</pre>
           </div>
-          <DialogFooter><Button onClick={() => setViewingInbound(null)}>关闭</Button></DialogFooter>
+          <DialogFooter><Button onClick={() => setViewingInbound(null)}>{tc('actions.close')}</Button></DialogFooter>
         </DialogContent>
       </Dialog>
 
@@ -257,8 +260,8 @@ export function InboundPanel({ serverId, serverName }: InboundPanelProps) {
       <Dialog open={isWizardDialogOpen} onOpenChange={setIsWizardDialogOpen}>
         <DialogContent className="w-[95vw] !max-w-none md:w-[90vw] lg:w-[80vw] max-h-[90vh] overflow-hidden sm:max-w-none flex flex-col">
           <DialogHeader>
-            <DialogTitle>添加入站 - 向导模式</DialogTitle>
-            <DialogDescription>通过向导快速生成入站配置</DialogDescription>
+            <DialogTitle>{t('inbounds.addInboundWizard')}</DialogTitle>
+            <DialogDescription>{t('inbounds.addInboundWizardDescShort')}</DialogDescription>
           </DialogHeader>
           <div className="flex-1 overflow-y-auto">
             <InboundWizard servers={[]} selectedServerIds={[serverId]} onCancel={() => setIsWizardDialogOpen(false)} onSubmit={handleInboundSubmit} skipServerSelection={true} usedPorts={usedPorts} />
@@ -270,12 +273,12 @@ export function InboundPanel({ serverId, serverName }: InboundPanelProps) {
       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>确认删除入站</AlertDialogTitle>
-            <AlertDialogDescription>确定要删除入站 "{deletingInbound?.inbound.tag}" 吗？此操作无法撤销。</AlertDialogDescription>
+            <AlertDialogTitle>{t('inbounds.confirmDeleteTitle')}</AlertDialogTitle>
+            <AlertDialogDescription>{t('inbounds.confirmDeleteDesc', { tag: deletingInbound?.inbound.tag })}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setDeletingInbound(null)}>取消</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmDelete} className="bg-red-600 hover:bg-red-700">确认删除</AlertDialogAction>
+            <AlertDialogCancel onClick={() => setDeletingInbound(null)}>{tc('actions.cancel')}</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDelete} className="bg-red-600 hover:bg-red-700">{tc('actions.confirmDelete')}</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

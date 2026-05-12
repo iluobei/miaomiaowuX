@@ -5,6 +5,7 @@ import { createFileRoute, redirect, useNavigate } from '@tanstack/react-router'
 import { toast } from 'sonner'
 import { QRCodeSVG } from 'qrcode.react'
 import { Download } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { Topbar } from '@/components/layout/topbar'
 import { Button } from '@/components/ui/button'
 import {
@@ -59,6 +60,7 @@ export const Route = createFileRoute('/settings')({
 })
 
 function SettingsPage() {
+  const { t } = useTranslation('settings')
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const { auth } = useAuthStore()
@@ -112,12 +114,12 @@ function SettingsPage() {
       return response.data as { profile: ProfileFormValues }
     },
     onSuccess: () => {
-      toast.success('个人信息已更新')
+      toast.success(t('profile.updated'))
       queryClient.invalidateQueries({ queryKey: ['profile'] })
     },
     onError: (error) => {
       handleServerError(error)
-      toast.error('更新个人信息失败')
+      toast.error(t('profile.updateFailed'))
     },
   })
 
@@ -128,11 +130,11 @@ function SettingsPage() {
     },
     onSuccess: (payload) => {
       queryClient.setQueryData(['user-token'], payload)
-      toast.success('Token 已重置')
+      toast.success(t('token.reset'))
     },
     onError: (error) => {
       handleServerError(error)
-      toast.error('重置 Token 失败')
+      toast.error(t('token.resetFailed'))
     },
   })
 
@@ -144,11 +146,11 @@ function SettingsPage() {
     onSuccess: () => {
       // Invalidate subscriptions to refresh short URLs
       queryClient.invalidateQueries({ queryKey: ['user-subscriptions'] })
-      toast.success('所有订阅的短链接已重置')
+      toast.success(t('shortLink.resetSuccess'))
     },
     onError: (error) => {
       handleServerError(error)
-      toast.error('重置短链接失败')
+      toast.error(t('shortLink.resetFailed'))
     },
   })
 
@@ -169,25 +171,25 @@ function SettingsPage() {
       return response.data
     },
     onSuccess: () => {
-      toast.success('密码已更新，请重新登录')
+      toast.success(t('password.updated'))
       passwordForm.reset()
       auth.reset()
       navigate({ to: '/', replace: true })
     },
     onError: (error) => {
       handleServerError(error)
-      toast.error('修改密码失败')
+      toast.error(t('password.changeFailed'))
     },
   })
 
   const submitProfile = profileForm.handleSubmit((values) => {
     if (!values.username.trim()) {
-      toast.error('用户名不能为空')
+      toast.error(t('profile.usernameEmpty'))
       return
     }
 
     if (profile?.is_admin && values.username.trim() !== profile.username) {
-      toast.error('管理员用户名不可修改')
+      toast.error(t('profile.adminUsernameImmutable'))
       return
     }
 
@@ -196,22 +198,22 @@ function SettingsPage() {
 
   const submitPassword = passwordForm.handleSubmit((values) => {
     if (values.new_password.trim().length < 8) {
-      toast.error('新密码至少 8 位')
+      toast.error(t('password.minLength'))
       return
     }
 
     if (values.new_password !== values.confirm_password) {
-      toast.error('两次输入的新密码不一致')
+      toast.error(t('password.mismatch'))
       return
     }
 
     changePasswordMutation.mutate(values)
   })
 
-  const displayName = profile?.nickname || profile?.username || '用户'
+  const displayName = profile?.nickname || profile?.username || t('defaultUser')
   const fallbackAvatar = profile?.is_admin ? '/images/admin-avatar.webp' : '/images/user-avatar.png'
   const avatarSrc = profile?.avatar_url?.trim() ? profile.avatar_url.trim() : fallbackAvatar
-  const avatarFallback = displayName.slice(0, 2) || '用户'
+  const avatarFallback = displayName.slice(0, 2) || t('defaultUser')
   const tokenValue = tokenData?.token ?? ''
 
   return (
@@ -219,7 +221,7 @@ function SettingsPage() {
       <Topbar />
       <main className='mx-auto w-full max-w-4xl px-4 py-8 sm:px-6 pt-24'>
         <section className='space-y-2'>
-          <h1 className='text-3xl font-semibold tracking-tight'>个人设置</h1>
+          <h1 className='text-3xl font-semibold tracking-tight'>{t('title')}</h1>
         </section>
 
         <div className='mt-8 grid gap-6 lg:grid-cols-2'>
@@ -227,8 +229,8 @@ function SettingsPage() {
           <div className='space-y-6'>
             <Card>
               <CardHeader>
-                <CardTitle>个人资料</CardTitle>
-                <CardDescription>修改用户名、昵称、邮箱和头像链接。</CardDescription>
+                <CardTitle>{t('profile.title')}</CardTitle>
+                <CardDescription>{t('profile.description')}</CardDescription>
               </CardHeader>
               <CardContent>
                 <form className='space-y-5' onSubmit={submitProfile}>
@@ -238,46 +240,46 @@ function SettingsPage() {
                       <AvatarFallback>{avatarFallback}</AvatarFallback>
                     </Avatar>
                     <div className='text-sm text-muted-foreground'>
-                      {profile?.is_admin ? '管理员头像默认根据角色区分，设置自定义链接将覆盖默认头像。' : '支持使用任意公开可访问的图片链接。'}
+                      {profile?.is_admin ? t('profile.adminAvatarHint') : t('profile.avatarHint')}
                     </div>
                   </div>
 
                   <div className='space-y-2'>
-                    <Label htmlFor='username'>用户名</Label>
+                    <Label htmlFor='username'>{t('profile.username')}</Label>
                     <Input
                       id='username'
-                      placeholder='用于登录的用户名'
+                      placeholder={t('profile.usernamePlaceholder')}
                       disabled={loadingProfile || profile?.is_admin}
                       {...profileForm.register('username', { required: true })}
                     />
                     {profile?.is_admin ? (
-                      <p className='text-xs text-muted-foreground'>管理员用户名暂不支持修改。</p>
+                      <p className='text-xs text-muted-foreground'>{t('profile.adminUsernameDisabled')}</p>
                     ) : null}
                   </div>
 
                   <div className='space-y-2'>
-                    <Label htmlFor='nickname'>昵称</Label>
+                    <Label htmlFor='nickname'>{t('profile.nickname')}</Label>
                     <Input
                       id='nickname'
-                      placeholder='用于展示的昵称'
+                      placeholder={t('profile.nicknamePlaceholder')}
                       disabled={loadingProfile}
                       {...profileForm.register('nickname')}
                     />
                   </div>
 
                   <div className='space-y-2'>
-                    <Label htmlFor='email'>邮箱 (暂不可用)</Label>
+                    <Label htmlFor='email'>{t('profile.email')}</Label>
                     <Input
                       id='email'
                       type='email'
-                      placeholder='用于接收通知 (可选)'
+                      placeholder={t('profile.emailPlaceholder')}
                       disabled={loadingProfile}
                       {...profileForm.register('email')}
                     />
                   </div>
 
                   <div className='space-y-2'>
-                    <Label htmlFor='avatar_url'>头像链接</Label>
+                    <Label htmlFor='avatar_url'>{t('profile.avatarUrl')}</Label>
                     <Input
                       id='avatar_url'
                       placeholder='https://example.com/avatar.png'
@@ -287,7 +289,7 @@ function SettingsPage() {
                   </div>
 
                   <Button type='submit' className='w-full' disabled={updateProfileMutation.isPending}>
-                    {updateProfileMutation.isPending ? '保存中…' : '保存变更'}
+                    {updateProfileMutation.isPending ? t('actions.saving', { ns: 'common' }) : t('profile.saveButton')}
                   </Button>
                 </form>
               </CardContent>
@@ -298,14 +300,14 @@ function SettingsPage() {
           <div className='space-y-6'>
             <Card>
               <CardHeader>
-                <CardTitle>界面风格</CardTitle>
-                <CardDescription>选择界面显示风格，切换后页面将刷新</CardDescription>
+                <CardTitle>{t('themeStyle.title')}</CardTitle>
+                <CardDescription>{t('themeStyle.description')}</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className='flex gap-2'>
                   {[
-                    { value: 'miaomiaowu', label: '妙妙屋' },
-                    { value: 'flat', label: '扁平' },
+                    { value: 'miaomiaowu', label: t('themeStyle.miaomiaowu') },
+                    { value: 'flat', label: t('themeStyle.flat') },
                   ].map((opt) => (
                     <button
                       key={opt.value}
@@ -332,38 +334,38 @@ function SettingsPage() {
 
             <Card>
               <CardHeader>
-                <CardTitle>修改密码</CardTitle>
-                <CardDescription>修改后需要使用新密码重新登录系统。</CardDescription>
+                <CardTitle>{t('password.title')}</CardTitle>
+                <CardDescription>{t('password.description')}</CardDescription>
               </CardHeader>
               <CardContent>
                 <form className='space-y-4' onSubmit={submitPassword}>
                   <div className='space-y-2'>
-                    <Label htmlFor='current_password'>当前密码</Label>
+                    <Label htmlFor='current_password'>{t('password.currentPassword')}</Label>
                     <Input
                       id='current_password'
                       type='password'
                       autoComplete='current-password'
-                      placeholder='请输入当前密码'
+                      placeholder={t('password.currentPasswordPlaceholder')}
                       {...passwordForm.register('current_password', { required: true })}
                     />
                   </div>
                   <div className='space-y-2'>
-                    <Label htmlFor='new_password'>新密码</Label>
+                    <Label htmlFor='new_password'>{t('password.newPassword')}</Label>
                     <Input
                       id='new_password'
                       type='password'
                       autoComplete='new-password'
-                      placeholder='至少 8 位，建议包含符号'
+                      placeholder={t('password.newPasswordHint')}
                       {...passwordForm.register('new_password', { required: true })}
                     />
                   </div>
                   <div className='space-y-2'>
-                    <Label htmlFor='confirm_password'>确认新密码</Label>
+                    <Label htmlFor='confirm_password'>{t('password.confirmPassword')}</Label>
                     <Input
                       id='confirm_password'
                       type='password'
                       autoComplete='new-password'
-                      placeholder='再次输入新密码'
+                      placeholder={t('password.confirmPasswordPlaceholder')}
                       {...passwordForm.register('confirm_password', { required: true })}
                     />
                   </div>
@@ -372,7 +374,7 @@ function SettingsPage() {
                     className='w-full'
                     disabled={changePasswordMutation.isPending}
                   >
-                    {changePasswordMutation.isPending ? '修改中…' : '更新密码'}
+                    {changePasswordMutation.isPending ? t('password.changing') : t('password.updateButton')}
                   </Button>
                 </form>
               </CardContent>
@@ -380,12 +382,12 @@ function SettingsPage() {
 
             <Card>
               <CardHeader>
-                <CardTitle>订阅 Token</CardTitle>
-                <CardDescription><p className='mt-2 text-sm font-semibold text-destructive'>token用于客户端订阅，发生泄露后重置token只会影响更新订阅，为防止盗用，还需要修改服务器各个节点的鉴权凭证。</p></CardDescription>
+                <CardTitle>{t('token.title')}</CardTitle>
+                <CardDescription><p className='mt-2 text-sm font-semibold text-destructive'>{t('token.warning')}</p></CardDescription>
               </CardHeader>
               <CardContent className='space-y-4'>
                 <div className='font-mono text-xs sm:text-sm break-all rounded-md border bg-muted/40 p-3 shadow-inner'>
-                  {loadingToken ? '加载中…' : tokenValue || '尚未生成'}
+                  {loadingToken ? t('actions.loading', { ns: 'common' }) : tokenValue || t('token.notGenerated')}
                 </div>
                 <div className='flex flex-wrap gap-2'>
                   <Button
@@ -397,16 +399,16 @@ function SettingsPage() {
                       if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
                         try {
                           await navigator.clipboard.writeText(tokenValue)
-                          toast.success('Token 已复制')
+                          toast.success(t('token.copied'))
                           return
                         } catch (error) {
                           console.error('copy token failed', error)
                         }
                       }
-                      toast.error('复制失败(需要https)，请手动复制')
+                      toast.error(t('actions.copyFailed', { ns: 'common' }))
                     }}
                   >
-                    复制 Token
+                    {t('token.copyButton')}
                   </Button>
                   <Button
                     size='sm'
@@ -414,14 +416,14 @@ function SettingsPage() {
                     disabled={resetTokenMutation.isPending}
                     onClick={() => resetTokenMutation.mutate()}
                   >
-                    {resetTokenMutation.isPending ? '重置中…' : '重置 Token'}
+                    {resetTokenMutation.isPending ? t('actions.resetting', { ns: 'common' }) : t('token.resetButton')}
                   </Button>
                 </div>
 
                 <div className='space-y-2 pt-4 border-t'>
-                  <Label>订阅短链接</Label>
+                  <Label>{t('shortLink.title')}</Label>
                   <p className='text-xs text-muted-foreground'>
-                    重置所有订阅的短链接。短链接在订阅链接页面显示。
+                    {t('shortLink.hint')}
                   </p>
                   <Button
                     size='sm'
@@ -430,7 +432,7 @@ function SettingsPage() {
                     onClick={() => resetShortLinkMutation.mutate()}
                     className='w-full'
                   >
-                    {resetShortLinkMutation.isPending ? '重置中…' : '重置所有订阅短链接'}
+                    {resetShortLinkMutation.isPending ? t('actions.resetting', { ns: 'common' }) : t('shortLink.resetAll')}
                   </Button>
                 </div>
               </CardContent>
@@ -445,6 +447,7 @@ function SettingsPage() {
 }
 
 function TwoFactorCard() {
+  const { t } = useTranslation('settings')
   const queryClient = useQueryClient()
   const { data: profile } = useQuery({ queryKey: ['profile'], queryFn: profileQueryFn, staleTime: 5 * 60 * 1000 })
   const [setupOpen, setSetupOpen] = useState(false)
@@ -478,7 +481,7 @@ function TwoFactorCard() {
     },
     onError: (error) => {
       handleServerError(error)
-      toast.error('密码验证失败')
+      toast.error(t('twoFactor.passwordFailed'))
     },
   })
 
@@ -494,7 +497,7 @@ function TwoFactorCard() {
     },
     onError: (error) => {
       handleServerError(error)
-      toast.error('验证码无效')
+      toast.error(t('twoFactor.invalidCode'))
       setVerifyCode('')
     },
   })
@@ -504,14 +507,14 @@ function TwoFactorCard() {
       await api.post('/api/user/2fa/disable', { code })
     },
     onSuccess: () => {
-      toast.success('两步验证已禁用')
+      toast.success(t('twoFactor.disabled'))
       setDisableOpen(false)
       setDisableCode('')
       queryClient.invalidateQueries({ queryKey: ['2fa-status'] })
     },
     onError: (error) => {
       handleServerError(error)
-      toast.error('验证码无效')
+      toast.error(t('twoFactor.invalidCode'))
       setDisableCode('')
     },
   })
@@ -529,21 +532,21 @@ function TwoFactorCard() {
     <>
       <Card>
         <CardHeader>
-          <CardTitle>两步验证</CardTitle>
+          <CardTitle>{t('twoFactor.title')}</CardTitle>
           <CardDescription>
             {tfStatus?.enabled
-              ? '两步验证已启用，每次登录需要输入验证码。'
-              : '启用后每次登录需要输入验证器应用中的验证码。'}
+              ? t('twoFactor.enabledDesc')
+              : t('twoFactor.disabledDesc')}
           </CardDescription>
         </CardHeader>
         <CardContent>
           {tfStatus?.enabled ? (
             <Button variant='destructive' className='w-full' onClick={() => setDisableOpen(true)}>
-              禁用两步验证
+              {t('twoFactor.disableButton')}
             </Button>
           ) : (
             <Button className='w-full' onClick={() => { resetSetup(); setSetupOpen(true) }}>
-              启用两步验证
+              {t('twoFactor.enableButton')}
             </Button>
           )}
         </CardContent>
@@ -553,16 +556,16 @@ function TwoFactorCard() {
         <DialogContent className='sm:max-w-md' onInteractOutside={(e) => { if (setupStep === 'recovery') e.preventDefault() }}>
           <DialogHeader>
             <DialogTitle>
-              {setupStep === 'password' && '验证密码'}
-              {setupStep === 'qr' && '扫描二维码'}
-              {setupStep === 'verify' && '验证设置'}
-              {setupStep === 'recovery' && '保存恢复码'}
+              {setupStep === 'password' && t('twoFactor.steps.password')}
+              {setupStep === 'qr' && t('twoFactor.steps.qrcode')}
+              {setupStep === 'verify' && t('twoFactor.steps.verify')}
+              {setupStep === 'recovery' && t('twoFactor.steps.recovery')}
             </DialogTitle>
             <DialogDescription>
-              {setupStep === 'password' && '请输入当前密码以开始设置两步验证。'}
-              {setupStep === 'qr' && '使用验证器应用扫描下方二维码。'}
-              {setupStep === 'verify' && '输入验证器应用显示的 6 位验证码。'}
-              {setupStep === 'recovery' && '请妥善保存以下恢复码，用于在无法访问验证器时登录。'}
+              {setupStep === 'password' && t('twoFactor.passwordDesc')}
+              {setupStep === 'qr' && t('twoFactor.qrcodeDesc')}
+              {setupStep === 'verify' && t('twoFactor.verifyDesc')}
+              {setupStep === 'recovery' && t('twoFactor.recoveryDesc')}
             </DialogDescription>
           </DialogHeader>
 
@@ -570,14 +573,14 @@ function TwoFactorCard() {
             <div className='space-y-4'>
               <Input
                 type='password'
-                placeholder='输入当前密码'
+                placeholder={t('twoFactor.passwordPlaceholder')}
                 value={setupPassword}
                 onChange={(e) => setSetupPassword(e.target.value)}
                 onKeyDown={(e) => { if (e.key === 'Enter' && setupPassword) setupMutation.mutate(setupPassword) }}
                 autoFocus
               />
               <Button className='w-full' disabled={!setupPassword || setupMutation.isPending} onClick={() => setupMutation.mutate(setupPassword)}>
-                {setupMutation.isPending ? '验证中...' : '下一步'}
+                {setupMutation.isPending ? t('actions.verifying', { ns: 'common' }) : t('actions.next', { ns: 'common' })}
               </Button>
             </div>
           )}
@@ -588,13 +591,13 @@ function TwoFactorCard() {
                 <QRCodeSVG value={totpUrl} size={200} />
               </div>
               <div className='space-y-1'>
-                <Label className='text-xs text-muted-foreground'>手动输入密钥</Label>
+                <Label className='text-xs text-muted-foreground'>{t('twoFactor.manualKey')}</Label>
                 <div className='font-mono text-xs break-all rounded-md border bg-muted/40 p-2 select-all'>
                   {totpSecret}
                 </div>
               </div>
               <Button className='w-full' onClick={() => setSetupStep('verify')}>
-                下一步
+                {t('actions.next', { ns: 'common' })}
               </Button>
             </div>
           )}
@@ -616,7 +619,7 @@ function TwoFactorCard() {
                 </InputOTP>
               </div>
               <Button className='w-full' disabled={verifyCode.length !== 6 || verifySetupMutation.isPending} onClick={() => verifySetupMutation.mutate(verifyCode)}>
-                {verifySetupMutation.isPending ? '验证中...' : '验证并启用'}
+                {verifySetupMutation.isPending ? t('actions.verifying', { ns: 'common' }) : t('twoFactor.verifyAndEnable')}
               </Button>
             </div>
           )}
@@ -634,13 +637,13 @@ function TwoFactorCard() {
                   onClick={async () => {
                     try {
                       await navigator.clipboard.writeText(recoveryCodes.join('\n'))
-                      toast.success('恢复码已复制')
+                      toast.success(t('twoFactor.recoveryCodesCopied'))
                     } catch {
-                      toast.error('复制失败，请手动复制')
+                      toast.error(t('twoFactor.recoveryCodesCopyFailed'))
                     }
                   }}
                 >
-                  复制恢复码
+                  {t('twoFactor.copyRecoveryCodes')}
                 </Button>
                 <Button
                   variant='outline'
@@ -650,17 +653,17 @@ function TwoFactorCard() {
                     const url = URL.createObjectURL(blob)
                     const a = document.createElement('a')
                     a.href = url
-                    a.download = `妙妙屋X-${profile?.username || 'user'}.txt`
+                    a.download = `${t('brand', { ns: 'common' })}-${profile?.username || 'user'}.txt`
                     a.click()
                     URL.revokeObjectURL(url)
                   }}
                 >
                   <Download className='size-4 mr-1' />
-                  下载恢复码
+                  {t('twoFactor.downloadRecoveryCodes')}
                 </Button>
               </div>
               <Button className='w-full' onClick={() => { setSetupOpen(false); resetSetup() }}>
-                我已保存恢复码
+                {t('twoFactor.recoveryCodesSaved')}
               </Button>
             </div>
           )}
@@ -670,8 +673,8 @@ function TwoFactorCard() {
       <Dialog open={disableOpen} onOpenChange={(open) => { if (!open) { setDisableOpen(false); setDisableCode('') } }}>
         <DialogContent className='sm:max-w-md'>
           <DialogHeader>
-            <DialogTitle>禁用两步验证</DialogTitle>
-            <DialogDescription>请输入验证器应用中的 6 位验证码以禁用两步验证。</DialogDescription>
+            <DialogTitle>{t('twoFactor.disableTitle')}</DialogTitle>
+            <DialogDescription>{t('twoFactor.disableDesc')}</DialogDescription>
           </DialogHeader>
           <div className='space-y-4'>
             <div className='flex justify-center'>
@@ -689,7 +692,7 @@ function TwoFactorCard() {
               </InputOTP>
             </div>
             <Button variant='destructive' className='w-full' disabled={disableCode.length !== 6 || disableMutation.isPending} onClick={() => disableMutation.mutate(disableCode)}>
-              {disableMutation.isPending ? '禁用中...' : '确认禁用'}
+              {disableMutation.isPending ? t('actions.disabling', { ns: 'common' }) : t('twoFactor.confirmDisable')}
             </Button>
           </div>
         </DialogContent>

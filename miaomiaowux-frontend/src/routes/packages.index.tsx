@@ -2,6 +2,7 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import { Edit2, RefreshCw, Trash2, Plus, Package } from 'lucide-react'
 
@@ -59,6 +60,7 @@ interface PackageFormData {
 
 function PackagesPage() {
   const queryClient = useQueryClient()
+  const { t } = useTranslation('packages')
   const [editingPackage, setEditingPackage] = useState<PackageTemplate | null>(null)
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
   const [formData, setFormData] = useState<PackageFormData>({
@@ -94,7 +96,7 @@ function PackagesPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['packages'] })
-      toast.success('套餐模板创建成功')
+      toast.success(t('toast.createSuccess'))
       setIsCreateDialogOpen(false)
       resetForm()
     },
@@ -108,7 +110,7 @@ function PackagesPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['packages'] })
-      toast.success('套餐模板更新成功')
+      toast.success(t('toast.updateSuccess'))
       setEditingPackage(null)
       resetForm()
     },
@@ -122,7 +124,7 @@ function PackagesPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['packages'] })
-      toast.success('套餐模板删除成功')
+      toast.success(t('toast.deleteSuccess'))
     },
     onError: handleServerError,
   })
@@ -157,7 +159,7 @@ function PackagesPage() {
   }
 
   const handleDelete = (id: number, name: string) => {
-    if (confirm(`确定要删除套餐模板 "${name}" 吗？`)) {
+    if (confirm(t('dialog.confirmDelete', { name }))) {
       deleteMutation.mutate(id)
     }
   }
@@ -166,17 +168,17 @@ function PackagesPage() {
     e.preventDefault()
 
     if (!formData.name) {
-      toast.error('请输入套餐名称')
+      toast.error(t('toast.nameRequired'))
       return
     }
 
     if (formData.traffic_limit_gb <= 0) {
-      toast.error('流量额度必须大于0')
+      toast.error(t('toast.trafficPositive'))
       return
     }
 
     if (formData.cycle_days <= 0) {
-      toast.error('计量周期必须大于0')
+      toast.error(t('toast.cyclePositive'))
       return
     }
 
@@ -185,7 +187,7 @@ function PackagesPage() {
       return node && !node.inbound_tag
     })
     if (hasExternalNode) {
-      toast.warning('请注意，外部节点流量不在套餐流量统计内！！！')
+      toast.warning(t('toast.externalNodeWarning'))
     }
 
     if (editingPackage) {
@@ -201,30 +203,30 @@ function PackagesPage() {
     <div className="container mx-auto py-8 px-4 pt-24">
       <div className="mb-8 flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold mb-2">套餐模板管理</h1>
+          <h1 className="text-3xl font-bold mb-2">{t('page.title')}</h1>
           <p className="text-gray-600">
-            管理流量套餐模板,可在用户管理中为用户分配套餐
+            {t('page.description')}
           </p>
         </div>
         <Button onClick={handleCreate}>
           <Plus className="h-4 w-4 mr-2" />
-          创建套餐模板
+          {t('buttons.createTemplate')}
         </Button>
       </div>
 
       {isLoading ? (
         <div className="text-center py-8">
           <RefreshCw className="h-8 w-8 animate-spin mx-auto mb-2" />
-          <p className="text-gray-600">加载中...</p>
+          <p className="text-gray-600">{t('actions.loading', { ns: 'common' })}</p>
         </div>
       ) : packages.length === 0 ? (
         <EmptyStateCard
           icon={<Package className="h-12 w-12 text-gray-400" />}
-          title="暂无套餐模板"
+          title={t('empty.title')}
           actions={(
             <Button onClick={handleCreate}>
               <Plus className="h-4 w-4 mr-2" />
-              创建第一个套餐模板
+              {t('empty.createFirst')}
             </Button>
           )}
         />
@@ -249,12 +251,12 @@ function PackagesPage() {
               </CardHeader>
               <CardContent className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">流量额度</span>
+                  <span className="text-sm text-muted-foreground">{t('card.trafficQuota')}</span>
                   <span className="text-sm font-medium">{pkg.traffic_limit_gb} GB</span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">计量周期</span>
-                  <span className="text-sm font-medium">{pkg.cycle_days} 天</span>
+                  <span className="text-sm text-muted-foreground">{t('card.cycleDays')}</span>
+                  <span className="text-sm font-medium">{t('card.cycleDaysValue', { days: pkg.cycle_days })}</span>
                 </div>
               </CardContent>
               <CardFooter className="flex gap-2 flex-wrap">
@@ -264,7 +266,7 @@ function PackagesPage() {
                   onClick={() => handleEdit(pkg)}
                 >
                   <Edit2 className="h-4 w-4 mr-1" />
-                  编辑
+                  {t('actions.edit', { ns: 'common' })}
                 </Button>
                 <Button
                   variant="outline"
@@ -273,7 +275,7 @@ function PackagesPage() {
                   className="text-red-600 hover:text-red-700"
                 >
                   <Trash2 className="h-4 w-4 mr-1" />
-                  删除
+                  {t('actions.delete', { ns: 'common' })}
                 </Button>
               </CardFooter>
             </Card>
@@ -294,37 +296,37 @@ function PackagesPage() {
       >
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>{editingPackage ? '编辑套餐模板' : '创建套餐模板'}</DialogTitle>
+            <DialogTitle>{editingPackage ? t('dialog.editTitle') : t('dialog.createTitle')}</DialogTitle>
             <DialogDescription>
-              {editingPackage ? '修改套餐模板配置' : '创建新的流量套餐模板'}
+              {editingPackage ? t('dialog.editDesc') : t('dialog.createDesc')}
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleSubmit}>
             <div className="space-y-4 py-4">
               <div className="space-y-2">
-                <Label htmlFor="name">套餐名称 *</Label>
+                <Label htmlFor="name">{t('dialog.name')}</Label>
                 <Input
                   id="name"
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  placeholder="例如: 基础套餐"
+                  placeholder={t('dialog.namePlaceholder')}
                   required
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="description">描述</Label>
+                <Label htmlFor="description">{t('dialog.description')}</Label>
                 <Textarea
                   id="description"
                   value={formData.description}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  placeholder="套餐说明（可选）"
+                  placeholder={t('dialog.descriptionPlaceholder')}
                   rows={2}
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="traffic_limit_gb">流量额度 (GB) *</Label>
+                <Label htmlFor="traffic_limit_gb">{t('dialog.trafficLimit')}</Label>
                 <Input
                   id="traffic_limit_gb"
                   type="number"
@@ -337,7 +339,7 @@ function PackagesPage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="cycle_days">计量周期 (天) *</Label>
+                <Label htmlFor="cycle_days">{t('dialog.cycleDays')}</Label>
                 <Input
                   id="cycle_days"
                   type="number"
@@ -349,10 +351,10 @@ function PackagesPage() {
               </div>
 
               <div className="space-y-2">
-                <Label>关联节点</Label>
+                <Label>{t('dialog.relatedNodes')}</Label>
                 <div className="border rounded-md p-3 max-h-48 overflow-y-auto space-y-2">
                   {nodes.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">暂无可用节点</p>
+                    <p className="text-sm text-muted-foreground">{t('dialog.noNodes')}</p>
                   ) : (
                     nodes.map((node: any) => {
                       const isInternal = Boolean(node.inbound_tag)
@@ -371,7 +373,7 @@ function PackagesPage() {
                           />
                           <Label htmlFor={`node-${node.id}`} className="cursor-pointer flex-1 flex items-center gap-1.5">
                             <Badge variant={isInternal ? 'default' : 'outline'} className={`text-[10px] px-1 py-0 shrink-0 ${isInternal ? '' : 'border-amber-500 text-amber-600 dark:text-amber-400'}`}>
-                              {isInternal ? '内部' : '外部'}
+                              {isInternal ? t('dialog.nodeInternal') : t('dialog.nodeExternal')}
                             </Badge>
                             {node.node_name}
                           </Label>
@@ -381,7 +383,7 @@ function PackagesPage() {
                   )}
                 </div>
                 <p className="text-xs text-gray-500">
-                  选择该套餐可以使用的节点（不选择表示可以使用所有节点）
+                  {t('dialog.nodesHint')}
                 </p>
               </div>
             </div>
@@ -395,13 +397,13 @@ function PackagesPage() {
                   resetForm()
                 }}
               >
-                取消
+                {t('actions.cancel', { ns: 'common' })}
               </Button>
               <Button
                 type="submit"
                 disabled={createMutation.isPending || updateMutation.isPending}
               >
-                {(createMutation.isPending || updateMutation.isPending) ? '保存中...' : '保存'}
+                {(createMutation.isPending || updateMutation.isPending) ? t('dialog.saving') : t('actions.save', { ns: 'common' })}
               </Button>
             </DialogFooter>
           </form>

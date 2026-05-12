@@ -1,0 +1,91 @@
+{
+  "user": {
+    "stats": {
+      "totalQuota": "总流量配额",
+      "totalQuotaDesc": "您的可用总配额",
+      "usedTraffic": "已用流量",
+      "usedTrafficDesc": "您的累计消耗",
+      "remainingTraffic": "剩余流量",
+      "remainingTrafficDesc": "仍可分配的余量",
+      "usageRate": "使用率",
+      "usageRateDesc": "累计使用占比",
+      "usedPercent": "已使用 {{percent}}%"
+    },
+    "subscribe": {
+      "noSubscriptions": "暂无可用订阅",
+      "noSubscriptionsDesc": "管理员尚未为您分配套餐或订阅链接，请联系管理员。",
+      "showQrCode": "点击显示二维码",
+      "copy": "复制",
+      "import": "导入",
+      "expired": "已过期",
+      "expireAt": "到期: {{date}}",
+      "permanent": "永久",
+      "linkCopied": "{{client}} 订阅链接已复制",
+      "copyFailed": "复制失败(需要https)，请手动复制"
+    },
+    "qrDialog": {
+      "title": "订阅二维码",
+      "description": "使用手机扫描二维码快速导入订阅链接。"
+    }
+  },
+  "admin": {
+    "stats": {
+      "totalQuota": "总流量配额",
+      "totalQuotaDesc": "所有节点的总配额",
+      "usedTraffic": "已用流量",
+      "usedTrafficDesc": "所有节点累计消耗",
+      "remainingTraffic": "剩余流量",
+      "remainingTrafficDesc": "仍可分配的余量",
+      "realtimeSpeed": "实时网速",
+      "realtimeSpeedDesc": "所有服务器汇总"
+    },
+    "timeRange": {
+      "today": "今天",
+      "week": "本周",
+      "month": "本月"
+    },
+    "nodeView": {
+      "title": "节点视图",
+      "sortDesc": "按周期流量排序",
+      "noData": "暂无数据",
+      "totalNodes": "共 {{count}} 个节点，点击右上角查看全部",
+      "serverTooltip": "服务器: {{servers}}"
+    },
+    "userView": {
+      "title": "用户视图",
+      "sortDesc": "按周期流量排序",
+      "noData": "暂无数据",
+      "totalUsers": "共 {{count}} 个用户，点击右上角查看全部"
+    },
+    "serverOverview": {
+      "title": "服务器概览",
+      "noServers": "暂无服务器",
+      "columns": {
+        "server": "服务器",
+        "speed": "网速",
+        "used": "已用",
+        "total": "总量",
+        "remaining": "剩余",
+        "usageRate": "使用率"
+      },
+      "unlimited": "无限"
+    },
+    "dialog": {
+      "nodeTraffic": "节点流量",
+      "userTraffic": "用户流量",
+      "nodeUserTraffic": "{{name}} 的用户流量",
+      "userNodeTraffic": "{{name}} 的节点流量"
+    }
+  },
+  "chart": {
+    "title": "每日流量消耗",
+    "description": "最近记录的日度流量趋势",
+    "loadFailed": "数据加载失败，请稍后重试。",
+    "noHistory": "暂无历史记录。",
+    "tooltipDate": "日期：{{date}}",
+    "dailyUsage": "日消耗"
+  },
+  "pagination": {
+    "page": "第 {{current}}/{{total}} 页"
+  }
+}

@@ -3,6 +3,7 @@ import { createFileRoute, useSearch } from '@tanstack/react-router'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useMemo, useState } from 'react'
 import { toast } from 'sonner'
+import { useTranslation } from 'react-i18next'
 import { Edit2, RefreshCw, Trash2, Eye, Plus, Cloud } from 'lucide-react'
 
 import { InboundWizard } from '@/components/xray/inbound-wizard'
@@ -64,12 +65,14 @@ interface InboundItem {
 }
 
 function XrayInboundsPage() {
+  const { t } = useTranslation('xray')
+  const { t: tc } = useTranslation('common')
   const queryClient = useQueryClient()
   const search = useSearch({ from: '/xray-inbounds/' })
   const { selectedRemoteServerId, setSelectedServer } = useServerStore()
   const isRemoteMode = selectedRemoteServerId !== null
 
-  // 从 URL 参数读取并设置选中的远程服务器（仅在首次加载时）
+  // Read remote server from URL params on first load
   useEffect(() => {
     if (search.remote_server_id) {
       setSelectedServer(search.remote_server_id)
@@ -83,11 +86,11 @@ function XrayInboundsPage() {
   const [isWizardDialogOpen, setIsWizardDialogOpen] = useState(false)
   const [viewMode, setViewMode] = useState<ViewMode>('card')
 
-  // 删除确认对话框状态
+  // Delete confirm dialog state
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const [deletingInbound, setDeletingInbound] = useState<InboundItem | null>(null)
 
-  // 获取远程服务器信息
+  // Fetch remote server info
   const { data: remoteServerData } = useQuery({
     queryKey: ['remote-server', selectedRemoteServerId],
     queryFn: async () => {
@@ -98,7 +101,7 @@ function XrayInboundsPage() {
     enabled: isRemoteMode,
   })
 
-  // 获取入站数据 - 仅远程服务器
+  // Fetch inbound data - remote server only
   const { data: inboundsData, isLoading } = useQuery({
     queryKey: ['remote-inbounds', selectedRemoteServerId, remoteServerData?.name],
     queryFn: async () => {
@@ -109,7 +112,7 @@ function XrayInboundsPage() {
         success: true,
         inbounds: inbounds.map((inbound: any) => ({
           server_id: selectedRemoteServerId,
-          server_name: remoteServerData?.name || '远程服务器',
+          server_name: remoteServerData?.name || '',
           inbound,
         })),
       }
@@ -117,7 +120,7 @@ function XrayInboundsPage() {
     enabled: isRemoteMode && !!remoteServerData,
   })
 
-  // 获取远程服务器列表
+  // Fetch remote server list
   const { data: remoteServersData } = useQuery({
     queryKey: ['remote-servers'],
     queryFn: async () => {
@@ -126,7 +129,7 @@ function XrayInboundsPage() {
     },
   })
 
-  // 远程服务器 mutations
+  // Remote server mutations
   const remoteUpdateInboundMutation = useMutation({
     mutationFn: async ({ inbound }: { inbound: XrayInbound }) => {
       await api.post(`/api/admin/remote/inbounds?server_id=${selectedRemoteServerId}`, {
@@ -141,7 +144,7 @@ function XrayInboundsPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['remote-inbounds', selectedRemoteServerId] })
-      toast.success('入站已更新')
+      toast.success(t('inbounds.inboundUpdated'))
       setEditingInbound(null)
     },
     onError: handleServerError,
@@ -158,9 +161,9 @@ function XrayInboundsPage() {
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['remote-inbounds', selectedRemoteServerId] })
       if (data.success) {
-        toast.success(data.message || '入站已删除')
+        toast.success(data.message || t('inbounds.inboundDeleted'))
       } else {
-        toast.error(data.message || '删除入站失败', {
+        toast.error(data.message || t('inbounds.inboundDeleteFailed'), {
           description: data.error,
         })
       }
@@ -179,9 +182,9 @@ function XrayInboundsPage() {
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['remote-inbounds', selectedRemoteServerId] })
       if (data.success) {
-        toast.success(data.message || '入站已添加')
+        toast.success(data.message || t('inbounds.inboundAdded'))
       } else {
-        toast.error(data.message || '添加入站失败', {
+        toast.error(data.message || t('inbounds.inboundAddFailed'), {
           description: data.error,
         })
       }
@@ -241,7 +244,7 @@ function XrayInboundsPage() {
   const handleInboundSubmit = async (serverIds: number[], inbound: XrayInbound, tag: string) => {
     const trimmedTag = tag?.trim() || inbound.tag || ''
     if (!trimmedTag) {
-      toast.error('请填写标签')
+      toast.error(t('inbounds.fillTag'))
       return
     }
 
@@ -252,10 +255,10 @@ function XrayInboundsPage() {
 
     try {
       await remoteAddInboundMutation.mutateAsync({ inbound: baseInbound })
-      toast.success('入站已添加到远程服务器')
+      toast.success(t('inbounds.inboundAddedToRemote'))
       setIsWizardDialogOpen(false)
     } catch (error) {
-      // 错误已通过 handleServerError 处理
+      // Error handled by handleServerError
     }
   }
 
@@ -298,12 +301,12 @@ function XrayInboundsPage() {
     <div className="container mx-auto py-8 px-4 pt-24">
       <div className="mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold mb-2">Xray 入站管理</h1>
+          <h1 className="text-3xl font-bold mb-2">{t('inbounds.title')}</h1>
           <p className="text-gray-600 flex items-center gap-2">
             <Cloud className="h-4 w-4 text-green-500" />
             {isRemoteMode
-              ? `远程服务器 ${remoteServerData?.name || '远程服务器'} 的入站配置（共 ${filteredInbounds.length} 个）`
-              : '请先选择一个远程服务器'}
+              ? t('inbounds.remoteServerConfig', { name: remoteServerData?.name || '', count: filteredInbounds.length })
+              : t('inbounds.selectServerFirst')}
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -316,7 +319,7 @@ function XrayInboundsPage() {
             }}
           >
             <Plus className="h-4 w-4 mr-2" />
-            添加入站
+            {t('inbounds.addInbound')}
           </Button>
         </div>
       </div>
@@ -324,12 +327,12 @@ function XrayInboundsPage() {
       {isLoading ? (
         <div className="text-center py-8">
           <RefreshCw className="h-8 w-8 animate-spin mx-auto mb-2" />
-          <p className="text-gray-600">加载中...</p>
+          <p className="text-gray-600">{tc('actions.loading')}</p>
         </div>
       ) : filteredInbounds.length === 0 ? (
         <EmptyStateCard
-          title="暂无入站配置"
-          description='点击"添加入站"按钮添加入站配置'
+          title={t('inbounds.noInbounds')}
+          description={t('inbounds.noInboundsDesc')}
         />
       ) : viewMode === 'card' ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
@@ -355,16 +358,16 @@ function XrayInboundsPage() {
                 </CardHeader>
                 <CardContent className="space-y-3">
                   <div className="flex items-center justify-between">
-                    <span className="text-sm text-muted-foreground">端口</span>
+                    <span className="text-sm text-muted-foreground">{t('inbounds.portLabel')}</span>
                     <span className="text-sm font-medium">{inbound.port}</span>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-sm text-muted-foreground">用户数</span>
+                    <span className="text-sm text-muted-foreground">{t('inbounds.userCount')}</span>
                     <span className="text-sm font-medium">{userCount}</span>
                   </div>
                   {inbound.listen && (
                     <div className="flex items-center justify-between">
-                      <span className="text-sm text-muted-foreground">监听地址</span>
+                      <span className="text-sm text-muted-foreground">{t('inbounds.listenAddress')}</span>
                       <span className="text-sm font-medium">{inbound.listen}</span>
                     </div>
                   )}
@@ -376,7 +379,7 @@ function XrayInboundsPage() {
                     onClick={() => handleEdit(item)}
                   >
                     <Edit2 className="h-4 w-4 mr-1" />
-                    编辑
+                    {tc('actions.edit')}
                   </Button>
                   <Button
                     variant="outline"
@@ -384,7 +387,7 @@ function XrayInboundsPage() {
                     onClick={() => setViewingInbound(inbound)}
                   >
                     <Eye className="h-4 w-4 mr-1" />
-                    查看
+                    {tc('actions.view')}
                   </Button>
                   <Button
                     variant="outline"
@@ -393,7 +396,7 @@ function XrayInboundsPage() {
                     className="text-red-600 hover:text-red-700"
                   >
                     <Trash2 className="h-4 w-4 mr-1" />
-                    删除
+                    {tc('actions.delete')}
                   </Button>
                 </CardFooter>
               </Card>
@@ -405,13 +408,13 @@ function XrayInboundsPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>标签</TableHead>
-                <TableHead>服务器</TableHead>
-                <TableHead>协议</TableHead>
-                <TableHead>端口</TableHead>
-                <TableHead>监听地址</TableHead>
-                <TableHead>用户数</TableHead>
-                <TableHead className="text-right">操作</TableHead>
+                <TableHead>{t('fields.tag')}</TableHead>
+                <TableHead>{t('inbounds.serverLabel')}</TableHead>
+                <TableHead>{t('inbounds.protocolLabel')}</TableHead>
+                <TableHead>{t('inbounds.portLabel')}</TableHead>
+                <TableHead>{t('inbounds.listenAddress')}</TableHead>
+                <TableHead>{t('inbounds.userCount')}</TableHead>
+                <TableHead className="text-right">{tc('actions.edit')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -438,13 +441,13 @@ function XrayInboundsPage() {
                     <TableCell>{userCount}</TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-1">
-                        <Button variant="ghost" size="sm" className="h-7 px-2" onClick={() => handleEdit(item)} title="编辑">
+                        <Button variant="ghost" size="sm" className="h-7 px-2" onClick={() => handleEdit(item)} title={tc('actions.edit')}>
                           <Edit2 className="h-3.5 w-3.5" />
                         </Button>
-                        <Button variant="ghost" size="sm" className="h-7 px-2" onClick={() => setViewingInbound(inbound)} title="查看">
+                        <Button variant="ghost" size="sm" className="h-7 px-2" onClick={() => setViewingInbound(inbound)} title={tc('actions.view')}>
                           <Eye className="h-3.5 w-3.5" />
                         </Button>
-                        <Button variant="ghost" size="sm" className="h-7 px-2 text-red-500 hover:text-red-600" onClick={() => handleDelete(item)} title="删除">
+                        <Button variant="ghost" size="sm" className="h-7 px-2 text-red-500 hover:text-red-600" onClick={() => handleDelete(item)} title={tc('actions.delete')}>
                           <Trash2 className="h-3.5 w-3.5" />
                         </Button>
                       </div>
@@ -461,32 +464,32 @@ function XrayInboundsPage() {
       <Dialog open={!!editingInbound} onOpenChange={(open) => !open && setEditingInbound(null)}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>编辑入站 - {editingInbound?.inbound.tag}</DialogTitle>
+            <DialogTitle>{t('inbounds.editInbound')} - {editingInbound?.inbound.tag}</DialogTitle>
             <DialogDescription>
-              编辑入站的用户配置
+              {t('inbounds.editInboundUsers')}
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleSubmit}>
             <div className="space-y-4 py-4">
               <div className="space-y-2">
-                <label className="text-sm font-medium">服务器</label>
+                <label className="text-sm font-medium">{t('inbounds.serverLabel')}</label>
                 <div className="text-sm text-muted-foreground">{editingInbound?.server_name}</div>
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-medium">协议</label>
+                <label className="text-sm font-medium">{t('inbounds.protocolLabel')}</label>
                 <div className="text-sm text-muted-foreground">{editingInbound?.inbound.protocol}</div>
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-medium">端口</label>
+                <label className="text-sm font-medium">{t('inbounds.portLabel')}</label>
                 <div className="text-sm text-muted-foreground">{editingInbound?.inbound.port}</div>
               </div>
               {editingInbound && (
                 <ArrayField
-                  label={editingInbound.inbound.protocol === 'socks' || editingInbound.inbound.protocol === 'http' ? '账户' : '用户'}
+                  label={editingInbound.inbound.protocol === 'socks' || editingInbound.inbound.protocol === 'http' ? t('inbounds.accounts') : t('inbounds.users')}
                   fields={getUserFields(editingInbound.inbound.protocol)}
                   values={editedUsers}
                   onChange={setEditedUsers}
-                  addButtonText={editingInbound.inbound.protocol === 'socks' || editingInbound.inbound.protocol === 'http' ? '添加账户' : '添加用户'}
+                  addButtonText={editingInbound.inbound.protocol === 'socks' || editingInbound.inbound.protocol === 'http' ? t('inbounds.addAccount') : t('inbounds.addUser')}
                   showUserSelect={true}
                   required
                 />
@@ -498,10 +501,10 @@ function XrayInboundsPage() {
                 variant="outline"
                 onClick={() => setEditingInbound(null)}
               >
-                取消
+                {tc('actions.cancel')}
               </Button>
               <Button type="submit" disabled={remoteUpdateInboundMutation.isPending}>
-                {remoteUpdateInboundMutation.isPending ? '保存中...' : '保存'}
+                {remoteUpdateInboundMutation.isPending ? tc('actions.saving') : tc('actions.save')}
               </Button>
             </DialogFooter>
           </form>
@@ -512,9 +515,9 @@ function XrayInboundsPage() {
       <Dialog open={!!viewingInbound} onOpenChange={(open) => !open && setViewingInbound(null)}>
         <DialogContent className="max-w-3xl max-h-[90vh]">
           <DialogHeader>
-            <DialogTitle>查看入站配置 - {viewingInbound?.tag}</DialogTitle>
+            <DialogTitle>{t('inbounds.viewInbound')} - {viewingInbound?.tag}</DialogTitle>
             <DialogDescription>
-              完整的入站配置 JSON
+              {t('inbounds.viewInboundJson')}
             </DialogDescription>
           </DialogHeader>
           <div className="overflow-auto max-h-[60vh]">
@@ -523,7 +526,7 @@ function XrayInboundsPage() {
             </pre>
           </div>
           <DialogFooter>
-            <Button onClick={() => setViewingInbound(null)}>关闭</Button>
+            <Button onClick={() => setViewingInbound(null)}>{tc('actions.close')}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -537,9 +540,9 @@ function XrayInboundsPage() {
       >
         <DialogContent className="w-[95vw] !max-w-none md:w-[90vw] lg:w-[80vw] max-h-[90vh] overflow-hidden sm:max-w-none flex flex-col">
           <DialogHeader>
-            <DialogTitle>添加入站 - 向导模式</DialogTitle>
+            <DialogTitle>{t('inbounds.addInboundWizard')}</DialogTitle>
             <DialogDescription>
-              基于 Xray 官方示例配置，通过向导快速生成入站配置
+              {t('inbounds.addInboundWizardDesc')}
             </DialogDescription>
           </DialogHeader>
           <div className="flex-1 overflow-y-auto">
@@ -555,22 +558,22 @@ function XrayInboundsPage() {
         </DialogContent>
       </Dialog>
 
-      {/* 删除确认对话框 */}
+      {/* Delete confirm dialog */}
       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>确认删除入站</AlertDialogTitle>
+            <AlertDialogTitle>{t('inbounds.confirmDeleteTitle')}</AlertDialogTitle>
             <AlertDialogDescription>
-              确定要删除入站 "{deletingInbound?.inbound.tag}" 吗？此操作无法撤销。
+              {t('inbounds.confirmDeleteDesc', { tag: deletingInbound?.inbound.tag })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setDeletingInbound(null)}>取消</AlertDialogCancel>
+            <AlertDialogCancel onClick={() => setDeletingInbound(null)}>{tc('actions.cancel')}</AlertDialogCancel>
             <AlertDialogAction
               onClick={confirmDelete}
               className="bg-red-600 hover:bg-red-700"
             >
-              确认删除
+              {tc('actions.confirmDelete')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

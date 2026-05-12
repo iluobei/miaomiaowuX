@@ -1,0 +1,91 @@
+{
+  "user": {
+    "stats": {
+      "totalQuota": "Total Quota",
+      "totalQuotaDesc": "Your available quota",
+      "usedTraffic": "Used Traffic",
+      "usedTrafficDesc": "Your accumulated usage",
+      "remainingTraffic": "Remaining",
+      "remainingTrafficDesc": "Available balance",
+      "usageRate": "Usage Rate",
+      "usageRateDesc": "Accumulated usage ratio",
+      "usedPercent": "Used {{percent}}%"
+    },
+    "subscribe": {
+      "noSubscriptions": "No subscriptions available",
+      "noSubscriptionsDesc": "The administrator has not assigned any packages or subscription links to you. Please contact the admin.",
+      "showQrCode": "Click to show QR code",
+      "copy": "Copy",
+      "import": "Import",
+      "expired": "Expired",
+      "expireAt": "Expires: {{date}}",
+      "permanent": "Permanent",
+      "linkCopied": "{{client}} subscription link copied",
+      "copyFailed": "Copy failed (HTTPS required), please copy manually"
+    },
+    "qrDialog": {
+      "title": "Subscription QR Code",
+      "description": "Scan the QR code with your phone to quickly import the subscription link."
+    }
+  },
+  "admin": {
+    "stats": {
+      "totalQuota": "Total Quota",
+      "totalQuotaDesc": "Total quota across all nodes",
+      "usedTraffic": "Used Traffic",
+      "usedTrafficDesc": "Accumulated usage across all nodes",
+      "remainingTraffic": "Remaining",
+      "remainingTrafficDesc": "Available balance",
+      "realtimeSpeed": "Realtime Speed",
+      "realtimeSpeedDesc": "All servers aggregated"
+    },
+    "timeRange": {
+      "today": "Today",
+      "week": "This Week",
+      "month": "This Month"
+    },
+    "nodeView": {
+      "title": "Node View",
+      "sortDesc": "Sorted by cycle traffic",
+      "noData": "No data",
+      "totalNodes": "{{count}} nodes total, click top-right to view all",
+      "serverTooltip": "Server: {{servers}}"
+    },
+    "userView": {
+      "title": "User View",
+      "sortDesc": "Sorted by cycle traffic",
+      "noData": "No data",
+      "totalUsers": "{{count}} users total, click top-right to view all"
+    },
+    "serverOverview": {
+      "title": "Server Overview",
+      "noServers": "No servers",
+      "columns": {
+        "server": "Server",
+        "speed": "Speed",
+        "used": "Used",
+        "total": "Total",
+        "remaining": "Remaining",
+        "usageRate": "Usage"
+      },
+      "unlimited": "Unlimited"
+    },
+    "dialog": {
+      "nodeTraffic": "Node Traffic",
+      "userTraffic": "User Traffic",
+      "nodeUserTraffic": "User traffic for {{name}}",
+      "userNodeTraffic": "Node traffic for {{name}}"
+    }
+  },
+  "chart": {
+    "title": "Daily Traffic Usage",
+    "description": "Recent daily traffic trends",
+    "loadFailed": "Failed to load data, please try again later.",
+    "noHistory": "No history available.",
+    "tooltipDate": "Date: {{date}}",
+    "dailyUsage": "Daily Usage"
+  },
+  "pagination": {
+    "page": "Page {{current}}/{{total}}"
+  }
+}

@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
+import { useTranslation } from 'react-i18next'
 import { Cloud, ChevronDown, Check } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
@@ -24,6 +25,7 @@ interface ServerSelectorProps {
 }
 
 export function ServerSelector({ className }: ServerSelectorProps) {
+  const { t } = useTranslation('common')
   const { selectedRemoteServerId, setSelectedServer } = useServerStore()
 
   const { data: remoteServersData } = useQuery({
@@ -39,7 +41,7 @@ export function ServerSelector({ className }: ServerSelectorProps) {
 
   const getSelectedName = () => {
     const server = remoteServers.find(s => s.id === selectedRemoteServerId)
-    return server?.name || '选择服务器'
+    return server?.name || t('serverSelector.selectServer')
   }
 
   if (remoteServers.length === 0) {
@@ -53,7 +55,7 @@ export function ServerSelector({ className }: ServerSelectorProps) {
         )}
       >
         <Cloud className="h-4 w-4 text-muted-foreground" />
-        <span className="text-sm text-muted-foreground">无远程服务器</span>
+        <span className="text-sm text-muted-foreground">{t('serverSelector.noServers')}</span>
       </Button>
     )
   }
@@ -88,7 +90,7 @@ export function ServerSelector({ className }: ServerSelectorProps) {
             <span className="flex-1 truncate">{server.name}</span>
             {server.status !== 'connected' && (
               <Badge variant="secondary" className="text-xs py-0 px-1">
-                {server.status === 'pending' ? '待连接' : '离线'}
+                {server.status === 'pending' ? t('serverSelector.pending') : t('serverSelector.offline')}
               </Badge>
             )}
             {selectedRemoteServerId === server.id && (

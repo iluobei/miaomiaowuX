@@ -3,6 +3,11 @@
  * 用于在保存订阅前检查配置的有效性，避免mihomo启动失败
  */
 
+import i18n from '@/lib/i18n'
+
+const t = (key: string, options?: Record<string, unknown>) =>
+  i18n.t(`errors:clashValidator.${key}`, options as any) as string
+
 export type ValidationLevel = 'error' | 'warning' | 'info'
 
 export interface ValidationIssue {
@@ -73,7 +78,7 @@ function validateProxies(proxies: any[]): { issues: ValidationIssue[]; fixed?: a
     if (!proxy || typeof proxy !== 'object') {
       issues.push({
         level: 'error',
-        message: `代理节点 #${i + 1} 不是有效的对象`,
+        message: t('proxyNotObject', { index: i + 1 }),
         location
       })
       continue
@@ -83,7 +88,7 @@ function validateProxies(proxies: any[]): { issues: ValidationIssue[]; fixed?: a
     if (!proxy.name || typeof proxy.name !== 'string' || proxy.name.trim() === '') {
       issues.push({
         level: 'error',
-        message: `代理节点 #${i + 1} 缺少name字段或name为空`,
+        message: t('proxyMissingName', { index: i + 1 }),
         location,
         field: 'name'
       })
@@ -96,7 +101,7 @@ function validateProxies(proxies: any[]): { issues: ValidationIssue[]; fixed?: a
     if (seenNames.has(name)) {
       issues.push({
         level: 'warning',
-        message: `代理节点名称重复: "${name}"，已自动移除`,
+        message: t('proxyDuplicateName', { name }),
         location,
         field: 'name',
         autoFixed: true
@@ -111,7 +116,7 @@ function validateProxies(proxies: any[]): { issues: ValidationIssue[]; fixed?: a
     if (keys.length > 0 && keys[0] !== 'name') {
       issues.push({
         level: 'warning',
-        message: `代理节点 "${name}" 的name字段不是第一个字段，已自动调整`,
+        message: t('proxyNameNotFirst', { name }),
         location,
         field: 'name',
         autoFixed: true
@@ -159,7 +164,7 @@ function validateProxyGroups(
     if (!group || typeof group !== 'object') {
       issues.push({
         level: 'error',
-        message: `代理组 #${i + 1} 不是有效的对象`,
+        message: t('groupNotObject', { index: i + 1 }),
         location
       })
       continue
@@ -169,7 +174,7 @@ function validateProxyGroups(
     if (!group.name || typeof group.name !== 'string' || group.name.trim() === '') {
       issues.push({
         level: 'error',
-        message: `代理组 #${i + 1} 缺少name字段或name为空`,
+        message: t('groupMissingName', { index: i + 1 }),
         location,
         field: 'name'
       })
@@ -182,7 +187,7 @@ function validateProxyGroups(
     if (seenNames.has(name)) {
       issues.push({
         level: 'error',
-        message: `代理组名称重复: "${name}"`,
+        message: t('groupDuplicateName', { name }),
         location,
         field: 'name'
       })
@@ -195,7 +200,7 @@ function validateProxyGroups(
     if (keys.length > 0 && keys[0] !== 'name') {
       issues.push({
         level: 'warning',
-        message: `代理组 "${name}" 的name字段不是第一个字段，已自动调整`,
+        message: t('groupNameNotFirst', { name }),
         location,
         field: 'name',
         autoFixed: true
@@ -211,7 +216,7 @@ function validateProxyGroups(
     if (!hasProxies && !hasUse && !hasFilter && !hasIncludeAll) {
       issues.push({
         level: 'error',
-        message: `代理组 "${name}" 的proxies、use、filter和include-all字段都为空或不存在`,
+        message: t('groupEmpty', { name }),
         location,
         field: 'proxies'
       })
@@ -242,7 +247,7 @@ function validateProxyGroups(
           correctedProxy = spellingCorrections[proxy]
           issues.push({
             level: 'warning',
-            message: `代理组 "${name}" 中的节点引用 "${proxy}" 已自动修正为 "${correctedProxy}"`,
+            message: t('groupAutoCorrect', { name, proxy, corrected: correctedProxy }),
             location,
             field: 'proxies',
             autoFixed: true
@@ -257,7 +262,7 @@ function validateProxyGroups(
         if (!isSpecial && !isProxy && !isGroup) {
           issues.push({
             level: 'error',
-            message: `代理组 "${name}" 引用了不存在的节点: "${correctedProxy}"`,
+            message: t('groupMissingNode', { name, node: correctedProxy }),
             location,
             field: 'proxies'
           })
@@ -271,7 +276,7 @@ function validateProxyGroups(
       if (hasDuplicates) {
         issues.push({
           level: 'warning',
-          message: `代理组 "${name}" 的proxies字段包含重复引用，已自动去重`,
+          message: t('groupDuplicateProxies', { name }),
           location,
           field: 'proxies',
           autoFixed: true
@@ -326,7 +331,7 @@ function detectCircularReferences(groups: any[]): ValidationIssue[] {
         const cycle = [...path.slice(cycleStart), neighbor].join(' → ')
         issues.push({
           level: 'error',
-          message: `检测到代理组循环引用: ${cycle}`,
+          message: t('circularReference', { cycle }),
           location: `proxy-groups[${node}]`
         })
         return true
@@ -401,7 +406,7 @@ function reorderGroupFields(group: any): any {
  */
 export function formatValidationIssues(issues: ValidationIssue[]): string {
   if (issues.length === 0) {
-    return '✅ 配置校验通过'
+    return t('validationPassed')
   }
 
   const errors = issues.filter(i => i.level === 'error')
@@ -443,7 +448,7 @@ export function formatValidationIssues(issues: ValidationIssue[]): string {
         const issue = items[0]
         result += `  ${itemIndex}. ${issue.message}`
         if (issue.location) {
-          result += ` (位置: ${issue.location})`
+          result += ` (${t('location', { location: issue.location })})`
         }
         result += '\n'
         itemIndex++
@@ -452,11 +457,11 @@ export function formatValidationIssues(issues: ValidationIssue[]): string {
         const names = items.map(i => extractName(i.message)).filter(Boolean)
 
         // 重建消息，将第一个名称替换为计数
-        let baseMessage = pattern.replace('"{name}"', `${items.length} 个项目`)
+        let baseMessage = pattern.replace('"{name}"', t('itemCount', { count: items.length }))
 
         // 如果是关于"name字段位置"的警告，简化描述
-        if (baseMessage.includes('name字段不是第一个字段')) {
-          baseMessage = `${items.length} 个代理组的 name 字段位置需要调整`
+        if (baseMessage.includes(t('nameNotFirst'))) {
+          baseMessage = t('nameFieldAdjust', { count: items.length })
         }
 
         result += `  ${itemIndex}. ${baseMessage}\n`
@@ -465,9 +470,9 @@ export function formatValidationIssues(issues: ValidationIssue[]): string {
         if (names.length > 0) {
           const displayNames = names.slice(0, maxDisplay)
           const remaining = names.length - maxDisplay
-          result += `     受影响: ${displayNames.join(', ')}`
+          result += `     ${t('affected', { items: displayNames.join(', ') })}`
           if (remaining > 0) {
-            result += ` 等 ${remaining} 个`
+            result += ` ${t('andMore', { count: remaining })}`
           }
           result += '\n'
         }
@@ -480,19 +485,19 @@ export function formatValidationIssues(issues: ValidationIssue[]): string {
   }
 
   if (errors.length > 0) {
-    message += `❌ 发现 ${errors.length} 个错误:\n`
+    message += t('errorsFound', { count: errors.length })
     message += formatGroupedIssues(errors, 5)
   }
 
   if (warnings.length > 0) {
     if (message) message += '\n'
-    message += `⚠️ 发现 ${warnings.length} 个警告:\n`
+    message += t('warningsFound', { count: warnings.length })
     message += formatGroupedIssues(warnings, 5)
   }
 
   if (autoFixed.length > 0) {
     if (message) message += '\n'
-    message += `🔧 已自动修复 ${autoFixed.length} 个问题`
+    message += t('autoFixed', { count: autoFixed.length })
   }
 
   return message

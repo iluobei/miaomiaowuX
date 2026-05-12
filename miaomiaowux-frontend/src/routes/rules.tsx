@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { createFileRoute, redirect } from '@tanstack/react-router'
 import { load as parseYAML } from 'js-yaml'
 import { toast } from 'sonner'
+import { useTranslation } from 'react-i18next'
 import { Topbar } from '@/components/layout/topbar'
 import { api } from '@/lib/api'
 import { handleServerError } from '@/lib/handle-server-error'
@@ -41,6 +42,7 @@ export const Route = createFileRoute('/rules')({
 })
 
 function RulesPage() {
+  const { t } = useTranslation('rules')
   const { auth } = useAuthStore()
   const queryClient = useQueryClient()
   const search = Route.useSearch()
@@ -143,7 +145,7 @@ function RulesPage() {
       return response.data as { version: number }
     },
     onSuccess: (_, variables) => {
-      toast.success('规则已保存')
+      toast.success(t('editor.saveSuccess'))
       setIsDirty(false)
       setValidationError(null)
       queryClient.invalidateQueries({ queryKey: ['rule-files'] })
@@ -180,7 +182,7 @@ function RulesPage() {
     const timer = setTimeout(() => {
       const trimmed = editorValue.trim()
       if (!trimmed) {
-        setValidationError('内容不能为空')
+        setValidationError(t('editor.contentEmpty'))
         return
       }
 
@@ -188,7 +190,7 @@ function RulesPage() {
         parseYAML(editorValue)
         setValidationError(null)
       } catch (error) {
-        const message = error instanceof Error ? error.message : 'YAML 解析失败'
+        const message = error instanceof Error ? error.message : t('editor.yamlParseFailed')
         setValidationError(message)
       }
     }, 300)
@@ -212,9 +214,9 @@ function RulesPage() {
       parseYAML(editorValue || '')
       setValidationError(null)
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'YAML 解析失败'
+      const message = error instanceof Error ? error.message : t('editor.yamlParseFailed')
       setValidationError(message)
-      toast.error('保存失败，YAML 格式错误')
+      toast.error(t('editor.saveFailed'))
       return
     }
 
@@ -246,8 +248,8 @@ function RulesPage() {
         <main className='mx-auto flex w-full max-w-3xl flex-col items-center justify-center gap-4 px-4 py-20 text-center sm:px-6 pt-24'>
           <Card className='w-full shadow-none border-dashed'>
             <CardHeader>
-              <CardTitle>权限不足</CardTitle>
-              <CardDescription>只有管理员可以访问规则配置页面。</CardDescription>
+              <CardTitle>{t('noPermission')}</CardTitle>
+              <CardDescription>{t('noPermissionDesc')}</CardDescription>
             </CardHeader>
           </Card>
         </main>
@@ -260,17 +262,17 @@ function RulesPage() {
       <Topbar />
       <main className='mx-auto w-full max-w-6xl px-4 py-8 sm:px-6 pt-24'>
         <section className='space-y-4'>
-          <h1 className='text-3xl font-semibold tracking-tight'>规则配置</h1>
+          <h1 className='text-3xl font-semibold tracking-tight'>{t('title')}</h1>
           <p className='text-muted-foreground'>
-            查看、编辑并保存订阅规则，支持版本历史留存。
+            {t('subtitle')}
           </p>
         </section>
 
         <section className='mt-8 grid gap-6 lg:grid-cols-[320px_1fr]'>
           <Card>
               <CardHeader>
-                <CardTitle className='text-base'>规则文件</CardTitle>
-                <CardDescription>选择需要编辑的 YAML 文件</CardDescription>
+                <CardTitle className='text-base'>{t('fileList.title')}</CardTitle>
+                <CardDescription>{t('fileList.description')}</CardDescription>
               </CardHeader>
               <CardContent>
                 {listQuery.isLoading ? (
@@ -280,7 +282,7 @@ function RulesPage() {
                     ))}
                   </div>
                 ) : files.length === 0 ? (
-                  <p className='text-sm text-muted-foreground'>未找到任何 YAML 文件。</p>
+                  <p className='text-sm text-muted-foreground'>{t('fileList.empty')}</p>
                 ) : (
                   <div className='space-y-2'>
                     {files.map((file) => {
@@ -310,14 +312,14 @@ function RulesPage() {
             <Card>
               <CardHeader className='space-y-2'>
                 <CardTitle className='flex items-center justify-between'>
-                  <span>{selectedFile ?? '未选择文件'}</span>
+                  <span>{selectedFile ?? t('editor.noFile')}</span>
                   <span className='flex items-center gap-2'>
                     {detailQuery.data?.latest_version ? (
-                      <Badge variant='secondary'>最新版本 v{detailQuery.data.latest_version}</Badge>
+                      <Badge variant='secondary'>{t('editor.latestVersion', { version: detailQuery.data.latest_version })}</Badge>
                     ) : null}
                   </span>
                 </CardTitle>
-                <CardDescription>编辑内容时会自动校验 YAML 格式</CardDescription>
+                <CardDescription>{t('editor.autoValidate')}</CardDescription>
               </CardHeader>
               <CardContent className='space-y-4'>
                 <div className='flex flex-wrap items-center gap-3'>
@@ -326,7 +328,7 @@ function RulesPage() {
                       onClick={handleSave}
                       disabled={!selectedFile || !isDirty || saveMutation.isPending || isLoadingContent}
                     >
-                      {saveMutation.isPending ? '保存中...' : '保存修改'}
+                      {saveMutation.isPending ? t('editor.saving') : t('editor.save')}
                     </Button>
                     <Button
                       size='sm'
@@ -334,9 +336,9 @@ function RulesPage() {
                       disabled={!isDirty || isLoadingContent || saveMutation.isPending}
                       onClick={handleReset}
                     >
-                      还原修改
+                      {t('editor.revert')}
                     </Button>
-                    <span className='text-xs text-muted-foreground'>保存后会生成新的历史版本</span>
+                    <span className='text-xs text-muted-foreground'>{t('editor.saveHint')}</span>
                   </div>
                   {validationError ? (
                     <div className='rounded-md border border-destructive/60 bg-destructive/10 p-3 text-sm text-destructive'>
@@ -374,8 +376,8 @@ function RulesPage() {
 
               <Card>
                 <CardHeader>
-                  <CardTitle className='text-base'>历史版本</CardTitle>
-                  <CardDescription>最近保存的版本会在此展示</CardDescription>
+                  <CardTitle className='text-base'>{t('history.title')}</CardTitle>
+                  <CardDescription>{t('history.description')}</CardDescription>
                 </CardHeader>
                 <CardContent>
                   {historyQuery.isLoading ? (
@@ -385,18 +387,18 @@ function RulesPage() {
                       ))}
                     </div>
                   ) : historyList.length === 0 ? (
-                    <p className='text-sm text-muted-foreground'>暂无历史记录，保存后会自动生成版本。</p>
+                    <p className='text-sm text-muted-foreground'>{t('history.empty')}</p>
                   ) : (
                     <ScrollArea className='h-64 pr-3'>
                       <div className='space-y-4'>
                         {historyList.map((item) => (
                           <div key={item.version} className='space-y-2 rounded-md border p-3'>
                             <div className='flex items-center justify-between text-sm font-medium'>
-                              <span>版本 v{item.version}</span>
+                              <span>{t('history.version', { version: item.version })}</span>
                               <Badge variant='outline'>{item.created_by}</Badge>
                             </div>
                             <div className='text-xs text-muted-foreground'>
-                              {item.created_at ? dateFormatter.format(new Date(item.created_at)) : '时间未知'}
+                              {item.created_at ? dateFormatter.format(new Date(item.created_at)) : t('history.unknownTime')}
                             </div>
                             <Separator className='my-2' />
                             <pre className='max-h-32 overflow-auto whitespace-pre-wrap break-words rounded bg-muted/40 p-2 text-xs'>

@@ -3,12 +3,12 @@ import { cn } from '@/lib/utils'
 
 interface ButtonGroupProps extends React.HTMLAttributes<HTMLDivElement> {
   /**
-   * 布局模式
-   * - 'responsive': 桌面端右对齐，移动端自动宽度均匀分布
-   * - 'responsive-wrap': 桌面端右对齐，移动端换行显示
-   * - 'always-full': 始终占满宽度均匀分布
-   * - 'always-auto': 始终自动宽度
-   * - 'adaptive-full': 按按钮数量自动等分并占满宽度
+   * Layout mode
+   * - 'responsive': Right-aligned on desktop, evenly distributed auto-width on mobile
+   * - 'responsive-wrap': Right-aligned on desktop, wrapping on mobile
+   * - 'always-full': Always evenly distributed full width
+   * - 'always-auto': Always auto width
+   * - 'adaptive-full': Auto equal-width grid based on button count
    */
   mode?:
     | 'responsive'
@@ -17,32 +17,32 @@ interface ButtonGroupProps extends React.HTMLAttributes<HTMLDivElement> {
     | 'always-auto'
     | 'adaptive-full'
   /**
-   * 按钮间距
+   * Button gap
    */
   gap?: 'sm' | 'md' | 'lg'
   /**
-   * 固定列数，仅在 adaptive-full 模式生效
+   * Fixed column count, only applies in adaptive-full mode
    */
   columns?: number
   /**
-   * 最大列数，仅在 adaptive-full 模式生效
+   * Max column count, only applies in adaptive-full mode
    */
   maxColumns?: number
   /**
-   * 移动端隐藏按钮图标
+   * Hide button icons on mobile
    */
   hideIconOnMobile?: boolean
 }
 
 /**
- * 按钮组组件 - 统一管理按钮的布局
+ * ButtonGroup component - unified button layout management
  *
- * 使用示例:
+ * Usage:
  * ```tsx
  * <ButtonGroup mode="responsive" hideIconOnMobile>
- *   <Button variant="outline"><MapPin />按地区分组</Button>
- *   <Button variant="outline"><Layers />手动分组</Button>
- *   <Button><Save />保存为订阅</Button>
+ *   <Button variant="outline"><MapPin />Region Group</Button>
+ *   <Button variant="outline"><Layers />Manual Group</Button>
+ *   <Button><Save />Save Subscription</Button>
  * </ButtonGroup>
  * ```
  */
@@ -68,15 +68,15 @@ const ButtonGroup = React.forwardRef<HTMLDivElement, ButtonGroupProps>(
     }[gap]
 
     const modeClass = {
-      // 桌面端右对齐，移动端子元素均分宽度
+      // Right-aligned on desktop, evenly distributed on mobile
       responsive: 'flex justify-end [&>*]:flex-1 sm:[&>*]:flex-none',
-      // 桌面端右对齐，移动端换行显示
+      // Right-aligned on desktop, wrapping on mobile
       'responsive-wrap': 'flex flex-wrap justify-end',
-      // 始终均分宽度
+      // Always evenly distributed
       'always-full': 'flex [&>*]:flex-1',
-      // 始终自动宽度，右对齐
+      // Always auto width, right-aligned
       'always-auto': 'flex justify-end',
-      // 根据按钮数量自动均分宽度
+      // Auto equal-width grid based on button count
       'adaptive-full': 'grid w-full [&>*]:w-full [&>*]:min-w-0',
     }[mode]
 
@@ -90,7 +90,7 @@ const ButtonGroup = React.forwardRef<HTMLDivElement, ButtonGroupProps>(
       return Math.min(safeBase, maxColumns)
     })()
 
-    // 移动端隐藏图标的样式
+    // Hide icons on mobile
     const hideIconClass = hideIconOnMobile
       ? '[&_svg]:hidden sm:[&_svg]:inline [&_button]:gap-0 sm:[&_button]:gap-2'
       : ''

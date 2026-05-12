@@ -1,0 +1,97 @@
+{
+  "title": "Settings",
+  "profile": {
+    "title": "Profile",
+    "description": "Update your username, nickname, email, and avatar URL.",
+    "adminAvatarHint": "Admin avatar defaults by role. Setting a custom URL will override the default.",
+    "avatarHint": "Any publicly accessible image URL is supported.",
+    "username": "Username",
+    "usernamePlaceholder": "Username for login",
+    "adminUsernameDisabled": "Admin username cannot be changed.",
+    "nickname": "Nickname",
+    "nicknamePlaceholder": "Display name",
+    "email": "Email (unavailable)",
+    "emailPlaceholder": "For notifications (optional)",
+    "avatarUrl": "Avatar URL",
+    "updated": "Profile updated",
+    "updateFailed": "Failed to update profile",
+    "usernameEmpty": "Username cannot be empty",
+    "adminUsernameImmutable": "Admin username cannot be changed",
+    "saveButton": "Save Changes"
+  },
+  "themeStyle": {
+    "title": "Theme Style",
+    "description": "Select interface style. Page will refresh after switching.",
+    "miaomiaowu": "Miaomiaowu",
+    "flat": "Flat"
+  },
+  "password": {
+    "title": "Change Password",
+    "description": "You will need to sign in again with the new password.",
+    "currentPassword": "Current Password",
+    "currentPasswordPlaceholder": "Enter current password",
+    "newPassword": "New Password",
+    "newPasswordHint": "At least 8 characters, symbols recommended",
+    "confirmPassword": "Confirm New Password",
+    "confirmPasswordPlaceholder": "Re-enter new password",
+    "updateButton": "Update Password",
+    "changing": "Updating...",
+    "updated": "Password updated, please sign in again",
+    "changeFailed": "Failed to change password",
+    "minLength": "New password must be at least 8 characters",
+    "mismatch": "Passwords do not match"
+  },
+  "token": {
+    "title": "Subscription Token",
+    "warning": "Token is used for client subscriptions. After a leak, resetting the token only affects subscription updates. To prevent misuse, you should also update the authentication credentials on each server node.",
+    "notGenerated": "Not generated",
+    "copied": "Token copied",
+    "copyButton": "Copy Token",
+    "resetButton": "Reset Token",
+    "reset": "Token has been reset",
+    "resetFailed": "Failed to reset token"
+  },
+  "shortLink": {
+    "title": "Subscription Short Links",
+    "hint": "Reset all subscription short links. Short links are shown on the subscription page.",
+    "resetAll": "Reset All Short Links",
+    "resetSuccess": "All subscription short links have been reset",
+    "resetFailed": "Failed to reset short links"
+  },
+  "twoFactor": {
+    "title": "Two-Factor Authentication",
+    "enabledDesc": "2FA is enabled. A verification code is required on each login.",
+    "disabledDesc": "Once enabled, a code from your authenticator app will be required on each login.",
+    "enableButton": "Enable 2FA",
+    "disableButton": "Disable 2FA",
+    "steps": {
+      "password": "Verify Password",
+      "qrcode": "Scan QR Code",
+      "verify": "Verify Setup",
+      "recovery": "Save Recovery Codes"
+    },
+    "passwordDesc": "Enter your current password to begin 2FA setup.",
+    "passwordPlaceholder": "Enter current password",
+    "qrcodeDesc": "Scan the QR code below with your authenticator app.",
+    "manualKey": "Manual entry key",
+    "verifyDesc": "Enter the 6-digit code shown in your authenticator app.",
+    "verifyAndEnable": "Verify & Enable",
+    "recoveryDesc": "Save these recovery codes securely. Use them to sign in if you lose access to your authenticator.",
+    "copyRecoveryCodes": "Copy Recovery Codes",
+    "recoveryCodesCopied": "Recovery codes copied",
+    "recoveryCodesCopyFailed": "Copy failed, please copy manually",
+    "downloadRecoveryCodes": "Download Recovery Codes",
+    "recoveryCodesSaved": "I have saved the recovery codes",
+    "disableTitle": "Disable 2FA",
+    "disableDesc": "Enter the 6-digit code from your authenticator app to disable 2FA.",
+    "confirmDisable": "Confirm Disable",
+    "passwordFailed": "Password verification failed",
+    "invalidCode": "Invalid verification code",
+    "disabled": "2FA has been disabled"
+  },
+  "language": {
+    "title": "Language",
+    "description": "Select interface language"
+  },
+  "defaultUser": "User"
+}

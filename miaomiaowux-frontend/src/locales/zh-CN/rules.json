@@ -1,0 +1,31 @@
+{
+  "title": "规则配置",
+  "subtitle": "查看、编辑并保存订阅规则，支持版本历史留存。",
+  "noPermission": "权限不足",
+  "noPermissionDesc": "只有管理员可以访问规则配置页面。",
+  "fileList": {
+    "title": "规则文件",
+    "description": "选择需要编辑的 YAML 文件",
+    "empty": "未找到任何 YAML 文件。"
+  },
+  "editor": {
+    "noFile": "未选择文件",
+    "latestVersion": "最新版本 v{{version}}",
+    "autoValidate": "编辑内容时会自动校验 YAML 格式",
+    "saving": "保存中...",
+    "save": "保存修改",
+    "revert": "还原修改",
+    "saveHint": "保存后会生成新的历史版本",
+    "saveFailed": "保存失败，YAML 格式错误",
+    "saveSuccess": "规则已保存",
+    "contentEmpty": "内容不能为空",
+    "yamlParseFailed": "YAML 解析失败"
+  },
+  "history": {
+    "title": "历史版本",
+    "description": "最近保存的版本会在此展示",
+    "empty": "暂无历史记录，保存后会自动生成版本。",
+    "version": "版本 v{{version}}",
+    "unknownTime": "时间未知"
+  }
+}

@@ -1,0 +1,112 @@
+{
+  "title": "Custom Rules",
+  "subtitle": "Manage custom DNS, rules and rule provider configurations",
+  "createRule": "New Rule",
+  "ruleList": "Rule List",
+  "ruleCount": "{{count}} rules",
+  "filterAll": "All",
+  "filterDns": "DNS",
+  "filterRules": "Rules",
+  "filterRuleProviders": "Rule Providers",
+  "emptyText": "No rules",
+  "columns": {
+    "name": "Name",
+    "type": "Type",
+    "mode": "Mode",
+    "status": "Status",
+    "createdAt": "Created",
+    "actions": "Actions"
+  },
+  "mobileLabels": {
+    "mode": "Mode:",
+    "status": "Status:",
+    "createdAt": "Created:"
+  },
+  "type": {
+    "dns": "DNS",
+    "rules": "Rules",
+    "ruleProviders": "Rule Providers"
+  },
+  "mode": {
+    "replace": "Replace",
+    "prepend": "Prepend",
+    "append": "Append"
+  },
+  "dialog": {
+    "createTitle": "New Rule",
+    "editTitle": "Edit Rule",
+    "createDesc": "Create a new custom rule",
+    "editDesc": "Modify custom rule configuration",
+    "enableRule": "Enable this rule",
+    "nameLabel": "Name",
+    "namePlaceholder": "Rule name",
+    "typeLabel": "Type",
+    "modeLabel": "Mode",
+    "templateLabel": "Template (optional)",
+    "templatePlaceholder": "Select a template or enter manually",
+    "noTemplate": "No template",
+    "contentLabel": "Rule Content (YAML)",
+    "contentPlaceholder": "Enter YAML rule content...",
+    "contentHint": "Ensure content is valid YAML format"
+  },
+  "deleteConfirm": {
+    "title": "Confirm Delete",
+    "description": "This action cannot be undone. Are you sure you want to delete this rule?",
+    "deleting": "Deleting...",
+    "confirm": "Delete"
+  },
+  "ruleProviderConfirm": {
+    "title": "Create Rule Config",
+    "description": "A rule provider template was detected. Create the corresponding rule config as well?",
+    "descriptionDetail": "The rule config will be appended to existing rules. Duplicate rules will be automatically removed (case-insensitive).",
+    "onlyRuleProvider": "Create Rule Provider Only",
+    "withRuleConfig": "Create Rule Provider and Config"
+  },
+  "editor": {
+    "title": "Custom Rules",
+    "description": "Add custom routing rules, supporting domain, IP, protocol and other matching methods",
+    "emptyHint": "No custom rules yet, click the button below to add",
+    "addRule": "Add Rule",
+    "ruleIndex": "Rule #{{index}}",
+    "outboundName": "Outbound Name",
+    "outboundPlaceholder": "e.g., Netflix, OpenAI",
+    "willCreateGroup": "Will create corresponding policy group",
+    "geositePlaceholder": "e.g., netflix, openai",
+    "multipleCommaSeparated": "Multiple separated by commas",
+    "domainSuffix": "Domain Suffix",
+    "domainSuffixPlaceholder": "e.g., netflix.com, openai.com",
+    "domainKeyword": "Domain Keyword",
+    "domainKeywordPlaceholder": "e.g., google, youtube",
+    "geoipPlaceholder": "e.g., us, jp, hk",
+    "ipCidrPlaceholder": "e.g., 1.1.1.1/24",
+    "protocol": "Protocol",
+    "protocolPlaceholder": "e.g., http, https, quic",
+    "helpTitle": "Rule Guide",
+    "helpOutbound": "Outbound Name: required, creates corresponding policy group",
+    "helpGeosite": "GeoSite: match domain sets using GeoSite database",
+    "helpDomainSuffix": "Domain Suffix: match full domain suffix, e.g., google.com",
+    "helpDomainKeyword": "Domain Keyword: match keywords contained in domain",
+    "helpGeoip": "GeoIP: match IP address country/region using GeoIP database",
+    "helpIpCidr": "IP-CIDR: match IP address ranges",
+    "helpProtocol": "Protocol: match network protocol types"
+  },
+  "toast": {
+    "created": "Custom rule created",
+    "createdWithGroups": "Custom rule created. Added {{groups}} proxy groups with default nodes: 🚀 Node Select, DIRECT. Edit subscription to modify.",
+    "updated": "Custom rule updated",
+    "updatedWithGroups": "Custom rule updated. Added {{groups}} proxy groups with default nodes: 🚀 Node Select, DIRECT. Edit subscription to modify.",
+    "deleted": "Custom rule deleted",
+    "statusUpdated": "Status updated",
+    "createError": "Error creating rule",
+    "updateError": "Error updating rule",
+    "deleteError": "Error deleting rule",
+    "statusError": "Error updating status",
+    "nameRequired": "Please enter a rule name",
+    "contentRequired": "Please enter rule content",
+    "ruleNotFound": "Rule not found",
+    "ruleProviderCreated": "Rule provider and rule config created",
+    "ruleProviderOnlyCreated": "Rule provider created",
+    "ruleProviderError": "Error creating rule config, check console",
+    "routeRuleName": "Route Rule - {{name}}"
+  }
+}

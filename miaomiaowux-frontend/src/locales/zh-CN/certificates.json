@@ -1,0 +1,152 @@
+{
+  "page": {
+    "title": "SSL/TLS 证书管理",
+    "description": "管理 ACME 证书，支持通配符、DNS 验证、多 CA 和自动部署"
+  },
+  "masterCert": {
+    "detected": "检测到主控域名 {{domain}} 的证书已签发",
+    "deployDesc": "部署后将自动安装 Nginx、配置 SSL 并开启 HTTPS 访问",
+    "deploying": "部署中...",
+    "deployToMaster": "部署到主控",
+    "deploySuccess": "主控证书部署成功，即将跳转到 HTTPS",
+    "deployFailed": "部署失败"
+  },
+  "https": {
+    "enable": "开启 HTTPS",
+    "enableTitle": "开启 HTTPS 访问",
+    "enableDesc": "该操作将安装 Nginx 并反向代理妙妙屋X，为域名 {{domain}} 开启 HTTPS 访问。确认继续？",
+    "enableSuccess": "HTTPS 已开启，即将跳转",
+    "enableFailed": "开启失败",
+    "configuring": "配置中...",
+    "confirmEnable": "确认开启"
+  },
+  "buttons": {
+    "applyCert": "申请证书",
+    "uploadCert": "上传证书"
+  },
+  "tabs": {
+    "certList": "证书列表",
+    "dnsProviders": "DNS 提供商"
+  },
+  "certTable": {
+    "title": "证书列表",
+    "description": "所有已申请的 SSL/TLS 证书",
+    "empty": "暂无证书，点击\"申请证书\"开始",
+    "columns": {
+      "domain": "域名",
+      "ca": "CA",
+      "server": "服务器",
+      "challenge": "验证",
+      "status": "状态",
+      "expiry": "过期时间",
+      "deploy": "部署",
+      "autoRenew": "自动续期",
+      "autoDeploy": "自动部署",
+      "actions": "操作"
+    }
+  },
+  "status": {
+    "valid": "有效",
+    "pending": "申请中",
+    "expired": "已过期",
+    "failed": "失败"
+  },
+  "expiry": {
+    "expired": "已过期",
+    "daysLeft": "{{days}} 天后过期"
+  },
+  "tooltips": {
+    "reapply": "重新申请",
+    "manualRenew": "手动续期",
+    "deployCert": "部署证书"
+  },
+  "createDialog": {
+    "title": "申请 SSL/TLS 证书",
+    "description": "支持通配符证书 (*.example.com)、DNS 验证和多 CA",
+    "domain": "域名 *",
+    "domainHint": "通配符证书 (*.example.com) 需使用 DNS 验证",
+    "email": "邮箱 *",
+    "caProvider": "CA 提供商",
+    "targetServer": "目标服务器",
+    "selectServer": "选择服务器",
+    "masterLocal": "Master (本地)",
+    "challengeMode": "验证方式",
+    "challengeDns": "DNS-01 (支持通配符证书)",
+    "challengeStandalone": "Standalone (需停止 80 端口服务)",
+    "challengeWebroot": "Webroot (写入 Nginx 目录)",
+    "webrootPath": "Webroot 路径",
+    "dnsProvider": "DNS 提供商",
+    "selectDnsProvider": "选择 DNS 提供商",
+    "dnsProviderHint": "请先在\"DNS 提供商\"标签页添加 DNS API 凭证",
+    "certFilePath": "证书文件路径",
+    "keyFilePath": "私钥文件路径",
+    "autoRenew": "自动续期",
+    "autoDeploy": "自动部署",
+    "autoDeployDesc": "续期或新服务器安装后自动部署并重载服务",
+    "applying": "申请中...",
+    "apply": "申请证书"
+  },
+  "dnsProviderTable": {
+    "title": "DNS 提供商",
+    "description": "管理 DNS API 凭证，用于 DNS-01 验证申请通配符证书",
+    "addProvider": "添加提供商",
+    "empty": "暂无 DNS 提供商，请添加以支持通配符证书申请",
+    "columns": {
+      "name": "名称",
+      "type": "类型",
+      "createdAt": "创建时间",
+      "actions": "操作"
+    }
+  },
+  "dnsProviderDialog": {
+    "title": "添加 DNS 提供商",
+    "description": "配置 DNS API 凭证，用于 DNS-01 验证",
+    "name": "名称",
+    "namePlaceholder": "我的API凭证",
+    "providerType": "提供商类型",
+    "apiCredentials": "API 凭证 (JSON)",
+    "requiredFields": "需要的字段: {{fields}}",
+    "adding": "添加中..."
+  },
+  "deleteDialog": {
+    "title": "确认删除证书",
+    "description": "确定要删除域名 <strong>{{domain}}</strong> 的证书吗？此操作不可恢复。"
+  },
+  "deployDialog": {
+    "title": "部署证书",
+    "description": "将证书 <strong>{{domain}}</strong> 部署到主服务器和所有远程服务器",
+    "certFilePath": "证书文件路径",
+    "keyFilePath": "私钥文件路径",
+    "deploying": "部署中...",
+    "confirmDeploy": "确认部署"
+  },
+  "uploadDialog": {
+    "title": "上传证书",
+    "description": "手动上传 SSL/TLS 证书，粘贴 PEM 格式的证书和私钥内容",
+    "apiUploadTitle": "API 上传",
+    "apiUploadDesc": "也可通过 API Token 上传证书：POST /api/admin/certificates/upload，Header 添加 Authorization: Bearer <API Token>，Body 为 JSON：{\"domain\": \"example.com\", \"cert_pem\": \"<base64>\", \"key_pem\": \"<base64>\"}。API Token 可在系统设置中获取。",
+    "domain": "域名 *",
+    "certContent": "证书内容 (PEM) *",
+    "keyContent": "私钥内容 (PEM) *",
+    "uploading": "上传中...",
+    "uploadCert": "上传证书"
+  },
+  "toast": {
+    "certSubmitted": "证书申请已提交",
+    "certRenewSubmitted": "证书续期已提交",
+    "certDeleted": "证书已删除",
+    "certDeployed": "证书已部署到主服务器和所有远程服务器",
+    "certUploaded": "证书上传成功",
+    "dnsProviderAdded": "DNS 提供商已添加",
+    "dnsProviderDeleted": "DNS 提供商已删除",
+    "fillDomainEmail": "请填写域名和邮箱",
+    "dnsProviderRequired": "DNS 验证模式需要选择 DNS 提供商",
+    "fillNameCredentials": "请填写名称和凭证",
+    "invalidJson": "凭证格式无效，请输入有效的 JSON",
+    "fillDomainCertKey": "请填写域名、证书和私钥"
+  },
+  "dnsProviderTypes": {
+    "alidns": "阿里云 DNS",
+    "tencentcloud": "腾讯云 DNS"
+  }
+}

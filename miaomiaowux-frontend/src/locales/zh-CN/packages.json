@@ -1,0 +1,46 @@
+{
+  "page": {
+    "title": "套餐模板管理",
+    "description": "管理流量套餐模板,可在用户管理中为用户分配套餐"
+  },
+  "buttons": {
+    "createTemplate": "创建套餐模板"
+  },
+  "empty": {
+    "title": "暂无套餐模板",
+    "createFirst": "创建第一个套餐模板"
+  },
+  "card": {
+    "trafficQuota": "流量额度",
+    "cycleDays": "计量周期",
+    "cycleDaysValue": "{{days}} 天"
+  },
+  "dialog": {
+    "createTitle": "创建套餐模板",
+    "editTitle": "编辑套餐模板",
+    "createDesc": "创建新的流量套餐模板",
+    "editDesc": "修改套餐模板配置",
+    "name": "套餐名称 *",
+    "namePlaceholder": "例如: 基础套餐",
+    "description": "描述",
+    "descriptionPlaceholder": "套餐说明（可选）",
+    "trafficLimit": "流量额度 (GB) *",
+    "cycleDays": "计量周期 (天) *",
+    "relatedNodes": "关联节点",
+    "noNodes": "暂无可用节点",
+    "nodeInternal": "内部",
+    "nodeExternal": "外部",
+    "nodesHint": "选择该套餐可以使用的节点（不选择表示可以使用所有节点）",
+    "saving": "保存中...",
+    "confirmDelete": "确定要删除套餐模板 \"{{name}}\" 吗？"
+  },
+  "toast": {
+    "createSuccess": "套餐模板创建成功",
+    "updateSuccess": "套餐模板更新成功",
+    "deleteSuccess": "套餐模板删除成功",
+    "nameRequired": "请输入套餐名称",
+    "trafficPositive": "流量额度必须大于0",
+    "cyclePositive": "计量周期必须大于0",
+    "externalNodeWarning": "请注意，外部节点流量不在套餐流量统计内！！！"
+  }
+}

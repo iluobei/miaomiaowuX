@@ -1,5 +1,6 @@
 // @ts-nocheck
 import { useCallback, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { RefreshCw, Trash2, Eye, Plus, ChevronDown, ChevronRight } from 'lucide-react'
@@ -38,27 +39,27 @@ interface NodeRoutingDialogProps {
 }
 
 const QUICK_RULES = {
-  ban_bt: { name: '禁止 BT', rule: { type: 'field', protocol: ['bittorrent'], marktag: 'ban_bt', outboundTag: 'block' }, needOutbound: false },
-  ban_geoip_cn: { name: '禁止访问大陆 IP', rule: { type: 'field', ip: ['geoip:cn'], marktag: 'ban_geoip_cn', outboundTag: 'block' }, needOutbound: false },
-  fix_openai: { name: 'OpenAI 直连', rule: { type: 'field', domain: ['geosite:openai'], marktag: 'fix_openai', outboundTag: 'direct' }, needOutbound: false },
-  ban_private: { name: '禁止内网访问', rule: { type: 'field', ip: ['geoip:private'], marktag: 'ban_private', outboundTag: 'block' }, needOutbound: false },
-  rfc_emby: { name: 'RFC EMBY', rule: { type: 'field', domain: ['rfc.uhdnow.com'], network: 'tcp', marktag: 'rfc_emby' }, needOutbound: true },
-  tiktok_unlock: { name: '抖音解锁', rule: { type: 'field', domain: ['geosite:tiktok'], marktag: 'tiktok_unlock' }, needOutbound: true },
+  ban_bt: { nameKey: 'nodeRoutingDialog.quickRules.banBt', rule: { type: 'field', protocol: ['bittorrent'], marktag: 'ban_bt', outboundTag: 'block' }, needOutbound: false },
+  ban_geoip_cn: { nameKey: 'nodeRoutingDialog.quickRules.banGeoCn', rule: { type: 'field', ip: ['geoip:cn'], marktag: 'ban_geoip_cn', outboundTag: 'block' }, needOutbound: false },
+  fix_openai: { nameKey: 'nodeRoutingDialog.quickRules.fixOpenai', rule: { type: 'field', domain: ['geosite:openai'], marktag: 'fix_openai', outboundTag: 'direct' }, needOutbound: false },
+  ban_private: { nameKey: 'nodeRoutingDialog.quickRules.banPrivate', rule: { type: 'field', ip: ['geoip:private'], marktag: 'ban_private', outboundTag: 'block' }, needOutbound: false },
+  rfc_emby: { nameKey: 'nodeRoutingDialog.quickRules.rfcEmby', rule: { type: 'field', domain: ['rfc.uhdnow.com'], network: 'tcp', marktag: 'rfc_emby' }, needOutbound: true },
+  tiktok_unlock: { nameKey: 'nodeRoutingDialog.quickRules.tiktokUnlock', rule: { type: 'field', domain: ['geosite:tiktok'], marktag: 'tiktok_unlock' }, needOutbound: true },
 }
 
-function getRuleDisplayInfo(rule: RoutingRule) {
+function getRuleDisplayInfo(rule: RoutingRule, t: any) {
   if (rule.protocol?.length) return { ruleType: 'protocol', matchCondition: rule.protocol.join(', ') }
-  if (rule.domain?.length) return { ruleType: 'domain', matchCondition: rule.domain.length > 3 ? `${rule.domain.slice(0, 3).join(', ')} 等 ${rule.domain.length} 项` : rule.domain.join(', ') }
-  if (rule.ip?.length) return { ruleType: 'ip', matchCondition: rule.ip.length > 3 ? `${rule.ip.slice(0, 3).join(', ')} 等 ${rule.ip.length} 项` : rule.ip.join(', ') }
+  if (rule.domain?.length) return { ruleType: 'domain', matchCondition: rule.domain.length > 3 ? `${rule.domain.slice(0, 3).join(', ')} ${t('nodeRoutingDialog.itemsCount', { count: rule.domain.length })}` : rule.domain.join(', ') }
+  if (rule.ip?.length) return { ruleType: 'ip', matchCondition: rule.ip.length > 3 ? `${rule.ip.slice(0, 3).join(', ')} ${t('nodeRoutingDialog.itemsCount', { count: rule.ip.length })}` : rule.ip.join(', ') }
   if (rule.port) return { ruleType: 'port', matchCondition: String(rule.port) }
-  if (rule.inboundTag?.length) return { ruleType: '入站匹配', matchCondition: '全部流量' }
-  return { ruleType: '未知', matchCondition: '' }
+  if (rule.inboundTag?.length) return { ruleType: t('nodeRoutingDialog.ruleTypeLabels.inbound'), matchCondition: t('nodeRoutingDialog.ruleTypeLabels.allTraffic') }
+  return { ruleType: t('nodeRoutingDialog.ruleTypeLabels.unknown'), matchCondition: '' }
 }
 
-function getRuleFriendlyName(rule: RoutingRule) {
+function getRuleFriendlyName(rule: RoutingRule, t: any) {
   if (!rule.marktag) return null
   const preset = Object.values(QUICK_RULES).find(p => p.rule.marktag === rule.marktag)
-  return preset ? preset.name : rule.marktag
+  return preset ? t(preset.nameKey) : rule.marktag
 }
 
 function outboundBadgeVariant(tag: string) {
@@ -80,9 +81,10 @@ function RuleRow({ rule, index, allRulesCount, onView, onDelete, outboundDisplay
   onView: () => void; onDelete: () => void
   outboundDisplayName?: string
 }) {
-  const { ruleType, matchCondition } = getRuleDisplayInfo(rule)
-  const friendlyName = getRuleFriendlyName(rule)
-  const displayTag = outboundDisplayName || rule.outboundTag || '未设置'
+  const { t } = useTranslation('nodes')
+  const { ruleType, matchCondition } = getRuleDisplayInfo(rule, t)
+  const friendlyName = getRuleFriendlyName(rule, t)
+  const displayTag = outboundDisplayName || rule.outboundTag || t('nodeRoutingDialog.notSet')
   return (
     <div className='flex items-center gap-2 py-2 px-3 rounded-md border bg-card text-sm'>
       <Badge variant='outline' className='shrink-0 text-xs'>{ruleType}</Badge>
@@ -101,6 +103,7 @@ function RuleRow({ rule, index, allRulesCount, onView, onDelete, outboundDisplay
 }
 
 export function NodeRoutingDialog({ open, onOpenChange, node, serverId, serverName, allNodes }: NodeRoutingDialogProps) {
+  const { t } = useTranslation('nodes')
   const queryClient = useQueryClient()
   const inboundTag = node.inbound_tag
 
@@ -208,12 +211,12 @@ export function NodeRoutingDialog({ open, onOpenChange, node, serverId, serverNa
       queryClient.invalidateQueries({ queryKey: ['remote-routing', serverId] })
       if (data.success) {
         await restartXray()
-        toast.success('路由规则已添加并重启 Xray')
+        toast.success(t('toast.routingRuleAdded'))
       } else {
-        toast.error(data.message || '添加失败')
+        toast.error(data.message || t('toast.routingRuleAddFailed'))
       }
     },
-    onError: (e: any) => toast.error(e.response?.data?.error || '添加失败'),
+    onError: (e: any) => toast.error(e.response?.data?.error || t('toast.routingRuleAddFailed')),
   })
 
   const removeRuleMutation = useMutation({
@@ -225,12 +228,12 @@ export function NodeRoutingDialog({ open, onOpenChange, node, serverId, serverNa
       queryClient.invalidateQueries({ queryKey: ['remote-routing', serverId] })
       if (data.success) {
         await restartXray()
-        toast.success('路由规则已删除并重启 Xray')
+        toast.success(t('toast.routingRuleDeleted'))
       } else {
-        toast.error(data.message || '删除失败')
+        toast.error(data.message || t('toast.routingRuleDeleteFailed'))
       }
     },
-    onError: (e: any) => toast.error(e.response?.data?.error || '删除失败'),
+    onError: (e: any) => toast.error(e.response?.data?.error || t('toast.routingRuleDeleteFailed')),
   })
 
   const handleQuickAdd = (key: string) => {
@@ -254,8 +257,8 @@ export function NodeRoutingDialog({ open, onOpenChange, node, serverId, serverNa
   }
 
   const handleAddCustom = () => {
-    if (!customValue.trim()) { toast.error('请输入匹配条件'); return }
-    if (!customOutbound) { toast.error('请选择出站'); return }
+    if (!customValue.trim()) { toast.error(t('toast.enterMatchCondition')); return }
+    if (!customOutbound) { toast.error(t('toast.selectOutbound')); return }
     const rule: any = { type: 'field', outboundTag: customOutbound }
     const values = customValue.split(',').map(v => v.trim()).filter(Boolean)
     if (customType === 'domain') rule.domain = values
@@ -276,17 +279,17 @@ export function NodeRoutingDialog({ open, onOpenChange, node, serverId, serverNa
         <DialogContent className='max-w-2xl max-h-[80vh] flex flex-col'>
           <DialogHeader>
             <DialogTitle>
-              节点路由 — <Twemoji>{node.node_name}</Twemoji>
+              {t('nodeRoutingDialog.title')} — <Twemoji>{node.node_name}</Twemoji>
             </DialogTitle>
             <DialogDescription>
-              服务器: {serverName} | 入站: {inboundTag}
+              {t('nodeRoutingDialog.serverLabel')} {serverName} | {t('nodeRoutingDialog.inboundLabel')} {inboundTag}
             </DialogDescription>
           </DialogHeader>
 
           {isLoading ? (
             <div className='flex items-center justify-center py-12'>
               <RefreshCw className='size-5 animate-spin mr-2' />
-              <span className='text-sm text-muted-foreground'>加载路由配置...</span>
+              <span className='text-sm text-muted-foreground'>{t('nodeRoutingDialog.loadingConfig')}</span>
             </div>
           ) : (
             <div className='flex-1 overflow-y-auto space-y-4 py-2'>
@@ -294,13 +297,13 @@ export function NodeRoutingDialog({ open, onOpenChange, node, serverId, serverNa
               <Collapsible open={dedicatedOpen} onOpenChange={setDedicatedOpen}>
                 <CollapsibleTrigger className='flex items-center gap-1 text-sm font-medium w-full hover:text-primary transition-colors'>
                   {dedicatedOpen ? <ChevronDown className='size-4' /> : <ChevronRight className='size-4' />}
-                  专属路由规则 ({dedicatedRules.length})
-                  <span className='text-xs text-muted-foreground font-normal ml-1'>针对此入站</span>
+                  {t('nodeRoutingDialog.dedicatedRules')} ({dedicatedRules.length})
+                  <span className='text-xs text-muted-foreground font-normal ml-1'>{t('nodeRoutingDialog.dedicatedRulesHint')}</span>
                 </CollapsibleTrigger>
                 <CollapsibleContent className='space-y-1.5 mt-2'>
                   {dedicatedRules.length === 0 ? (
                     <div className='text-xs text-muted-foreground py-3 text-center border rounded-md'>
-                      无专属规则，流量将按全局规则处理
+                      {t('nodeRoutingDialog.noDedicatedRules')}
                     </div>
                   ) : (
                     dedicatedRules.map(({ rule, originalIndex }) => (
@@ -317,7 +320,7 @@ export function NodeRoutingDialog({ open, onOpenChange, node, serverId, serverNa
                   )}
                   {hasCatchAll && (
                     <div className='text-xs text-amber-600 dark:text-amber-400 py-2 px-3 rounded-md border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950'>
-                      ⚠ 全部流量已被路由到 <Badge variant={outboundBadgeVariant(catchAllOutbound)} className='text-xs mx-0.5'>{resolveOutboundName(catchAllOutbound) || catchAllOutbound}</Badge>，后续全局规则和默认出站不再生效
+                      ⚠ {t('nodeRoutingDialog.catchAllWarning')} <Badge variant={outboundBadgeVariant(catchAllOutbound)} className='text-xs mx-0.5'>{resolveOutboundName(catchAllOutbound) || catchAllOutbound}</Badge>{t('nodeRoutingDialog.catchAllSuffix')}
                     </div>
                   )}
                 </CollapsibleContent>
@@ -329,13 +332,13 @@ export function NodeRoutingDialog({ open, onOpenChange, node, serverId, serverNa
                   <Collapsible open={globalOpen} onOpenChange={setGlobalOpen}>
                     <CollapsibleTrigger className='flex items-center gap-1 text-sm font-medium w-full hover:text-primary transition-colors'>
                       {globalOpen ? <ChevronDown className='size-4' /> : <ChevronRight className='size-4' />}
-                      全局路由规则 ({globalRules.length})
-                      <span className='text-xs text-muted-foreground font-normal ml-1'>对所有入站生效</span>
+                      {t('nodeRoutingDialog.globalRules')} ({globalRules.length})
+                      <span className='text-xs text-muted-foreground font-normal ml-1'>{t('nodeRoutingDialog.globalRulesHint')}</span>
                     </CollapsibleTrigger>
                     <CollapsibleContent className='space-y-1.5 mt-2'>
                       {globalRules.length === 0 ? (
                         <div className='text-xs text-muted-foreground py-3 text-center border rounded-md'>
-                          无全局规则
+                          {t('nodeRoutingDialog.noGlobalRules')}
                         </div>
                       ) : (
                         globalRules.map(({ rule, originalIndex }) => (
@@ -355,14 +358,14 @@ export function NodeRoutingDialog({ open, onOpenChange, node, serverId, serverNa
 
                   {/* 默认出站 */}
                   <div>
-                    <div className='text-sm font-medium mb-2'>默认出站 <span className='text-xs text-muted-foreground font-normal'>无规则匹配时</span></div>
+                    <div className='text-sm font-medium mb-2'>{t('nodeRoutingDialog.defaultOutbound')} <span className='text-xs text-muted-foreground font-normal'>{t('nodeRoutingDialog.defaultOutboundHint')}</span></div>
                     {defaultOutbound ? (
                       <div className='flex items-center gap-2 py-2 px-3 rounded-md border bg-card text-sm'>
                         <Badge variant='outline' className='text-xs'>{defaultOutbound.protocol || 'unknown'}</Badge>
-                        <span className='font-medium'>{defaultOutbound.tag || '(无tag)'}</span>
+                        <span className='font-medium'>{defaultOutbound.tag || t('nodeRoutingDialog.noTag')}</span>
                       </div>
                     ) : (
-                      <div className='text-xs text-muted-foreground py-3 text-center border rounded-md'>无出站配置</div>
+                      <div className='text-xs text-muted-foreground py-3 text-center border rounded-md'>{t('nodeRoutingDialog.noOutbound')}</div>
                     )}
                   </div>
                 </>
@@ -375,23 +378,23 @@ export function NodeRoutingDialog({ open, onOpenChange, node, serverId, serverNa
             <div className='flex items-center gap-2 pt-3 border-t'>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button size='sm'><Plus className='size-4 mr-1' />快捷添加<ChevronDown className='size-4 ml-1' /></Button>
+                  <Button size='sm'><Plus className='size-4 mr-1' />{t('nodeRoutingDialog.quickAdd')}<ChevronDown className='size-4 ml-1' /></Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align='start' className='w-56'>
-                  <DropdownMenuItem onClick={() => handleQuickAdd('ban_bt')}>禁止 BT</DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => handleQuickAdd('ban_geoip_cn')}>禁止访问大陆 IP</DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => handleQuickAdd('fix_openai')}>OpenAI 直连</DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => handleQuickAdd('ban_private')}>禁止内网访问</DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => handleQuickAdd('ban_bt')}>{t('nodeRoutingDialog.quickRules.banBt')}</DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => handleQuickAdd('ban_geoip_cn')}>{t('nodeRoutingDialog.quickRules.banGeoCn')}</DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => handleQuickAdd('fix_openai')}>{t('nodeRoutingDialog.quickRules.fixOpenai')}</DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => handleQuickAdd('ban_private')}>{t('nodeRoutingDialog.quickRules.banPrivate')}</DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => handleQuickAdd('rfc_emby')}>RFC EMBY (需选择出站)</DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => handleQuickAdd('tiktok_unlock')}>抖音解锁 (需选择出站)</DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => handleQuickAdd('rfc_emby')}>{t('nodeRoutingDialog.quickRules.rfcEmby')}</DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => handleQuickAdd('tiktok_unlock')}>{t('nodeRoutingDialog.quickRules.tiktokUnlock')}</DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
               <Button variant='outline' size='sm' onClick={() => { setCustomScope('dedicated'); setCustomOpen(true) }}>
-                <Plus className='size-4 mr-1' />自定义规则
+                <Plus className='size-4 mr-1' />{t('nodeRoutingDialog.customRule')}
               </Button>
               <div className='flex-1' />
-              <Button variant='outline' size='sm' onClick={() => onOpenChange(false)}>关闭</Button>
+              <Button variant='outline' size='sm' onClick={() => onOpenChange(false)}>{t('actions.close', { ns: 'common' })}</Button>
             </div>
           )}
         </DialogContent>
@@ -400,11 +403,11 @@ export function NodeRoutingDialog({ open, onOpenChange, node, serverId, serverNa
       {/* 查看规则 JSON */}
       <Dialog open={!!viewingRule} onOpenChange={o => !o && setViewingRule(null)}>
         <DialogContent className='max-w-3xl max-h-[80vh]'>
-          <DialogHeader><DialogTitle>路由规则详情</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{t('nodeRoutingDialog.ruleDetail')}</DialogTitle></DialogHeader>
           <div className='overflow-auto max-h-[60vh]'>
             <pre className='bg-muted p-4 rounded-lg text-xs'>{JSON.stringify(viewingRule, null, 2)}</pre>
           </div>
-          <DialogFooter><Button onClick={() => setViewingRule(null)}>关闭</Button></DialogFooter>
+          <DialogFooter><Button onClick={() => setViewingRule(null)}>{t('actions.close', { ns: 'common' })}</Button></DialogFooter>
         </DialogContent>
       </Dialog>
 
@@ -412,15 +415,15 @@ export function NodeRoutingDialog({ open, onOpenChange, node, serverId, serverNa
       <AlertDialog open={!!deletingRule} onOpenChange={o => !o && setDeletingRule(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>确认删除规则</AlertDialogTitle>
-            <AlertDialogDescription>确定要删除此路由规则吗？删除后将自动重启 Xray 生效。</AlertDialogDescription>
+            <AlertDialogTitle>{t('nodeRoutingDialog.confirmDeleteRule')}</AlertDialogTitle>
+            <AlertDialogDescription>{t('nodeRoutingDialog.confirmDeleteRuleDesc')}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>取消</AlertDialogCancel>
+            <AlertDialogCancel>{t('actions.cancel', { ns: 'common' })}</AlertDialogCancel>
             <AlertDialogAction className='bg-red-600 hover:bg-red-700' onClick={() => {
               if (deletingRule) removeRuleMutation.mutate(deletingRule.index)
               setDeletingRule(null)
-            }}>确认删除</AlertDialogAction>
+            }}>{t('dialog.confirmDeleteAction')}</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
@@ -428,16 +431,16 @@ export function NodeRoutingDialog({ open, onOpenChange, node, serverId, serverNa
       {/* 选择出站 */}
       <Dialog open={outboundSelectOpen} onOpenChange={setOutboundSelectOpen}>
         <DialogContent className='max-w-md'>
-          <DialogHeader><DialogTitle>选择出站</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{t('nodeRoutingDialog.selectOutbound')}</DialogTitle></DialogHeader>
           <Select value={selectedOutbound} onValueChange={setSelectedOutbound}>
-            <SelectTrigger><SelectValue placeholder='选择出站' /></SelectTrigger>
+            <SelectTrigger><SelectValue placeholder={t('nodeRoutingDialog.selectOutboundPlaceholder')} /></SelectTrigger>
             <SelectContent>
               {outbounds.map((o: any) => <SelectItem key={o.tag} value={o.tag}>{o.tag} ({o.protocol})</SelectItem>)}
             </SelectContent>
           </Select>
           <DialogFooter>
-            <Button variant='outline' onClick={() => setOutboundSelectOpen(false)}>取消</Button>
-            <Button onClick={handleConfirmOutbound} disabled={!selectedOutbound}>确认</Button>
+            <Button variant='outline' onClick={() => setOutboundSelectOpen(false)}>{t('actions.cancel', { ns: 'common' })}</Button>
+            <Button onClick={handleConfirmOutbound} disabled={!selectedOutbound}>{t('actions.confirm', { ns: 'common' })}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -445,50 +448,50 @@ export function NodeRoutingDialog({ open, onOpenChange, node, serverId, serverNa
       {/* 自定义规则 */}
       <Dialog open={customOpen} onOpenChange={setCustomOpen}>
         <DialogContent className='max-w-md'>
-          <DialogHeader><DialogTitle>添加自定义规则</DialogTitle><DialogDescription>为入站 {inboundTag} 添加路由规则</DialogDescription></DialogHeader>
+          <DialogHeader><DialogTitle>{t('nodeRoutingDialog.addCustomRule')}</DialogTitle><DialogDescription>{t('nodeRoutingDialog.addCustomRuleDesc', { tag: inboundTag })}</DialogDescription></DialogHeader>
           <div className='space-y-4 py-2'>
             <div className='space-y-2'>
-              <Label>作用范围</Label>
+              <Label>{t('nodeRoutingDialog.scope')}</Label>
               <Select value={customScope} onValueChange={(v: any) => setCustomScope(v)}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value='dedicated'>仅此入站 ({inboundTag})</SelectItem>
-                  <SelectItem value='global'>全局 (所有入站)</SelectItem>
+                  <SelectItem value='dedicated'>{t('nodeRoutingDialog.scopeDedicated', { tag: inboundTag })}</SelectItem>
+                  <SelectItem value='global'>{t('nodeRoutingDialog.scopeGlobal')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <div className='space-y-2'>
-              <Label>规则类型</Label>
+              <Label>{t('nodeRoutingDialog.ruleType')}</Label>
               <Select value={customType} onValueChange={(v: any) => setCustomType(v)}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value='domain'>域名 (domain)</SelectItem>
-                  <SelectItem value='ip'>IP 地址 (ip)</SelectItem>
-                  <SelectItem value='protocol'>协议 (protocol)</SelectItem>
+                  <SelectItem value='domain'>{t('nodeRoutingDialog.ruleTypeDomain')}</SelectItem>
+                  <SelectItem value='ip'>{t('nodeRoutingDialog.ruleTypeIp')}</SelectItem>
+                  <SelectItem value='protocol'>{t('nodeRoutingDialog.ruleTypeProtocol')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <div className='space-y-2'>
-              <Label>匹配条件</Label>
-              <Input placeholder='多个条件用逗号分隔' value={customValue} onChange={e => setCustomValue(e.target.value)} />
+              <Label>{t('nodeRoutingDialog.matchCondition')}</Label>
+              <Input placeholder={t('nodeRoutingDialog.matchConditionPlaceholder')} value={customValue} onChange={e => setCustomValue(e.target.value)} />
             </div>
             <div className='space-y-2'>
-              <Label>出站</Label>
+              <Label>{t('nodeRoutingDialog.outbound')}</Label>
               <Select value={customOutbound} onValueChange={setCustomOutbound}>
-                <SelectTrigger><SelectValue placeholder='选择出站' /></SelectTrigger>
+                <SelectTrigger><SelectValue placeholder={t('nodeRoutingDialog.selectOutboundPlaceholder')} /></SelectTrigger>
                 <SelectContent>
                   {outbounds.map((o: any) => <SelectItem key={o.tag} value={o.tag}>{o.tag} ({o.protocol})</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
             <div className='space-y-2'>
-              <Label>标记 (可选)</Label>
-              <Input placeholder='规则标记' value={customMarktag} onChange={e => setCustomMarktag(e.target.value)} />
+              <Label>{t('nodeRoutingDialog.markTag')}</Label>
+              <Input placeholder={t('nodeRoutingDialog.markTagPlaceholder')} value={customMarktag} onChange={e => setCustomMarktag(e.target.value)} />
             </div>
           </div>
           <DialogFooter>
-            <Button variant='outline' onClick={() => setCustomOpen(false)}>取消</Button>
-            <Button onClick={handleAddCustom} disabled={!customValue || !customOutbound}>添加</Button>
+            <Button variant='outline' onClick={() => setCustomOpen(false)}>{t('actions.cancel', { ns: 'common' })}</Button>
+            <Button onClick={handleAddCustom} disabled={!customValue || !customOutbound}>{t('nodeRoutingDialog.addBtn')}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

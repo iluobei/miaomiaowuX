@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import { ChevronDown, ChevronUp, HelpCircle } from 'lucide-react'
 import { Label } from '@/components/ui/label'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -37,6 +38,7 @@ export function RuleSelector({
   selectedCategories,
   onCategoriesChange,
 }: RuleSelectorProps) {
+  const { t } = useTranslation('subscribe')
   const [isOpen, setIsOpen] = useState(true)
   const { data: categories = [], isLoading, isError } = useProxyGroupCategories()
 
@@ -96,7 +98,7 @@ export function RuleSelector({
     if (selectedCategories.includes(categoryName)) {
       onCategoriesChange(selectedCategories.filter((c) => c !== categoryName))
     } else {
-      // 添加新类别后，按 categories 中的顺序排序
+      // After adding a new category, sort by the order in categories
       const newCategories = [...selectedCategories, categoryName]
       const orderedCategories = categories
         .map((c) => c.name)
@@ -116,14 +118,14 @@ export function RuleSelector({
   return (
     <div className='space-y-2'>
       <div className='flex items-center gap-2'>
-        <Label htmlFor='ruleset'>规则选择</Label>
+        <Label htmlFor='ruleset'>{t('ruleSelector.label')}</Label>
         <TooltipProvider>
           <Tooltip>
             <TooltipTrigger asChild>
               <HelpCircle className='h-4 w-4 text-muted-foreground' />
             </TooltipTrigger>
             <TooltipContent className='max-w-xs'>
-              <p>这个功能是从https://github.com/7Sageer/sublink-worker复制粘贴过来的</p>
+              <p>{t('ruleSelector.tooltip')}</p>
             </TooltipContent>
           </Tooltip>
         </TooltipProvider>
@@ -134,25 +136,25 @@ export function RuleSelector({
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value='custom'>自定义</SelectItem>
-          <SelectItem value='minimal'>极简规则</SelectItem>
-          <SelectItem value='balanced'>均衡规则（推荐）</SelectItem>
-          <SelectItem value='comprehensive'>完整规则</SelectItem>
+          <SelectItem value='custom'>{t('ruleSelector.custom')}</SelectItem>
+          <SelectItem value='minimal'>{t('ruleSelector.minimal')}</SelectItem>
+          <SelectItem value='balanced'>{t('ruleSelector.balanced')}</SelectItem>
+          <SelectItem value='comprehensive'>{t('ruleSelector.comprehensive')}</SelectItem>
         </SelectContent>
       </Select>
 
       <p className='text-sm text-muted-foreground'>
-        {ruleSet === 'custom' && '自定义选择需要的规则类别'}
-        {ruleSet === 'minimal' && '已自动选择基础规则，可以手动调整'}
-        {ruleSet === 'balanced' && '已自动选择常用规则，可以手动调整'}
-        {ruleSet === 'comprehensive' && '已自动选择所有规则，可以手动调整'}
+        {ruleSet === 'custom' && t('ruleSelector.customDesc')}
+        {ruleSet === 'minimal' && t('ruleSelector.minimalDesc')}
+        {ruleSet === 'balanced' && t('ruleSelector.balancedDesc')}
+        {ruleSet === 'comprehensive' && t('ruleSelector.comprehensiveDesc')}
       </p>
 
       <Collapsible open={isOpen} onOpenChange={setIsOpen}>
         <div className='rounded-lg border p-4'>
           <div className='mb-3 flex items-center justify-between'>
             <p className='text-sm font-medium'>
-              已选择 {selectedCategories.length} 个类别
+              {t('ruleSelector.selectedCount', { count: selectedCategories.length })}
             </p>
             <CollapsibleTrigger asChild>
               <Button variant='ghost' size='sm'>
@@ -167,15 +169,15 @@ export function RuleSelector({
 
           <CollapsibleContent>
             {isLoading && (
-              <p className='text-sm text-muted-foreground'>正在加载规则分类...</p>
+              <p className='text-sm text-muted-foreground'>{t('ruleSelector.loadingCategories')}</p>
             )}
             {isError && (
               <p className='text-sm text-destructive'>
-                无法加载规则分类，请稍后重试或联系管理员。
+                {t('ruleSelector.loadError')}
               </p>
             )}
             {!isLoading && !isError && categories.length === 0 && (
-              <p className='text-sm text-muted-foreground'>暂无可用的规则分类</p>
+              <p className='text-sm text-muted-foreground'>{t('ruleSelector.noCategories')}</p>
             )}
             {!isLoading && !isError && categories.length > 0 && (
               <div className='grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3'>

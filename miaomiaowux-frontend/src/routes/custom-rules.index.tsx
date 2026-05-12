@@ -44,6 +44,7 @@ import {
 } from '@/components/ui/select'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { toast } from 'sonner'
+import { useTranslation } from 'react-i18next'
 import { api } from '@/lib/api'
 import { RULE_TEMPLATES, RULE_PROVIDER_RULES } from '../config/custom-rules-templates'
 
@@ -66,6 +67,7 @@ interface CustomRule {
 type RuleFormData = Omit<CustomRule, 'id' | 'created_at' | 'updated_at'>
 
 function CustomRulesPage() {
+	const { t } = useTranslation('customRules')
 	const queryClient = useQueryClient()
 	const [filterType, setFilterType] = useState<string>('')
 	const [isDialogOpen, setIsDialogOpen] = useState(false)
@@ -123,18 +125,17 @@ function CustomRulesPage() {
 			setIsDialogOpen(false)
 			resetForm()
 
-			// 如果有新增的代理组，显示通知
 			if (data.added_proxy_groups && data.added_proxy_groups.length > 0) {
 				toast.success(
-					`自定义规则已创建。已新增 ${data.added_proxy_groups.join('、')} 代理组，默认节点：🚀 节点选择、DIRECT，如需修改请编辑订阅`,
+					t('toast.createdWithGroups', { groups: data.added_proxy_groups.join('、') }),
 					{ duration: 8000 }
 				)
 			} else {
-				toast.success('自定义规则已创建')
+				toast.success(t('toast.created'))
 			}
 		},
 		onError: (error: any) => {
-			toast.error(error.response?.data?.error || '创建规则时出错')
+			toast.error(error.response?.data?.error || t('toast.createError'))
 		},
 	})
 
@@ -172,18 +173,17 @@ function CustomRulesPage() {
 			setIsDialogOpen(false)
 			resetForm()
 
-			// 如果有新增的代理组，显示通知
 			if (data.added_proxy_groups && data.added_proxy_groups.length > 0) {
 				toast.success(
-					`自定义规则已更新。已新增 ${data.added_proxy_groups.join('、')} 代理组，默认节点：🚀 节点选择、DIRECT，如需修改请编辑订阅`,
+					t('toast.updatedWithGroups', { groups: data.added_proxy_groups.join('、') }),
 					{ duration: 8000 }
 				)
 			} else {
-				toast.success('自定义规则已更新')
+				toast.success(t('toast.updated'))
 			}
 		},
 		onError: (error: any) => {
-			toast.error(error.response?.data?.error || '更新规则时出错')
+			toast.error(error.response?.data?.error || t('toast.updateError'))
 		},
 	})
 
@@ -196,10 +196,10 @@ function CustomRulesPage() {
 			queryClient.invalidateQueries({ queryKey: ['custom-rules'] })
 			setIsDeleteDialogOpen(false)
 			setDeletingRuleId(null)
-			toast.success('自定义规则已删除')
+			toast.success(t('toast.deleted'))
 		},
 		onError: (error: any) => {
-			toast.error(error.response?.data?.error || '删除规则时出错')
+			toast.error(error.response?.data?.error || t('toast.deleteError'))
 		},
 	})
 
@@ -207,7 +207,7 @@ function CustomRulesPage() {
 	const toggleEnabledMutation = useMutation({
 		mutationFn: async ({ id, enabled }: { id: number; enabled: boolean }) => {
 			const rule = rules.find(r => r.id === id)
-			if (!rule) throw new Error('规则不存在')
+			if (!rule) throw new Error(t('toast.ruleNotFound'))
 
 			// 如果是启用操作且模式为替换，需要检查同类型的其他替换模式规则
 			if (enabled && rule.mode === 'replace') {
@@ -243,10 +243,10 @@ function CustomRulesPage() {
 		},
 		onSuccess: () => {
 			queryClient.invalidateQueries({ queryKey: ['custom-rules'] })
-			toast.success('状态已更新')
+			toast.success(t('toast.statusUpdated'))
 		},
 		onError: (error: any) => {
-			toast.error(error.response?.data?.error || '更新状态时出错')
+			toast.error(error.response?.data?.error || t('toast.statusError'))
 		},
 	})
 
@@ -286,12 +286,12 @@ function CustomRulesPage() {
 
 	const handleSubmit = () => {
 		if (!formData.name.trim()) {
-			toast.error('请输入规则名称')
+			toast.error(t('toast.nameRequired'))
 			return
 		}
 
 		if (!formData.content.trim()) {
-			toast.error('请输入规则内容')
+			toast.error(t('toast.contentRequired'))
 			return
 		}
 
@@ -357,20 +357,20 @@ function CustomRulesPage() {
 
 				// 创建新的 rules 规则
 				const rulesData: RuleFormData = {
-					name: `路由规则 - ${pendingRuleProviderData.name}`,
+					name: t('toast.routeRuleName', { name: pendingRuleProviderData.name }),
 					type: 'rules',
 					mode: 'append',
 					content: finalRuleContent,
 					enabled: true
 				}
 				await createMutation.mutateAsync(rulesData)
-				toast.success('规则集和规则配置已创建')
+				toast.success(t('toast.ruleProviderCreated'))
 			} else {
-				toast.success('规则集已创建')
+				toast.success(t('toast.ruleProviderOnlyCreated'))
 			}
 		} catch (error) {
-			console.error('创建规则配置失败:', error)
-			toast.error('创建规则配置时出错，请检查控制台')
+			console.error('Failed to create rule config:', error)
+			toast.error(t('toast.ruleProviderError'))
 		} finally {
 			setIsRuleProviderConfirmOpen(false)
 			setPendingRuleProviderData(null)
@@ -381,11 +381,11 @@ function CustomRulesPage() {
 	const getTypeLabel = (type: string) => {
 		switch (type) {
 			case 'dns':
-				return 'DNS'
+				return t('type.dns')
 			case 'rules':
-				return '规则'
+				return t('type.rules')
 			case 'rule-providers':
-				return '规则集'
+				return t('type.ruleProviders')
 			default:
 				return type
 		}
@@ -407,11 +407,11 @@ function CustomRulesPage() {
 	const getModeLabel = (mode: string) => {
 		switch (mode) {
 			case 'replace':
-				return '替换'
+				return t('mode.replace')
 			case 'prepend':
-				return '添加至头部'
+				return t('mode.prepend')
 			case 'append':
-				return '添加至尾部'
+				return t('mode.append')
 			default:
 				return mode
 		}
@@ -422,14 +422,14 @@ function CustomRulesPage() {
 			<div className='space-y-6'>
 				<div className='flex items-center justify-between'>
 					<div>
-						<h1 className='text-3xl font-bold'>自定义规则</h1>
+						<h1 className='text-3xl font-bold'>{t('title')}</h1>
 						<p className='text-muted-foreground mt-2'>
-							管理 DNS、规则和规则集的自定义配置
+							{t('subtitle')}
 						</p>
 					</div>
 					<Button onClick={handleCreate}>
 						<Plus className='mr-2 h-4 w-4' />
-						新建规则
+						{t('createRule')}
 					</Button>
 				</div>
 
@@ -437,17 +437,17 @@ function CustomRulesPage() {
 					<CardHeader>
 						<div className='flex items-center justify-between'>
 							<div>
-								<CardTitle>规则列表</CardTitle>
+								<CardTitle>{t('ruleList')}</CardTitle>
 								<CardDescription>
-									{rules.length} 条规则
+									{t('ruleCount', { count: rules.length })}
 								</CardDescription>
 							</div>
 							<Tabs value={filterType} onValueChange={setFilterType}>
 								<TabsList>
-									<TabsTrigger value=''>全部</TabsTrigger>
-									<TabsTrigger value='dns'>DNS</TabsTrigger>
-									<TabsTrigger value='rules'>规则</TabsTrigger>
-									<TabsTrigger value='rule-providers'>规则集</TabsTrigger>
+									<TabsTrigger value=''>{t('filterAll')}</TabsTrigger>
+									<TabsTrigger value='dns'>{t('filterDns')}</TabsTrigger>
+									<TabsTrigger value='rules'>{t('filterRules')}</TabsTrigger>
+									<TabsTrigger value='rule-providers'>{t('filterRuleProviders')}</TabsTrigger>
 								</TabsList>
 							</Tabs>
 						</div>
@@ -455,22 +455,22 @@ function CustomRulesPage() {
 					<CardContent>
 						{isLoading ? (
 							<div className='text-center py-8 text-muted-foreground'>
-								加载中...
+								{t('actions.loading', { ns: 'common' })}
 							</div>
 						) : (
 							<DataTable
 								data={rules}
 								getRowKey={(rule) => rule.id}
-								emptyText='暂无规则'
+								emptyText={t('emptyText')}
 
 								columns={[
 									{
-										header: '名称',
+										header: t('columns.name'),
 										cell: (rule) => rule.name,
 										cellClassName: 'font-medium'
 									},
 									{
-										header: '类型',
+										header: t('columns.type'),
 										cell: (rule) => (
 											<Badge variant='outline' className={getTypeBadgeClass(rule.type)}>
 												{getTypeLabel(rule.type)}
@@ -478,11 +478,11 @@ function CustomRulesPage() {
 										)
 									},
 									{
-										header: '模式',
+										header: t('columns.mode'),
 										cell: (rule) => getModeLabel(rule.mode)
 									},
 									{
-										header: '状态',
+										header: t('columns.status'),
 										cell: (rule) => (
 											<div className='flex items-center gap-2'>
 												<Switch
@@ -496,13 +496,13 @@ function CustomRulesPage() {
 													disabled={toggleEnabledMutation.isPending}
 												/>
 												<span className='text-sm text-muted-foreground'>
-													{rule.enabled ? '启用' : '禁用'}
+													{rule.enabled ? t('actions.enable', { ns: 'common' }) : t('actions.disable', { ns: 'common' })}
 												</span>
 											</div>
 										)
 									},
 									{
-										header: '创建时间',
+										header: t('columns.createdAt'),
 										cell: (rule) => (
 											<span className='text-sm text-muted-foreground'>
 												{new Date(rule.created_at).toLocaleString('zh-CN')}
@@ -510,7 +510,7 @@ function CustomRulesPage() {
 										)
 									},
 									{
-										header: '操作',
+										header: t('columns.actions'),
 										cell: (rule) => (
 											<div className='flex justify-end gap-2'>
 												<Button
@@ -561,11 +561,11 @@ function CustomRulesPage() {
 											{/* 第二行：模式 + 状态 */}
 											<div className='flex items-center justify-between gap-4 text-xs'>
 												<div className='flex items-center gap-2 min-w-0'>
-													<span className='text-muted-foreground shrink-0'>模式:</span>
+													<span className='text-muted-foreground shrink-0'>{t('mobileLabels.mode')}</span>
 													<span className='truncate'>{getModeLabel(rule.mode)}</span>
 												</div>
 												<div className='flex items-center gap-2 shrink-0'>
-													<span className='text-muted-foreground shrink-0'>状态:</span>
+													<span className='text-muted-foreground shrink-0'>{t('mobileLabels.status')}</span>
 													<div className='flex items-center gap-2'>
 														<Switch
 															checked={rule.enabled}
@@ -577,14 +577,14 @@ function CustomRulesPage() {
 															}}
 															disabled={toggleEnabledMutation.isPending}
 														/>
-														<span>{rule.enabled ? '启用' : '禁用'}</span>
+														<span>{rule.enabled ? t('actions.enable', { ns: 'common' }) : t('actions.disable', { ns: 'common' })}</span>
 													</div>
 												</div>
 											</div>
 
 											{/* 第三行：创建时间 */}
 											<div className='flex items-center gap-2 text-xs'>
-												<span className='text-muted-foreground shrink-0'>创建时间:</span>
+												<span className='text-muted-foreground shrink-0'>{t('mobileLabels.createdAt')}</span>
 												<span>{new Date(rule.created_at).toLocaleString('zh-CN')}</span>
 											</div>
 										</div>
@@ -598,7 +598,7 @@ function CustomRulesPage() {
 											onClick={() => handleEdit(rule)}
 										>
 											<Pencil className='mr-1 h-4 w-4' />
-											编辑
+											{t('actions.edit', { ns: 'common' })}
 										</Button>
 									)
 								}}
@@ -613,12 +613,12 @@ function CustomRulesPage() {
 				<DialogContent className='max-w-3xl max-h-[90vh] overflow-y-auto'>
 					<DialogHeader>
 						<DialogTitle>
-							{editingRule ? '编辑规则' : '新建规则'}
+							{editingRule ? t('dialog.editTitle') : t('dialog.createTitle')}
 						</DialogTitle>
 						<DialogDescription>
 							{editingRule
-								? '修改自定义规则配置'
-								: '创建新的自定义规则'}
+								? t('dialog.editDesc')
+								: t('dialog.createDesc')}
 						</DialogDescription>
 					</DialogHeader>
 
@@ -632,7 +632,7 @@ function CustomRulesPage() {
 								setFormData({ ...formData, enabled: checked })
 							}
 						/>
-						<Label htmlFor='enabled'>启用此规则</Label>
+						<Label htmlFor='enabled'>{t('dialog.enableRule')}</Label>
 					</div>
 					<div className='flex items-center space-x-2'>
 						<Button
@@ -642,7 +642,7 @@ function CustomRulesPage() {
 								resetForm()
 							}}
 						>
-							取消
+							{t('actions.cancel', { ns: 'common' })}
 						</Button>
 						<Button
 							onClick={handleSubmit}
@@ -651,28 +651,28 @@ function CustomRulesPage() {
 							}
 						>
 							{createMutation.isPending || updateMutation.isPending
-								? '保存中...'
-								: '保存'}
+								? t('actions.saving', { ns: 'common' })
+								: t('actions.save', { ns: 'common' })}
 						</Button>
 					</div>
 				</div>
 
 					<div className='space-y-4 py-4'>
 						<div className='space-y-2'>
-							<Label htmlFor='name'>名称</Label>
+							<Label htmlFor='name'>{t('dialog.nameLabel')}</Label>
 							<Input
 								id='name'
 								value={formData.name}
 								onChange={(e) =>
 									setFormData({ ...formData, name: e.target.value })
 								}
-								placeholder='规则名称'
+								placeholder={t('dialog.namePlaceholder')}
 							/>
 						</div>
 
 						<div className={`grid gap-4 ${!editingRule ? 'grid-cols-4' : 'grid-cols-2'}`}>
 							<div className='space-y-2'>
-								<Label htmlFor='type'>类型</Label>
+								<Label htmlFor='type'>{t('dialog.typeLabel')}</Label>
 								<Select
 									value={formData.type}
 									onValueChange={(value: any) => {
@@ -694,15 +694,15 @@ function CustomRulesPage() {
 										<SelectValue />
 									</SelectTrigger>
 									<SelectContent>
-										<SelectItem value='dns'>DNS</SelectItem>
-										<SelectItem value='rules'>规则</SelectItem>
-										<SelectItem value='rule-providers'>规则集</SelectItem>
+										<SelectItem value='dns'>{t('type.dns')}</SelectItem>
+										<SelectItem value='rules'>{t('type.rules')}</SelectItem>
+										<SelectItem value='rule-providers'>{t('type.ruleProviders')}</SelectItem>
 									</SelectContent>
 								</Select>
 							</div>
 
 							<div className='space-y-2'>
-								<Label htmlFor='mode'>模式</Label>
+								<Label htmlFor='mode'>{t('dialog.modeLabel')}</Label>
 								<Select
 									value={formData.mode}
 									onValueChange={(value: any) =>
@@ -714,16 +714,16 @@ function CustomRulesPage() {
 										<SelectValue />
 									</SelectTrigger>
 									<SelectContent>
-										<SelectItem value='replace'>替换</SelectItem>
-										<SelectItem value='prepend'>添加至头部</SelectItem>
-										<SelectItem value='append'>添加至尾部</SelectItem>
+										<SelectItem value='replace'>{t('mode.replace')}</SelectItem>
+										<SelectItem value='prepend'>{t('mode.prepend')}</SelectItem>
+										<SelectItem value='append'>{t('mode.append')}</SelectItem>
 									</SelectContent>
 								</Select>
 							</div>
 				{/* 模板选择 - 仅在新建时显示 */}
 				{!editingRule && (
 					<div className='space-y-2 col-span-2'>
-						<Label htmlFor='template'>模板（可选）</Label>
+						<Label htmlFor='template'>{t('dialog.templateLabel')}</Label>
 						<Select
 							value={selectedTemplate || 'none'}
 							onValueChange={(value: string) => {
@@ -754,10 +754,10 @@ function CustomRulesPage() {
 							}}
 						>
 							<SelectTrigger id='template'>
-								<SelectValue placeholder='选择模板或手动输入' />
+								<SelectValue placeholder={t('dialog.templatePlaceholder')} />
 							</SelectTrigger>
 							<SelectContent>
-								<SelectItem value='none'>不使用模板</SelectItem>
+								<SelectItem value='none'>{t('dialog.noTemplate')}</SelectItem>
 								{Object.entries(RULE_TEMPLATES[formData.type as keyof typeof RULE_TEMPLATES]).map(([key, template]) => (
 									<SelectItem key={key} value={key}>
 										{template.name}
@@ -769,18 +769,18 @@ function CustomRulesPage() {
 					)}
 					</div>
 						<div className='space-y-2'>
-							<Label htmlFor='content'>规则内容（YAML 格式）</Label>
+							<Label htmlFor='content'>{t('dialog.contentLabel')}</Label>
 							<Textarea
 								id='content'
 								value={formData.content}
 								onChange={(e) =>
 									setFormData({ ...formData, content: e.target.value })
 								}
-								placeholder='输入 YAML 格式的规则内容...'
+								placeholder={t('dialog.contentPlaceholder')}
 								className='font-mono text-sm min-h-[300px] whitespace-pre-wrap break-all [field-sizing:fixed]'
 							/>
 							<p className='text-xs text-muted-foreground'>
-								请确保内容符合 YAML 格式规范
+								{t('dialog.contentHint')}
 							</p>
 						</div>
 
@@ -795,13 +795,13 @@ function CustomRulesPage() {
 			>
 				<AlertDialogContent>
 					<AlertDialogHeader>
-						<AlertDialogTitle>确认删除</AlertDialogTitle>
+						<AlertDialogTitle>{t('deleteConfirm.title')}</AlertDialogTitle>
 						<AlertDialogDescription>
-							此操作无法撤销。确定要删除这条规则吗？
+							{t('deleteConfirm.description')}
 						</AlertDialogDescription>
 					</AlertDialogHeader>
 					<AlertDialogFooter>
-						<AlertDialogCancel>取消</AlertDialogCancel>
+						<AlertDialogCancel>{t('actions.cancel', { ns: 'common' })}</AlertDialogCancel>
 						<AlertDialogAction
 							onClick={() => {
 								if (deletingRuleId) {
@@ -810,7 +810,7 @@ function CustomRulesPage() {
 							}}
 							disabled={deleteMutation.isPending}
 						>
-							{deleteMutation.isPending ? '删除中...' : '删除'}
+							{deleteMutation.isPending ? t('deleteConfirm.deleting') : t('deleteConfirm.confirm')}
 						</AlertDialogAction>
 					</AlertDialogFooter>
 				</AlertDialogContent>
@@ -823,21 +823,21 @@ function CustomRulesPage() {
 			>
 				<AlertDialogContent>
 					<AlertDialogHeader>
-						<AlertDialogTitle>创建规则配置</AlertDialogTitle>
+						<AlertDialogTitle>{t('ruleProviderConfirm.title')}</AlertDialogTitle>
 						<AlertDialogDescription>
-							检测到您使用了规则集模板，是否同时创建对应的规则配置？
+							{t('ruleProviderConfirm.description')}
 							<br /><br />
-							规则配置将会追加到现有规则的末尾，系统会自动去除重复的规则（忽略大小写）。
+							{t('ruleProviderConfirm.descriptionDetail')}
 						</AlertDialogDescription>
 					</AlertDialogHeader>
 					<AlertDialogFooter>
 						<AlertDialogCancel onClick={() => handleRuleProviderConfirm(false)}>
-							仅创建规则集
+							{t('ruleProviderConfirm.onlyRuleProvider')}
 						</AlertDialogCancel>
 						<AlertDialogAction
 							onClick={() => handleRuleProviderConfirm(true)}
 						>
-							创建规则集和规则配置
+							{t('ruleProviderConfirm.withRuleConfig')}
 						</AlertDialogAction>
 					</AlertDialogFooter>
 				</AlertDialogContent>

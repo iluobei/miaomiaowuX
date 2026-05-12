@@ -1,4 +1,5 @@
 import { load as parseYAML, dump as dumpYAML } from 'js-yaml'
+import i18n from '@/lib/i18n'
 
 // Predefined region proxy groups with their comprehensive filter patterns
 export const REGION_PROXY_GROUPS = [
@@ -148,7 +149,7 @@ export function regexToKeywords(regex: string): string {
   return regex.split('|').join(', ')
 }
 
-export function createDefaultFormState(name = '新代理组'): ProxyGroupFormState {
+export function createDefaultFormState(name = i18n.t('templates:v3.defaultGroupName')): ProxyGroupFormState {
   return {
     name,
     type: 'select',
@@ -346,17 +347,17 @@ export function updateProxyGroups(content: string, groups: ProxyGroupFormState[]
   return serializeTemplate(template)
 }
 
-export const PROXY_NODES_DISPLAY = '⛓️‍💥 代理节点'
-export const PROXY_PROVIDERS_DISPLAY = '📦 代理集合'
-export const REGION_PROXY_GROUPS_DISPLAY = '🌏 区域代理组'
+export const getProxyNodesDisplay = () => i18n.t('templates:v3.proxyNodesDisplay')
+export const getProxyProvidersDisplay = () => i18n.t('templates:v3.proxyProvidersDisplay')
+export const getRegionProxyGroupsDisplay = () => i18n.t('templates:v3.regionProxyGroupsDisplay')
 
 export function generateProxyGroupsPreview(groups: ProxyGroupFormState[]): string {
   const configs = groups.map(formStateToConfig).map(config => {
     if (config.proxies) {
       config.proxies = config.proxies.map(p => {
-        if (p === PROXY_NODES_MARKER) return PROXY_NODES_DISPLAY
-        if (p === PROXY_PROVIDERS_MARKER) return PROXY_PROVIDERS_DISPLAY
-        if (p === REGION_PROXY_GROUPS_MARKER) return REGION_PROXY_GROUPS_DISPLAY
+        if (p === PROXY_NODES_MARKER) return i18n.t('templates:v3.proxyNodesDisplay')
+        if (p === PROXY_PROVIDERS_MARKER) return i18n.t('templates:v3.proxyProvidersDisplay')
+        if (p === REGION_PROXY_GROUPS_MARKER) return i18n.t('templates:v3.regionProxyGroupsDisplay')
         return p
       })
     }

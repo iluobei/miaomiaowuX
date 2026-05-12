@@ -1,5 +1,6 @@
 // @ts-nocheck
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
@@ -17,6 +18,7 @@ interface KeyGeneratorFieldProps {
 }
 
 export function KeyGeneratorField({ label, value, onChange, description, placeholder, onPublicKeyGenerated }: KeyGeneratorFieldProps) {
+  const { t } = useTranslation('xray')
   const [isGenerating, setIsGenerating] = useState(false)
 
   const handleGenerate = async () => {
@@ -35,12 +37,12 @@ export function KeyGeneratorField({ label, value, onChange, description, placeho
         onPublicKeyGenerated(publicKey)
       }
 
-      toast.success('密钥生成成功', {
-        description: onPublicKeyGenerated ? '已自动填入私钥和公钥' : '已自动填入私钥',
+      toast.success(t('keyGenerator.keyGenSuccess'), {
+        description: onPublicKeyGenerated ? t('keyGenerator.keyGenSuccessDescBoth') : t('keyGenerator.keyGenSuccessDescKey'),
       })
     } catch (error) {
-      toast.error('生成失败', {
-        description: error.response?.data || error.message || '无法生成密钥，请确保服务器已安装 Xray',
+      toast.error(t('keyGenerator.keyGenFailed'), {
+        description: error.response?.data || error.message || t('keyGenerator.keyGenFailedDesc'),
       })
     } finally {
       setIsGenerating(false)
@@ -54,7 +56,7 @@ export function KeyGeneratorField({ label, value, onChange, description, placeho
         <Input
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          placeholder={placeholder || '执行 xray x25519 生成'}
+          placeholder={placeholder || 'xray x25519'}
           className="flex-1"
         />
         <Button

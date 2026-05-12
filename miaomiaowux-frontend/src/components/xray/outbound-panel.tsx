@@ -1,6 +1,7 @@
 // @ts-nocheck
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import { Edit2, RefreshCw, Trash2, Eye, Plus } from 'lucide-react'
 
@@ -30,6 +31,8 @@ interface OutboundPanelProps {
 }
 
 export function OutboundPanel({ serverId, serverName }: OutboundPanelProps) {
+  const { t } = useTranslation('xray')
+  const { t: tc } = useTranslation('common')
   const queryClient = useQueryClient()
 
   const [editingFreedomOutbound, setEditingFreedomOutbound] = useState<OutboundItem | null>(null)
@@ -66,7 +69,7 @@ export function OutboundPanel({ serverId, serverName }: OutboundPanelProps) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['remote-outbounds', serverId] })
-      toast.success('出站已更新')
+      toast.success(t('outbounds.outboundUpdated'))
       setEditingFreedomOutbound(null)
     },
     onError: handleServerError,
@@ -81,7 +84,7 @@ export function OutboundPanel({ serverId, serverName }: OutboundPanelProps) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['remote-outbounds', serverId] })
-      toast.success('出站已删除')
+      toast.success(t('outbounds.outboundDeleted'))
     },
     onError: handleServerError,
   })
@@ -95,13 +98,13 @@ export function OutboundPanel({ serverId, serverName }: OutboundPanelProps) {
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['remote-outbounds', serverId] })
-      data.success ? toast.success(data.message || '出站已添加') : toast.error(data.message || '添加出站失败')
+      data.success ? toast.success(data.message || t('outbounds.outboundAdded')) : toast.error(data.message || t('outbounds.outboundAddFailed'))
     },
     onError: handleServerError,
   })
 
   const handleDelete = (item: OutboundItem) => {
-    if (confirm(`确定要删除出站 "${item.outbound.tag}" 吗？`)) {
+    if (confirm(t('outbounds.confirmDeletePrompt', { tag: item.outbound.tag }))) {
       remoteDeleteMutation.mutate({ outbound: item.outbound })
     }
   }
@@ -126,10 +129,10 @@ export function OutboundPanel({ serverId, serverName }: OutboundPanelProps) {
 
   const handleOutboundSubmit = async (serverIds: number[], outbound: XrayOutbound, tag: string) => {
     const trimmedTag = tag?.trim() || outbound.tag || ''
-    if (!trimmedTag) { toast.error('请填写标签'); return }
+    if (!trimmedTag) { toast.error(t('outbounds.fillTag')); return }
     try {
       await remoteAddOutboundMutation.mutateAsync({ outbound: { ...outbound, tag: trimmedTag } })
-      toast.success('出站已添加到远程服务器')
+      toast.success(t('outbounds.outboundAddedToRemote'))
       setIsWizardDialogOpen(false)
     } catch {}
   }
@@ -171,7 +174,7 @@ export function OutboundPanel({ serverId, serverName }: OutboundPanelProps) {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <p className="text-sm text-muted-foreground">
-          {serverName} 的出站配置（共 {filteredOutbounds.length} 个）
+          {t('outbounds.remoteServerConfig', { name: serverName, count: filteredOutbounds.length })}
         </p>
         <div className="flex items-center gap-2">
           <Button
@@ -179,10 +182,10 @@ export function OutboundPanel({ serverId, serverName }: OutboundPanelProps) {
             size="sm"
             onClick={() => setHideDefaultOutbounds(!hideDefaultOutbounds)}
           >
-            {hideDefaultOutbounds ? '隐藏默认' : '显示默认'}
+            {hideDefaultOutbounds ? t('outbounds.hideDefault') : t('outbounds.showDefault')}
           </Button>
           <Button size="sm" onClick={() => setIsWizardDialogOpen(true)}>
-            <Plus className="h-4 w-4 mr-1" />添加出站
+            <Plus className="h-4 w-4 mr-1" />{t('outbounds.addOutbound')}
           </Button>
         </div>
       </div>
@@ -190,10 +193,10 @@ export function OutboundPanel({ serverId, serverName }: OutboundPanelProps) {
       {isLoading ? (
         <div className="text-center py-8">
           <RefreshCw className="h-6 w-6 animate-spin mx-auto mb-2" />
-          <p className="text-sm text-muted-foreground">加载中...</p>
+          <p className="text-sm text-muted-foreground">{tc('actions.loading')}</p>
         </div>
       ) : filteredOutbounds.length === 0 ? (
-        <EmptyStateCard title="暂无出站配置" description='点击"添加出站"按钮添加' />
+        <EmptyStateCard title={t('outbounds.noOutbounds')} description={t('outbounds.noOutboundsDescShort')} />
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-3">
           {filteredOutbounds.map((item: OutboundItem) => {
@@ -211,25 +214,25 @@ export function OutboundPanel({ serverId, serverName }: OutboundPanelProps) {
                   {isSimpleOutbound(outbound.protocol) ? (
                     <>
                       {outbound.settings?.domainStrategy && (
-                        <div className="flex justify-between"><span className="text-muted-foreground">域名策略</span><span>{outbound.settings.domainStrategy}</span></div>
+                        <div className="flex justify-between"><span className="text-muted-foreground">{t('outbounds.domainStrategy')}</span><span>{outbound.settings.domainStrategy}</span></div>
                       )}
-                      <div className="flex justify-between"><span className="text-muted-foreground">类型</span><span>{outbound.protocol === 'freedom' ? '直连出站' : '阻止出站'}</span></div>
+                      <div className="flex justify-between"><span className="text-muted-foreground">{t('outbounds.type')}</span><span>{outbound.protocol === 'freedom' ? t('outbounds.directOutbound') : t('outbounds.blockOutbound')}</span></div>
                     </>
                   ) : (
                     <>
-                      <div className="flex justify-between"><span className="text-muted-foreground">地址</span><span className="truncate max-w-[180px]" title={address as string}>{address}</span></div>
-                      <div className="flex justify-between"><span className="text-muted-foreground">端口</span><span>{port}</span></div>
-                      <div className="flex justify-between"><span className="text-muted-foreground">用户数</span><span>{getUserCount(outbound)}</span></div>
+                      <div className="flex justify-between"><span className="text-muted-foreground">{t('outbounds.address')}</span><span className="truncate max-w-[180px]" title={address as string}>{address}</span></div>
+                      <div className="flex justify-between"><span className="text-muted-foreground">{t('outbounds.portLabel')}</span><span>{port}</span></div>
+                      <div className="flex justify-between"><span className="text-muted-foreground">{t('outbounds.userCount')}</span><span>{getUserCount(outbound)}</span></div>
                     </>
                   )}
                 </CardContent>
                 <CardFooter className="flex gap-1.5 pt-2">
                   {outbound.protocol === 'freedom' && (
-                    <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => handleEditFreedom(item)}><Edit2 className="h-3 w-3 mr-1" />编辑</Button>
+                    <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => handleEditFreedom(item)}><Edit2 className="h-3 w-3 mr-1" />{tc('actions.edit')}</Button>
                   )}
-                  <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => setViewingOutbound(outbound)}><Eye className="h-3 w-3 mr-1" />查看</Button>
+                  <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => setViewingOutbound(outbound)}><Eye className="h-3 w-3 mr-1" />{tc('actions.view')}</Button>
                   {!isSimpleOutbound(outbound.protocol) && (
-                    <Button variant="outline" size="sm" className="h-7 text-xs text-red-600 hover:text-red-700" onClick={() => handleDelete(item)}><Trash2 className="h-3 w-3 mr-1" />删除</Button>
+                    <Button variant="outline" size="sm" className="h-7 text-xs text-red-600 hover:text-red-700" onClick={() => handleDelete(item)}><Trash2 className="h-3 w-3 mr-1" />{tc('actions.delete')}</Button>
                   )}
                 </CardFooter>
               </Card>
@@ -242,16 +245,16 @@ export function OutboundPanel({ serverId, serverName }: OutboundPanelProps) {
       <Dialog open={!!editingFreedomOutbound} onOpenChange={(open) => !open && setEditingFreedomOutbound(null)}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>编辑 Freedom 出站 - {editingFreedomOutbound?.outbound.tag}</DialogTitle>
-            <DialogDescription>配置域名策略 (domainStrategy)</DialogDescription>
+            <DialogTitle>{t('outbounds.editFreedomOutbound')} - {editingFreedomOutbound?.outbound.tag}</DialogTitle>
+            <DialogDescription>{t('outbounds.configDomainStrategy')}</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Button variant={freedomDomainStrategy === 'AsIs' ? 'default' : 'outline'} className="w-full justify-start" onClick={() => setFreedomDomainStrategy('AsIs')}>AsIs (默认)</Button>
-              <p className="text-xs text-muted-foreground pl-4">不对域名进行特殊处理</p>
+              <Button variant={freedomDomainStrategy === 'AsIs' ? 'default' : 'outline'} className="w-full justify-start" onClick={() => setFreedomDomainStrategy('AsIs')}>{t('outbounds.asIsDefault')}</Button>
+              <p className="text-xs text-muted-foreground pl-4">{t('outbounds.domainStrategyNotSpecial')}</p>
             </div>
             <div className="space-y-2">
-              <p className="text-sm font-medium text-muted-foreground">UseIP 系列</p>
+              <p className="text-sm font-medium text-muted-foreground">{t('outbounds.useIpSeries')}</p>
               <div className="grid grid-cols-2 gap-2">
                 {['UseIP', 'UseIPv6v4', 'UseIPv6', 'UseIPv4v6', 'UseIPv4'].map((v) => (
                   <Button key={v} variant={freedomDomainStrategy === v ? 'default' : 'outline'} size="sm" className="justify-start" onClick={() => setFreedomDomainStrategy(v)}>{v}</Button>
@@ -259,7 +262,7 @@ export function OutboundPanel({ serverId, serverName }: OutboundPanelProps) {
               </div>
             </div>
             <div className="space-y-2">
-              <p className="text-sm font-medium text-muted-foreground">ForceIP 系列</p>
+              <p className="text-sm font-medium text-muted-foreground">{t('outbounds.forceIpSeries')}</p>
               <div className="grid grid-cols-2 gap-2">
                 {['ForceIP', 'ForceIPv6v4', 'ForceIPv6', 'ForceIPv4v6', 'ForceIPv4'].map((v) => (
                   <Button key={v} variant={freedomDomainStrategy === v ? 'default' : 'outline'} size="sm" className="justify-start" onClick={() => setFreedomDomainStrategy(v)}>{v}</Button>
@@ -268,8 +271,8 @@ export function OutboundPanel({ serverId, serverName }: OutboundPanelProps) {
             </div>
           </div>
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => setEditingFreedomOutbound(null)}>取消</Button>
-            <Button onClick={handleFreedomSubmit} disabled={remoteUpdateOutboundMutation.isPending}>{remoteUpdateOutboundMutation.isPending ? '保存中...' : '保存'}</Button>
+            <Button type="button" variant="outline" onClick={() => setEditingFreedomOutbound(null)}>{tc('actions.cancel')}</Button>
+            <Button onClick={handleFreedomSubmit} disabled={remoteUpdateOutboundMutation.isPending}>{remoteUpdateOutboundMutation.isPending ? tc('actions.saving') : tc('actions.save')}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -278,13 +281,13 @@ export function OutboundPanel({ serverId, serverName }: OutboundPanelProps) {
       <Dialog open={!!viewingOutbound} onOpenChange={(open) => !open && setViewingOutbound(null)}>
         <DialogContent className="max-w-3xl max-h-[90vh]">
           <DialogHeader>
-            <DialogTitle>查看出站配置 - {viewingOutbound?.tag}</DialogTitle>
-            <DialogDescription>完整的出站配置 JSON</DialogDescription>
+            <DialogTitle>{t('outbounds.viewOutbound')} - {viewingOutbound?.tag}</DialogTitle>
+            <DialogDescription>{t('outbounds.viewOutboundJson')}</DialogDescription>
           </DialogHeader>
           <div className="overflow-auto max-h-[60vh]">
             <pre className="bg-gray-50 dark:bg-gray-900 p-4 rounded-lg text-xs">{JSON.stringify(viewingOutbound, null, 2)}</pre>
           </div>
-          <DialogFooter><Button onClick={() => setViewingOutbound(null)}>关闭</Button></DialogFooter>
+          <DialogFooter><Button onClick={() => setViewingOutbound(null)}>{tc('actions.close')}</Button></DialogFooter>
         </DialogContent>
       </Dialog>
 
@@ -292,8 +295,8 @@ export function OutboundPanel({ serverId, serverName }: OutboundPanelProps) {
       <Dialog open={isWizardDialogOpen} onOpenChange={setIsWizardDialogOpen}>
         <DialogContent className="w-[95vw] !max-w-none md:w-[90vw] lg:w-[80vw] max-h-[90vh] overflow-hidden sm:max-w-none flex flex-col">
           <DialogHeader>
-            <DialogTitle>添加出站 - 向导模式</DialogTitle>
-            <DialogDescription>通过向导快速生成出站配置</DialogDescription>
+            <DialogTitle>{t('outbounds.addOutboundWizard')}</DialogTitle>
+            <DialogDescription>{t('outbounds.addOutboundWizardDescShort')}</DialogDescription>
           </DialogHeader>
           <div className="flex-1 overflow-y-auto">
             <OutboundWizard servers={[]} selectedServerIds={[]} onCancel={() => setIsWizardDialogOpen(false)} onSubmit={handleOutboundSubmit} />

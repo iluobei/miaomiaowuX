@@ -16,9 +16,9 @@ export function CustomRulesEditor(_props: CustomRulesEditorProps) {
         <CardHeader>
           <div className='flex items-center justify-between'>
             <div>
-              <CardTitle>自定义规则</CardTitle>
+              <CardTitle>{t('editor.title')}</CardTitle>
               <CardDescription>
-                添加自定义分流规则，支持域名、IP、协议等多种匹配方式
+                {t('editor.description')}
               </CardDescription>
             </div>
             <CollapsibleTrigger asChild>
@@ -38,11 +38,11 @@ export function CustomRulesEditor(_props: CustomRulesEditorProps) {
             {rules.length === 0 ? (
               <div className='rounded-lg border border-dashed p-8 text-center'>
                 <p className='mb-4 text-sm text-muted-foreground'>
-                  还没有自定义规则，点击下方按钮添加
+                  {t('editor.emptyHint')}
                 </p>
                 <Button onClick={handleAddRule} variant='outline'>
                   <Plus className='mr-2 h-4 w-4' />
-                  添加规则
+                  {t('editor.addRule')}
                 </Button>
               </div>
             ) : (
@@ -53,7 +53,7 @@ export function CustomRulesEditor(_props: CustomRulesEditorProps) {
                       <CardHeader className='pb-3'>
                         <div className='flex items-center justify-between'>
                           <CardTitle className='text-base'>
-                            规则 #{index + 1}
+                            {t('editor.ruleIndex', { index: index + 1 })}
                             {rule.name && ` - ${rule.name}`}
                           </CardTitle>
                           <Button
@@ -69,18 +69,18 @@ export function CustomRulesEditor(_props: CustomRulesEditorProps) {
                         <div className='grid gap-3 sm:grid-cols-2'>
                           <div className='space-y-1.5'>
                             <Label htmlFor={`rule-${index}-name`}>
-                              出站名称 <span className='text-destructive'>*</span>
+                              {t('editor.outboundName')} <span className='text-destructive'>*</span>
                             </Label>
                             <Input
                               id={`rule-${index}-name`}
-                              placeholder='例如: Netflix, OpenAI'
+                              placeholder={t('editor.outboundPlaceholder')}
                               value={rule.name}
                               onChange={(e) =>
                                 handleUpdateRule(index, 'name', e.target.value)
                               }
                             />
                             <p className='text-xs text-muted-foreground'>
-                              将创建对应的策略组
+                              {t('editor.willCreateGroup')}
                             </p>
                           </div>
 
@@ -88,14 +88,14 @@ export function CustomRulesEditor(_props: CustomRulesEditorProps) {
                             <Label htmlFor={`rule-${index}-site`}>GeoSite</Label>
                             <Input
                               id={`rule-${index}-site`}
-                              placeholder='例如: netflix, openai'
+                              placeholder={t('editor.geositePlaceholder')}
                               value={rule.site || ''}
                               onChange={(e) =>
                                 handleUpdateRule(index, 'site', e.target.value)
                               }
                             />
                             <p className='text-xs text-muted-foreground'>
-                              多个用逗号分隔
+                              {t('editor.multipleCommaSeparated')}
                             </p>
                           </div>
                         </div>
@@ -103,11 +103,11 @@ export function CustomRulesEditor(_props: CustomRulesEditorProps) {
                         <div className='grid gap-3 sm:grid-cols-2'>
                           <div className='space-y-1.5'>
                             <Label htmlFor={`rule-${index}-domain-suffix`}>
-                              域名后缀
+                              {t('editor.domainSuffix')}
                             </Label>
                             <Input
                               id={`rule-${index}-domain-suffix`}
-                              placeholder='例如: netflix.com, openai.com'
+                              placeholder={t('editor.domainSuffixPlaceholder')}
                               value={rule.domain_suffix || ''}
                               onChange={(e) =>
                                 handleUpdateRule(index, 'domain_suffix', e.target.value)
@@ -117,11 +117,11 @@ export function CustomRulesEditor(_props: CustomRulesEditorProps) {
 
                           <div className='space-y-1.5'>
                             <Label htmlFor={`rule-${index}-domain-keyword`}>
-                              域名关键词
+                              {t('editor.domainKeyword')}
                             </Label>
                             <Input
                               id={`rule-${index}-domain-keyword`}
-                              placeholder='例如: google, youtube'
+                              placeholder={t('editor.domainKeywordPlaceholder')}
                               value={rule.domain_keyword || ''}
                               onChange={(e) =>
                                 handleUpdateRule(index, 'domain_keyword', e.target.value)
@@ -135,7 +135,7 @@ export function CustomRulesEditor(_props: CustomRulesEditorProps) {
                             <Label htmlFor={`rule-${index}-ip`}>GeoIP</Label>
                             <Input
                               id={`rule-${index}-ip`}
-                              placeholder='例如: us, jp, hk'
+                              placeholder={t('editor.geoipPlaceholder')}
                               value={rule.ip || ''}
                               onChange={(e) =>
                                 handleUpdateRule(index, 'ip', e.target.value)
@@ -147,7 +147,7 @@ export function CustomRulesEditor(_props: CustomRulesEditorProps) {
                             <Label htmlFor={`rule-${index}-ip-cidr`}>IP-CIDR</Label>
                             <Input
                               id={`rule-${index}-ip-cidr`}
-                              placeholder='例如: 1.1.1.1/24'
+                              placeholder={t('editor.ipCidrPlaceholder')}
                               value={rule.ip_cidr || ''}
                               onChange={(e) =>
                                 handleUpdateRule(index, 'ip_cidr', e.target.value)
@@ -157,17 +157,17 @@ export function CustomRulesEditor(_props: CustomRulesEditorProps) {
                         </div>
 
                         <div className='space-y-1.5'>
-                          <Label htmlFor={`rule-${index}-protocol`}>协议</Label>
+                          <Label htmlFor={`rule-${index}-protocol`}>{t('editor.protocol')}</Label>
                           <Input
                             id={`rule-${index}-protocol`}
-                            placeholder='例如: http, https, quic'
+                            placeholder={t('editor.protocolPlaceholder')}
                             value={rule.protocol || ''}
                             onChange={(e) =>
                               handleUpdateRule(index, 'protocol', e.target.value)
                             }
                           />
                           <p className='text-xs text-muted-foreground'>
-                            多个用逗号分隔
+                            {t('editor.multipleCommaSeparated')}
                           </p>
                         </div>
                       </CardContent>
@@ -177,21 +177,21 @@ export function CustomRulesEditor(_props: CustomRulesEditorProps) {
 
                 <Button onClick={handleAddRule} variant='outline' className='w-full'>
                   <Plus className='mr-2 h-4 w-4' />
-                  添加规则
+                  {t('editor.addRule')}
                 </Button>
               </>
             )}
 
             <div className='rounded-lg border bg-muted/50 p-4'>
-              <h4 className='mb-2 text-sm font-semibold'>规则说明</h4>
+              <h4 className='mb-2 text-sm font-semibold'>{t('editor.helpTitle')}</h4>
               <ul className='space-y-1 text-xs text-muted-foreground'>
-                <li>• <strong>出站名称</strong>：必填，将创建对应的策略组</li>
-                <li>• <strong>GeoSite</strong>：使用 GeoSite 数据库匹配域名集合</li>
-                <li>• <strong>域名后缀</strong>：匹配完整域名后缀，如 google.com</li>
-                <li>• <strong>域名关键词</strong>：匹配域名中包含的关键词</li>
-                <li>• <strong>GeoIP</strong>：使用 GeoIP 数据库匹配 IP 地址归属国家/地区</li>
-                <li>• <strong>IP-CIDR</strong>：匹配 IP 地址段</li>
-                <li>• <strong>协议</strong>：匹配网络协议类型</li>
+                <li>• {t('editor.helpOutbound')}</li>
+                <li>• {t('editor.helpGeosite')}</li>
+                <li>• {t('editor.helpDomainSuffix')}</li>
+                <li>• {t('editor.helpDomainKeyword')}</li>
+                <li>• {t('editor.helpGeoip')}</li>
+                <li>• {t('editor.helpIpCidr')}</li>
+                <li>• {t('editor.helpProtocol')}</li>
               </ul>
             </div>
           </CardContent>

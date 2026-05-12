@@ -2,6 +2,7 @@
 import { useState } from 'react'
 import { createFileRoute } from '@tanstack/react-router'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import {
   Plus,
@@ -122,8 +123,8 @@ interface DNSProvider {
 
 const DNS_PROVIDER_TYPES = [
   { value: 'cloudflare', label: 'Cloudflare', fields: ['CF_DNS_API_TOKEN'] },
-  { value: 'alidns', label: '阿里云 DNS', fields: ['ALICLOUD_ACCESS_KEY', 'ALICLOUD_SECRET_KEY'] },
-  { value: 'tencentcloud', label: '腾讯云 DNS', fields: ['TENCENTCLOUD_SECRET_ID', 'TENCENTCLOUD_SECRET_KEY'] },
+  { value: 'alidns', labelKey: 'dnsProviderTypes.alidns', fields: ['ALICLOUD_ACCESS_KEY', 'ALICLOUD_SECRET_KEY'] },
+  { value: 'tencentcloud', labelKey: 'dnsProviderTypes.tencentcloud', fields: ['TENCENTCLOUD_SECRET_ID', 'TENCENTCLOUD_SECRET_KEY'] },
   { value: 'dnspod', label: 'DNSPod', fields: ['DNSPOD_API_KEY'] },
   { value: 'namesilo', label: 'NameSilo', fields: ['NAMESILO_API_KEY'] },
   { value: 'godaddy', label: 'GoDaddy', fields: ['GODADDY_API_KEY', 'GODADDY_API_SECRET'] },
@@ -136,6 +137,7 @@ const CA_PROVIDERS = [
 function CertificatesPage() {
   const queryClient = useQueryClient()
   const { auth } = useAuthStore()
+  const { t } = useTranslation('certificates')
 
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
   const [deleteDialogCert, setDeleteDialogCert] = useState<Certificate | null>(null)
@@ -177,6 +179,12 @@ function CertificatesPage() {
     key_pem: '',
   })
 
+  const getDnsProviderLabel = (value: string) => {
+    const provider = DNS_PROVIDER_TYPES.find(p => p.value === value)
+    if (!provider) return value
+    return provider.labelKey ? t(provider.labelKey) : provider.label
+  }
+
   // Fetch certificates
   const { data: certificates, isLoading } = useQuery({
     queryKey: ['certificates'],
@@ -216,11 +224,11 @@ function CertificatesPage() {
     onSuccess: (res) => {
       const data = res.data
       if (data.success) {
-        toast.success('主控证书部署成功，即将跳转到 HTTPS')
+        toast.success(t('masterCert.deploySuccess'))
         queryClient.invalidateQueries({ queryKey: ['master-cert-status'] })
         setTimeout(() => { window.location.href = data.new_master_url }, 2000)
       } else {
-        toast.error(data.message || '部署失败')
+        toast.error(data.message || t('masterCert.deployFailed'))
       }
     },
     onError: handleServerError,
@@ -231,11 +239,11 @@ function CertificatesPage() {
     onSuccess: (res) => {
       const data = res.data
       if (data.success) {
-        toast.success('HTTPS 已开启，即将跳转')
+        toast.success(t('https.enableSuccess'))
         queryClient.invalidateQueries({ queryKey: ['master-cert-status'] })
         setTimeout(() => { window.location.href = data.new_master_url }, 2000)
       } else {
-        toast.error(data.message || '开启失败')
+        toast.error(data.message || t('https.enableFailed'))
       }
     },
     onError: handleServerError,
@@ -260,7 +268,7 @@ function CertificatesPage() {
       queryClient.invalidateQueries({ queryKey: ['certificates'] })
       setIsCreateDialogOpen(false)
       resetForm()
-      toast.success('证书申请已提交')
+      toast.success(t('toast.certSubmitted'))
     },
     onError: handleServerError,
   })
@@ -272,7 +280,7 @@ function CertificatesPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['certificates'] })
-      toast.success('证书续期已提交')
+      toast.success(t('toast.certRenewSubmitted'))
     },
     onError: handleServerError,
   })
@@ -285,7 +293,7 @@ function CertificatesPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['certificates'] })
       setDeleteDialogCert(null)
-      toast.success('证书已删除')
+      toast.success(t('toast.certDeleted'))
     },
     onError: handleServerError,
   })
@@ -321,7 +329,7 @@ function CertificatesPage() {
       queryClient.invalidateQueries({ queryKey: ['dns-providers'] })
       setIsDNSProviderDialogOpen(false)
       setDnsProviderForm({ name: '', provider_type: 'cloudflare', credentials: '' })
-      toast.success('DNS 提供商已添加')
+      toast.success(t('toast.dnsProviderAdded'))
     },
     onError: handleServerError,
   })
@@ -333,7 +341,7 @@ function CertificatesPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['dns-providers'] })
-      toast.success('DNS 提供商已删除')
+      toast.success(t('toast.dnsProviderDeleted'))
     },
     onError: handleServerError,
   })
@@ -347,7 +355,7 @@ function CertificatesPage() {
       queryClient.invalidateQueries({ queryKey: ['certificates'] })
       setIsDeployDialogOpen(false)
       setDeployTarget(null)
-      toast.success('证书已部署到主服务器和所有远程服务器')
+      toast.success(t('toast.certDeployed'))
     },
     onError: handleServerError,
   })
@@ -365,7 +373,7 @@ function CertificatesPage() {
       queryClient.invalidateQueries({ queryKey: ['certificates'] })
       setIsUploadDialogOpen(false)
       setUploadForm({ domain: '', cert_pem: '', key_pem: '' })
-      toast.success('证书上传成功')
+      toast.success(t('toast.certUploaded'))
     },
     onError: handleServerError,
   })
@@ -388,11 +396,11 @@ function CertificatesPage() {
 
   const handleCreateSubmit = () => {
     if (!formData.domain || !formData.email) {
-      toast.error('请填写域名和邮箱')
+      toast.error(t('toast.fillDomainEmail'))
       return
     }
     if (formData.challenge_mode === 'dns' && formData.dns_provider_id === 0) {
-      toast.error('DNS 验证模式需要选择 DNS 提供商')
+      toast.error(t('toast.dnsProviderRequired'))
       return
     }
     createMutation.mutate(formData)
@@ -400,14 +408,14 @@ function CertificatesPage() {
 
   const handleDNSProviderSubmit = () => {
     if (!dnsProviderForm.name || !dnsProviderForm.credentials) {
-      toast.error('请填写名称和凭证')
+      toast.error(t('toast.fillNameCredentials'))
       return
     }
     // Validate JSON
     try {
       JSON.parse(dnsProviderForm.credentials)
     } catch {
-      toast.error('凭证格式无效，请输入有效的 JSON')
+      toast.error(t('toast.invalidJson'))
       return
     }
     createDNSProviderMutation.mutate(dnsProviderForm)
@@ -416,17 +424,17 @@ function CertificatesPage() {
   const getStatusBadge = (status: string, message?: string) => {
     switch (status) {
       case 'valid':
-        return <Badge variant="default" className="bg-green-500"><ShieldCheck className="h-3 w-3 mr-1" />有效</Badge>
+        return <Badge variant="default" className="bg-green-500"><ShieldCheck className="h-3 w-3 mr-1" />{t('status.valid')}</Badge>
       case 'pending':
-        return <Badge variant="secondary"><Clock className="h-3 w-3 mr-1" />申请中</Badge>
+        return <Badge variant="secondary"><Clock className="h-3 w-3 mr-1" />{t('status.pending')}</Badge>
       case 'expired':
-        return <Badge variant="destructive"><ShieldX className="h-3 w-3 mr-1" />已过期</Badge>
+        return <Badge variant="destructive"><ShieldX className="h-3 w-3 mr-1" />{t('status.expired')}</Badge>
       case 'failed':
         return message ? (
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
-                <Badge variant="destructive" className="cursor-help"><ShieldX className="h-3 w-3 mr-1" />失败</Badge>
+                <Badge variant="destructive" className="cursor-help"><ShieldX className="h-3 w-3 mr-1" />{t('status.failed')}</Badge>
               </TooltipTrigger>
               <TooltipContent side="top" className="max-w-xs">
                 <p className="text-xs break-all">{message}</p>
@@ -434,7 +442,7 @@ function CertificatesPage() {
             </Tooltip>
           </TooltipProvider>
         ) : (
-          <Badge variant="destructive"><ShieldX className="h-3 w-3 mr-1" />失败</Badge>
+          <Badge variant="destructive"><ShieldX className="h-3 w-3 mr-1" />{t('status.failed')}</Badge>
         )
       default:
         return <Badge variant="outline">{status}</Badge>
@@ -460,10 +468,10 @@ function CertificatesPage() {
   const getExpiryBadge = (expiryDate: string) => {
     const days = getDaysUntilExpiry(expiryDate)
     if (days === null) return null
-    if (days < 0) return <Badge variant="destructive">已过期</Badge>
-    if (days <= 7) return <Badge variant="destructive">{days} 天后过期</Badge>
-    if (days <= 30) return <Badge variant="outline" className="border-yellow-500 text-yellow-600">{days} 天后过期</Badge>
-    return <Badge variant="outline" className="border-green-500 text-green-600">{days} 天后过期</Badge>
+    if (days < 0) return <Badge variant="destructive">{t('expiry.expired')}</Badge>
+    if (days <= 7) return <Badge variant="destructive">{t('expiry.daysLeft', { days })}</Badge>
+    if (days <= 30) return <Badge variant="outline" className="border-yellow-500 text-yellow-600">{t('expiry.daysLeft', { days })}</Badge>
+    return <Badge variant="outline" className="border-green-500 text-green-600">{t('expiry.daysLeft', { days })}</Badge>
   }
 
   const getProviderLabel = (value: string) => {
@@ -489,14 +497,14 @@ function CertificatesPage() {
           <div className="flex items-center justify-between">
             <div>
               <p className="font-medium text-amber-800 dark:text-amber-200">
-                检测到主控域名 {masterCertStatus.domain} 的证书已签发
+                {t('masterCert.detected', { domain: masterCertStatus.domain })}
               </p>
               <p className="text-sm text-amber-600 dark:text-amber-400">
-                部署后将自动安装 Nginx、配置 SSL 并开启 HTTPS 访问
+                {t('masterCert.deployDesc')}
               </p>
             </div>
             <Button onClick={() => deployMasterCert.mutate()} disabled={deployMasterCert.isPending}>
-              {deployMasterCert.isPending ? '部署中...' : '部署到主控'}
+              {deployMasterCert.isPending ? t('masterCert.deploying') : t('masterCert.deployToMaster')}
             </Button>
           </div>
         </div>
@@ -505,10 +513,10 @@ function CertificatesPage() {
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-2">
             <Shield className="h-6 w-6" />
-            SSL/TLS 证书管理
+            {t('page.title')}
           </h1>
           <p className="text-muted-foreground">
-            管理 ACME 证书，支持通配符、DNS 验证、多 CA 和自动部署
+            {t('page.description')}
           </p>
         </div>
         <div className="flex gap-2">
@@ -519,7 +527,7 @@ function CertificatesPage() {
               onClick={() => setIsEnableHTTPSDialogOpen(true)}
             >
               <Globe className="h-4 w-4 mr-2" />
-              开启 HTTPS
+              {t('https.enable')}
             </Button>
           )}
           <Button
@@ -528,7 +536,7 @@ function CertificatesPage() {
             onClick={() => queryClient.invalidateQueries({ queryKey: ['certificates'] })}
           >
             <RefreshCw className="h-4 w-4 mr-2" />
-            刷新
+            {t('actions.refresh', { ns: 'common' })}
           </Button>
           <Button size="sm" onClick={() => {
             if (dnsProviders?.length === 1) {
@@ -537,43 +545,43 @@ function CertificatesPage() {
             setIsCreateDialogOpen(true)
           }}>
             <Plus className="h-4 w-4 mr-2" />
-            申请证书
+            {t('buttons.applyCert')}
           </Button>
           <Button variant="outline" size="sm" onClick={() => setIsUploadDialogOpen(true)}>
             <Upload className="h-4 w-4 mr-2" />
-            上传证书
+            {t('buttons.uploadCert')}
           </Button>
         </div>
       </div>
 
       <Tabs defaultValue="certificates">
         <TabsList>
-          <TabsTrigger value="certificates">证书列表</TabsTrigger>
-          <TabsTrigger value="dns-providers">DNS 提供商</TabsTrigger>
+          <TabsTrigger value="certificates">{t('tabs.certList')}</TabsTrigger>
+          <TabsTrigger value="dns-providers">{t('tabs.dnsProviders')}</TabsTrigger>
         </TabsList>
 
         <TabsContent value="certificates">
           <TableCard
-            title="证书列表"
-            description="所有已申请的 SSL/TLS 证书"
+            title={t('certTable.title')}
+            description={t('certTable.description')}
             isLoading={isLoading}
             isEmpty={!isLoading && !certificates?.length}
             contentClassName="px-6"
-            emptyState={<EmptyState className="py-8" title='暂无证书，点击"申请证书"开始' />}
+            emptyState={<EmptyState className="py-8" title={t('certTable.empty')} />}
           >
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>域名</TableHead>
-                  <TableHead>CA</TableHead>
-                  <TableHead>服务器</TableHead>
-                  <TableHead>验证</TableHead>
-                  <TableHead>状态</TableHead>
-                  <TableHead>过期时间</TableHead>
-                  <TableHead>部署</TableHead>
-                  <TableHead>自动续期</TableHead>
-                  <TableHead>自动部署</TableHead>
-                  <TableHead className="text-right">操作</TableHead>
+                  <TableHead>{t('certTable.columns.domain')}</TableHead>
+                  <TableHead>{t('certTable.columns.ca')}</TableHead>
+                  <TableHead>{t('certTable.columns.server')}</TableHead>
+                  <TableHead>{t('certTable.columns.challenge')}</TableHead>
+                  <TableHead>{t('certTable.columns.status')}</TableHead>
+                  <TableHead>{t('certTable.columns.expiry')}</TableHead>
+                  <TableHead>{t('certTable.columns.deploy')}</TableHead>
+                  <TableHead>{t('certTable.columns.autoRenew')}</TableHead>
+                  <TableHead>{t('certTable.columns.autoDeploy')}</TableHead>
+                  <TableHead className="text-right">{t('certTable.columns.actions')}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -637,7 +645,7 @@ function CertificatesPage() {
                                   <RotateCcw className="h-4 w-4" />
                                 </Button>
                               </TooltipTrigger>
-                              <TooltipContent>重新申请</TooltipContent>
+                              <TooltipContent>{t('tooltips.reapply')}</TooltipContent>
                             </Tooltip>
                           </TooltipProvider>
                         )}
@@ -655,7 +663,7 @@ function CertificatesPage() {
                                   <RefreshCw className="h-4 w-4" />
                                 </Button>
                               </TooltipTrigger>
-                              <TooltipContent>手动续期</TooltipContent>
+                              <TooltipContent>{t('tooltips.manualRenew')}</TooltipContent>
                             </Tooltip>
                           </TooltipProvider>
                         )}
@@ -680,7 +688,7 @@ function CertificatesPage() {
                                   <Upload className="h-4 w-4" />
                                 </Button>
                               </TooltipTrigger>
-                              <TooltipContent>部署证书</TooltipContent>
+                              <TooltipContent>{t('tooltips.deployCert')}</TooltipContent>
                             </Tooltip>
                           </TooltipProvider>
                         )}
@@ -696,7 +704,7 @@ function CertificatesPage() {
                                 <Trash2 className="h-4 w-4" />
                               </Button>
                             </TooltipTrigger>
-                            <TooltipContent>删除</TooltipContent>
+                            <TooltipContent>{t('actions.delete', { ns: 'common' })}</TooltipContent>
                           </Tooltip>
                         </TooltipProvider>
                       </div>
@@ -710,8 +718,8 @@ function CertificatesPage() {
 
         <TabsContent value="dns-providers">
           <TableCard
-            title="DNS 提供商"
-            description="管理 DNS API 凭证，用于 DNS-01 验证申请通配符证书"
+            title={t('dnsProviderTable.title')}
+            description={t('dnsProviderTable.description')}
             actions={(
               <Button size="sm" onClick={() => {
                 setDnsProviderForm({
@@ -722,20 +730,20 @@ function CertificatesPage() {
                 setIsDNSProviderDialogOpen(true)
               }}>
                 <Plus className="h-4 w-4 mr-2" />
-                添加提供商
+                {t('dnsProviderTable.addProvider')}
               </Button>
             )}
             isEmpty={!dnsProviders?.length}
             contentClassName="px-6"
-            emptyState={<EmptyState className="py-8" title="暂无 DNS 提供商，请添加以支持通配符证书申请" />}
+            emptyState={<EmptyState className="py-8" title={t('dnsProviderTable.empty')} />}
           >
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>名称</TableHead>
-                  <TableHead>类型</TableHead>
-                  <TableHead>创建时间</TableHead>
-                  <TableHead className="text-right">操作</TableHead>
+                  <TableHead>{t('dnsProviderTable.columns.name')}</TableHead>
+                  <TableHead>{t('dnsProviderTable.columns.type')}</TableHead>
+                  <TableHead>{t('dnsProviderTable.columns.createdAt')}</TableHead>
+                  <TableHead className="text-right">{t('dnsProviderTable.columns.actions')}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -749,7 +757,7 @@ function CertificatesPage() {
                     </TableCell>
                     <TableCell>
                       <Badge variant="outline">
-                        {DNS_PROVIDER_TYPES.find(p => p.value === provider.ProviderType)?.label || provider.ProviderType}
+                        {getDnsProviderLabel(provider.ProviderType)}
                       </Badge>
                     </TableCell>
                     <TableCell>{formatDate(provider.CreatedAt)}</TableCell>
@@ -775,26 +783,26 @@ function CertificatesPage() {
       <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
         <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>申请 SSL/TLS 证书</DialogTitle>
+            <DialogTitle>{t('createDialog.title')}</DialogTitle>
             <DialogDescription>
-              支持通配符证书 (*.example.com)、DNS 验证和多 CA
+              {t('createDialog.description')}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="domain">域名 *</Label>
+              <Label htmlFor="domain">{t('createDialog.domain')}</Label>
               <Input
                 id="domain"
-                placeholder="example.com 或 *.example.com"
+                placeholder="example.com / *.example.com"
                 value={formData.domain}
                 onChange={(e) => setFormData({ ...formData, domain: e.target.value })}
               />
               <p className="text-xs text-muted-foreground">
-                通配符证书 (*.example.com) 需使用 DNS 验证
+                {t('createDialog.domainHint')}
               </p>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="email">邮箱 *</Label>
+              <Label htmlFor="email">{t('createDialog.email')}</Label>
               <Input
                 id="email"
                 type="email"
@@ -804,7 +812,7 @@ function CertificatesPage() {
               />
             </div>
             <div className="space-y-2">
-              <Label>CA 提供商</Label>
+              <Label>{t('createDialog.caProvider')}</Label>
               <Select
                 value={formData.provider}
                 onValueChange={(v) => setFormData({ ...formData, provider: v })}
@@ -820,16 +828,16 @@ function CertificatesPage() {
               </Select>
             </div>
             <div className="space-y-2">
-              <Label>目标服务器</Label>
+              <Label>{t('createDialog.targetServer')}</Label>
               <Select
                 value={String(formData.remote_server_id)}
                 onValueChange={(v) => setFormData({ ...formData, remote_server_id: parseInt(v) })}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="选择服务器" />
+                  <SelectValue placeholder={t('createDialog.selectServer')} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="0">Master (本地)</SelectItem>
+                  <SelectItem value="0">{t('createDialog.masterLocal')}</SelectItem>
                   {remoteServers?.map((server) => (
                     <SelectItem key={server.id} value={String(server.id)}>
                       {server.name}
@@ -839,7 +847,7 @@ function CertificatesPage() {
               </Select>
             </div>
             <div className="space-y-2">
-              <Label>验证方式</Label>
+              <Label>{t('createDialog.challengeMode')}</Label>
               <Select
                 value={formData.challenge_mode}
                 onValueChange={(v) => {
@@ -854,15 +862,15 @@ function CertificatesPage() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="dns">DNS-01 (支持通配符证书)</SelectItem>
-                  <SelectItem value="standalone">Standalone (需停止 80 端口服务)</SelectItem>
-                  <SelectItem value="webroot">Webroot (写入 Nginx 目录)</SelectItem>
+                  <SelectItem value="dns">{t('createDialog.challengeDns')}</SelectItem>
+                  <SelectItem value="standalone">{t('createDialog.challengeStandalone')}</SelectItem>
+                  <SelectItem value="webroot">{t('createDialog.challengeWebroot')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             {formData.challenge_mode === 'webroot' && (
               <div className="space-y-2">
-                <Label htmlFor="webroot_path">Webroot 路径</Label>
+                <Label htmlFor="webroot_path">{t('createDialog.webrootPath')}</Label>
                 <Input
                   id="webroot_path"
                   placeholder="/var/www/html"
@@ -873,25 +881,25 @@ function CertificatesPage() {
             )}
             {formData.challenge_mode === 'dns' && (
               <div className="space-y-2">
-                <Label>DNS 提供商</Label>
+                <Label>{t('createDialog.dnsProvider')}</Label>
                 <Select
                   value={String(formData.dns_provider_id)}
                   onValueChange={(v) => setFormData({ ...formData, dns_provider_id: parseInt(v) })}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="选择 DNS 提供商" />
+                    <SelectValue placeholder={t('createDialog.selectDnsProvider')} />
                   </SelectTrigger>
                   <SelectContent>
                     {dnsProviders?.map((p) => (
                       <SelectItem key={p.ID} value={String(p.ID)}>
-                        {p.Name} ({DNS_PROVIDER_TYPES.find(t => t.value === p.ProviderType)?.label || p.ProviderType})
+                        {p.Name} ({getDnsProviderLabel(p.ProviderType)})
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
                 {(!dnsProviders || dnsProviders.length === 0) && (
                   <p className="text-xs text-muted-foreground">
-                    请先在"DNS 提供商"标签页添加 DNS API 凭证
+                    {t('createDialog.dnsProviderHint')}
                   </p>
                 )}
               </div>
@@ -924,7 +932,7 @@ function CertificatesPage() {
             {formData.deploy_target !== 'none' && (
               <>
                 <div className="space-y-2">
-                  <Label htmlFor="deploy_cert_path">证书文件路径</Label>
+                  <Label htmlFor="deploy_cert_path">{t('createDialog.certFilePath')}</Label>
                   <Input
                     id="deploy_cert_path"
                     placeholder="/usr/local/nginx/cert/example.com.pem"
@@ -933,7 +941,7 @@ function CertificatesPage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="deploy_key_path">私钥文件路径</Label>
+                  <Label htmlFor="deploy_key_path">{t('createDialog.keyFilePath')}</Label>
                   <Input
                     id="deploy_key_path"
                     placeholder="/usr/local/nginx/cert/example.com.key"
@@ -944,7 +952,7 @@ function CertificatesPage() {
               </>
             )}
             <div className="flex items-center justify-between">
-              <Label htmlFor="auto_renew">自动续期</Label>
+              <Label htmlFor="auto_renew">{t('createDialog.autoRenew')}</Label>
               <Switch
                 id="auto_renew"
                 checked={formData.auto_renew}
@@ -953,9 +961,9 @@ function CertificatesPage() {
             </div>
             <div className="flex items-center justify-between">
               <div>
-                <Label htmlFor="auto_deploy">自动部署</Label>
+                <Label htmlFor="auto_deploy">{t('createDialog.autoDeploy')}</Label>
                 <p className="text-xs text-muted-foreground">
-                  续期或新服务器安装后自动部署并重载服务
+                  {t('createDialog.autoDeployDesc')}
                 </p>
               </div>
               <Switch
@@ -967,10 +975,10 @@ function CertificatesPage() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
-              取消
+              {t('actions.cancel', { ns: 'common' })}
             </Button>
             <Button onClick={handleCreateSubmit} disabled={createMutation.isPending}>
-              {createMutation.isPending ? '申请中...' : '申请证书'}
+              {createMutation.isPending ? t('createDialog.applying') : t('createDialog.apply')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -980,23 +988,23 @@ function CertificatesPage() {
       <Dialog open={isDNSProviderDialogOpen} onOpenChange={setIsDNSProviderDialogOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>添加 DNS 提供商</DialogTitle>
+            <DialogTitle>{t('dnsProviderDialog.title')}</DialogTitle>
             <DialogDescription>
-              配置 DNS API 凭证，用于 DNS-01 验证
+              {t('dnsProviderDialog.description')}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="dns_name">名称</Label>
+              <Label htmlFor="dns_name">{t('dnsProviderDialog.name')}</Label>
               <Input
                 id="dns_name"
-                placeholder="我的API凭证"
+                placeholder={t('dnsProviderDialog.namePlaceholder')}
                 value={dnsProviderForm.name}
                 onChange={(e) => setDnsProviderForm({ ...dnsProviderForm, name: e.target.value })}
               />
             </div>
             <div className="space-y-2">
-              <Label>提供商类型</Label>
+              <Label>{t('dnsProviderDialog.providerType')}</Label>
               <Select
                 value={dnsProviderForm.provider_type}
                 onValueChange={(v) => setDnsProviderForm({
@@ -1010,13 +1018,13 @@ function CertificatesPage() {
                 </SelectTrigger>
                 <SelectContent>
                   {DNS_PROVIDER_TYPES.map((p) => (
-                    <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>
+                    <SelectItem key={p.value} value={p.value}>{getDnsProviderLabel(p.value)}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
             <div className="space-y-2">
-              <Label>API 凭证 (JSON)</Label>
+              <Label>{t('dnsProviderDialog.apiCredentials')}</Label>
               <Textarea
                 rows={5}
                 className="font-mono text-sm"
@@ -1025,16 +1033,16 @@ function CertificatesPage() {
                 onChange={(e) => setDnsProviderForm({ ...dnsProviderForm, credentials: e.target.value })}
               />
               <p className="text-xs text-muted-foreground">
-                需要的字段: {getSelectedDNSProviderFields().join(', ')}
+                {t('dnsProviderDialog.requiredFields', { fields: getSelectedDNSProviderFields().join(', ') })}
               </p>
             </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsDNSProviderDialogOpen(false)}>
-              取消
+              {t('actions.cancel', { ns: 'common' })}
             </Button>
             <Button onClick={handleDNSProviderSubmit} disabled={createDNSProviderMutation.isPending}>
-              {createDNSProviderMutation.isPending ? '添加中...' : '添加'}
+              {createDNSProviderMutation.isPending ? t('dnsProviderDialog.adding') : t('actions.add', { ns: 'common' })}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1044,19 +1052,18 @@ function CertificatesPage() {
       <AlertDialog open={!!deleteDialogCert} onOpenChange={() => setDeleteDialogCert(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>确认删除证书</AlertDialogTitle>
+            <AlertDialogTitle>{t('deleteDialog.title')}</AlertDialogTitle>
             <AlertDialogDescription>
-              确定要删除域名 <strong>{deleteDialogCert?.domain}</strong> 的证书吗？
-              此操作不可恢复。
+              <span dangerouslySetInnerHTML={{ __html: t('deleteDialog.description', { domain: deleteDialogCert?.domain }) }} />
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>取消</AlertDialogCancel>
+            <AlertDialogCancel>{t('actions.cancel', { ns: 'common' })}</AlertDialogCancel>
             <AlertDialogAction
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               onClick={() => deleteDialogCert && deleteMutation.mutate(deleteDialogCert.id)}
             >
-              删除
+              {t('actions.delete', { ns: 'common' })}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -1065,18 +1072,18 @@ function CertificatesPage() {
       <AlertDialog open={isEnableHTTPSDialogOpen} onOpenChange={setIsEnableHTTPSDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>开启 HTTPS 访问</AlertDialogTitle>
+            <AlertDialogTitle>{t('https.enableTitle')}</AlertDialogTitle>
             <AlertDialogDescription>
-              该操作将安装 Nginx 并反向代理妙妙屋X，为域名 {masterCertStatus?.domain} 开启 HTTPS 访问。确认继续？
+              {t('https.enableDesc', { domain: masterCertStatus?.domain })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>取消</AlertDialogCancel>
+            <AlertDialogCancel>{t('actions.cancel', { ns: 'common' })}</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => enableHTTPS.mutate()}
               disabled={enableHTTPS.isPending}
             >
-              {enableHTTPS.isPending ? '配置中...' : '确认开启'}
+              {enableHTTPS.isPending ? t('https.configuring') : t('https.confirmEnable')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -1089,14 +1096,14 @@ function CertificatesPage() {
       }}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>部署证书</DialogTitle>
+            <DialogTitle>{t('deployDialog.title')}</DialogTitle>
             <DialogDescription>
-              将证书 <strong>{deployTarget?.domain}</strong> 部署到主服务器和所有远程服务器
+              <span dangerouslySetInnerHTML={{ __html: t('deployDialog.description', { domain: deployTarget?.domain }) }} />
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="deploy_cert">证书文件路径</Label>
+              <Label htmlFor="deploy_cert">{t('deployDialog.certFilePath')}</Label>
               <Input
                 id="deploy_cert"
                 value={deployForm.deploy_cert_path}
@@ -1104,7 +1111,7 @@ function CertificatesPage() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="deploy_key">私钥文件路径</Label>
+              <Label htmlFor="deploy_key">{t('deployDialog.keyFilePath')}</Label>
               <Input
                 id="deploy_key"
                 value={deployForm.deploy_key_path}
@@ -1114,7 +1121,7 @@ function CertificatesPage() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsDeployDialogOpen(false)}>
-              取消
+              {t('actions.cancel', { ns: 'common' })}
             </Button>
             <Button
               onClick={() => {
@@ -1128,7 +1135,7 @@ function CertificatesPage() {
               }}
               disabled={deployMutation.isPending}
             >
-              {deployMutation.isPending ? '部署中...' : '确认部署'}
+              {deployMutation.isPending ? t('deployDialog.deploying') : t('deployDialog.confirmDeploy')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1141,31 +1148,29 @@ function CertificatesPage() {
       }}>
         <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>上传证书</DialogTitle>
+            <DialogTitle>{t('uploadDialog.title')}</DialogTitle>
             <DialogDescription>
-              手动上传 SSL/TLS 证书，粘贴 PEM 格式的证书和私钥内容
+              {t('uploadDialog.description')}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div className="rounded-md bg-blue-50 dark:bg-blue-900/20 p-3 text-sm text-blue-800 dark:text-blue-200">
-              <p className="font-medium mb-1">API 上传</p>
+              <p className="font-medium mb-1">{t('uploadDialog.apiUploadTitle')}</p>
               <p className="text-xs">
-                也可通过 API Token 上传证书：POST /api/admin/certificates/upload，Header 添加 Authorization: Bearer {'<API Token>'}，Body 为 JSON：{'{'}
-                "domain": "example.com", "cert_pem": "&lt;base64&gt;", "key_pem": "&lt;base64&gt;"
-                {'}'}。API Token 可在系统设置中获取。
+                {t('uploadDialog.apiUploadDesc')}
               </p>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="upload_domain">域名 *</Label>
+              <Label htmlFor="upload_domain">{t('uploadDialog.domain')}</Label>
               <Input
                 id="upload_domain"
-                placeholder="example.com 或 *.example.com"
+                placeholder="example.com / *.example.com"
                 value={uploadForm.domain}
                 onChange={(e) => setUploadForm({ ...uploadForm, domain: e.target.value })}
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="upload_cert">证书内容 (PEM) *</Label>
+              <Label htmlFor="upload_cert">{t('uploadDialog.certContent')}</Label>
               <Textarea
                 id="upload_cert"
                 rows={6}
@@ -1176,7 +1181,7 @@ function CertificatesPage() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="upload_key">私钥内容 (PEM) *</Label>
+              <Label htmlFor="upload_key">{t('uploadDialog.keyContent')}</Label>
               <Textarea
                 id="upload_key"
                 rows={6}
@@ -1189,19 +1194,19 @@ function CertificatesPage() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsUploadDialogOpen(false)}>
-              取消
+              {t('actions.cancel', { ns: 'common' })}
             </Button>
             <Button
               onClick={() => {
                 if (!uploadForm.domain || !uploadForm.cert_pem || !uploadForm.key_pem) {
-                  toast.error('请填写域名、证书和私钥')
+                  toast.error(t('toast.fillDomainCertKey'))
                   return
                 }
                 uploadMutation.mutate(uploadForm)
               }}
               disabled={uploadMutation.isPending}
             >
-              {uploadMutation.isPending ? '上传中...' : '上传证书'}
+              {uploadMutation.isPending ? t('uploadDialog.uploading') : t('uploadDialog.uploadCert')}
             </Button>
           </DialogFooter>
         </DialogContent>

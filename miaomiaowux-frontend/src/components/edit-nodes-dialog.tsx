@@ -1,4 +1,5 @@
 import React, { useState, useMemo, memo, useContext, createContext } from 'react'
+import { useTranslation } from 'react-i18next'
 import { GripVertical, X, Plus, Check, Search, Settings2, Eye, EyeOff, Smile } from 'lucide-react'
 import { Twemoji } from '@/components/twemoji'
 import {
@@ -30,12 +31,11 @@ import { useProxyGroupCategories } from '@/hooks/use-proxy-groups'
 // 注意: 这个列表已废弃，改为从 proxy-groups.json 动态获取
 // 仅保留一些基础通用的 emoji 作为备选
 const PROXY_SERVICE_EMOJIS = [
-  // 基础代理组
-  { emoji: '🚀', label: '节点选择' },
-  { emoji: '♻️', label: '自动选择' },
-  { emoji: '🐟', label: '漏网之鱼' },
-  { emoji: '🎯', label: '直连' },
-  { emoji: '🚫', label: '拒绝' },
+  { emoji: '🚀', labelKey: 'editNodesDialog.emojiLabels.nodeSelect' as const },
+  { emoji: '♻️', labelKey: 'editNodesDialog.emojiLabels.autoSelect' as const },
+  { emoji: '🐟', labelKey: 'editNodesDialog.emojiLabels.missedFish' as const },
+  { emoji: '🎯', labelKey: 'editNodesDialog.emojiLabels.direct' as const },
+  { emoji: '🚫', labelKey: 'editNodesDialog.emojiLabels.reject' as const },
 ]
 
 interface ProxyGroup {
@@ -84,11 +84,12 @@ interface ProxyTypeSelectorProps {
 }
 
 const ProxyTypeSelector = memo(function ProxyTypeSelector({ group, onChange }: ProxyTypeSelectorProps) {
+  const { t } = useTranslation('nodes')
   const types = [
-    { value: 'select', label: '手动选择', hasUrl: false, hasStrategy: false },
-    { value: 'url-test', label: '自动选择', hasUrl: true, hasStrategy: false },
-    { value: 'fallback', label: '自动回退', hasUrl: true, hasStrategy: false },
-    { value: 'load-balance', label: '负载均衡', hasUrl: true, hasStrategy: true },
+    { value: 'select', label: t('editNodesDialog.proxyType.select'), hasUrl: false, hasStrategy: false },
+    { value: 'url-test', label: t('editNodesDialog.proxyType.urlTest'), hasUrl: true, hasStrategy: false },
+    { value: 'fallback', label: t('editNodesDialog.proxyType.fallback'), hasUrl: true, hasStrategy: false },
+    { value: 'load-balance', label: t('editNodesDialog.proxyType.loadBalance'), hasUrl: true, hasStrategy: true },
   ]
 
   const handleTypeSelect = (type: string) => {
@@ -131,7 +132,7 @@ const ProxyTypeSelector = memo(function ProxyTypeSelector({ group, onChange }: P
 
       {group.type === 'load-balance' && (
         <div className='pt-2 border-t'>
-          <p className='text-xs text-muted-foreground mb-1'>策略</p>
+          <p className='text-xs text-muted-foreground mb-1'>{t('editNodesDialog.strategy')}</p>
           <Select
             value={group.strategy || 'round-robin'}
             onValueChange={(value) => onChange({ ...group, strategy: value as ProxyGroup['strategy'] })}
@@ -140,9 +141,9 @@ const ProxyTypeSelector = memo(function ProxyTypeSelector({ group, onChange }: P
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value='round-robin'>轮询</SelectItem>
-              <SelectItem value='consistent-hashing'>一致性哈希</SelectItem>
-              <SelectItem value='sticky-sessions'>粘性会话</SelectItem>
+              <SelectItem value='round-robin'>{t('editNodesDialog.strategyOptions.roundRobin')}</SelectItem>
+              <SelectItem value='consistent-hashing'>{t('editNodesDialog.strategyOptions.consistentHashing')}</SelectItem>
+              <SelectItem value='sticky-sessions'>{t('editNodesDialog.strategyOptions.stickySessions')}</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -153,6 +154,7 @@ const ProxyTypeSelector = memo(function ProxyTypeSelector({ group, onChange }: P
 
 // 快捷拖放区（添加到所有代理组）- 提取到外部
 const DroppableAllGroupsZone = memo(function DroppableAllGroupsZone() {
+  const { t } = useTranslation('nodes')
   const { setNodeRef, isOver } = useDroppable({
     id: 'all-groups-zone',
     data: { type: 'all-groups-zone' }
@@ -168,7 +170,7 @@ const DroppableAllGroupsZone = memo(function DroppableAllGroupsZone() {
       }`}
     >
       <span className={isOver ? 'text-primary font-medium' : 'text-muted-foreground'}>
-        添加到所有代理组
+        {t('editNodesDialog.addToAllGroups')}
       </span>
     </div>
   )
@@ -176,6 +178,7 @@ const DroppableAllGroupsZone = memo(function DroppableAllGroupsZone() {
 
 // 快捷拖放区（从所有代理组移除）- 提取到外部
 const DroppableRemoveFromAllZone = memo(function DroppableRemoveFromAllZone() {
+  const { t } = useTranslation('nodes')
   const { setNodeRef, isOver } = useDroppable({
     id: 'remove-from-all-zone',
     data: { type: 'remove-from-all-zone' }
@@ -191,7 +194,7 @@ const DroppableRemoveFromAllZone = memo(function DroppableRemoveFromAllZone() {
       }`}
     >
       <span className={isOver ? 'text-destructive font-medium' : 'text-muted-foreground'}>
-        从所有代理组移除
+        {t('editNodesDialog.removeFromAllGroups')}
       </span>
     </div>
   )
@@ -240,6 +243,7 @@ const DraggableGroupTitle = memo(function DraggableGroupTitle({
   onCancelEdit,
   onStartEdit
 }: DraggableGroupTitleProps) {
+  const { t } = useTranslation('nodes')
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: `group-title-${groupName}`,
     data: {
@@ -268,7 +272,7 @@ const DraggableGroupTitle = memo(function DraggableGroupTitle({
               else if (e.key === 'Escape') onCancelEdit()
             }}
             className='h-6 text-base flex-1 min-w-0'
-            placeholder='输入新名称...'
+            placeholder={t('editNodesDialog.editNamePlaceholder')}
             autoFocus
           />
           <Button size='sm' className='h-6 w-6 p-0' onClick={onSubmitEdit} variant='ghost'>
@@ -279,7 +283,7 @@ const DraggableGroupTitle = memo(function DraggableGroupTitle({
         <CardTitle
           className='text-base truncate cursor-text hover:text-foreground/80 flex-1 min-w-0'
           onClick={() => onStartEdit(groupName)}
-          title='点击编辑名称'
+          title={t('editNodesDialog.clickToEditName')}
         >
           <Twemoji>{groupName}</Twemoji>
         </CardTitle>
@@ -318,6 +322,7 @@ const SortableCard = memo(function SortableCard({
   onRemoveUseItem,
   mmwProviderNames
 }: SortableCardProps) {
+  const { t } = useTranslation('nodes')
   // 从 context 获取拖拽状态
   const { isActiveDragging } = useContext(DragStateContext)
   const {
@@ -392,7 +397,9 @@ const SortableCard = memo(function SortableCard({
               onStartEdit={onStartEdit}
             />
             <CardDescription className='text-xs'>
-              {group.type} ({(group.proxies || []).length} 个节点{(group.use || []).length > 0 ? `, ${(group.use || []).length} 个集合` : ''})
+              {group.type} ({(group.use || []).length > 0
+                ? t('editNodesDialog.nodesAndCollections', { nodeCount: (group.proxies || []).length, collectionCount: (group.use || []).length })
+                : t('editNodesDialog.nodeCountOnly', { count: (group.proxies || []).length })})
             </CardDescription>
           </div>
           {!isEditing && (
@@ -403,7 +410,7 @@ const SortableCard = memo(function SortableCard({
                     variant='ghost'
                     size='sm'
                     className='h-8 w-8 p-0 flex-shrink-0'
-                    title='切换代理组类型'
+                    title={t('editNodesDialog.switchGroupTypeBtn')}
                   >
                     <Settings2 className='h-4 w-4 text-muted-foreground hover:text-foreground' />
                   </Button>
@@ -469,7 +476,7 @@ const SortableCard = memo(function SortableCard({
           <div className={`text-sm text-center py-8 transition-colors ${
             isOver ? 'text-primary font-medium' : 'text-muted-foreground'
           }`}>
-            将节点拖拽到这里
+            {t('editNodesDialog.dragNodeHere')}
           </div>
         )}
       </CardContent>
@@ -558,6 +565,7 @@ interface DraggableAvailableHeaderProps {
 }
 
 const DraggableAvailableHeader = memo(function DraggableAvailableHeader({ filteredNodes, totalNodes }: DraggableAvailableHeaderProps) {
+  const { t } = useTranslation('nodes')
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: 'available-header',
     data: {
@@ -582,9 +590,9 @@ const DraggableAvailableHeader = memo(function DraggableAvailableHeader({ filter
     >
       <GripVertical className='h-4 w-4 text-muted-foreground flex-shrink-0' />
       <div>
-        <CardTitle className='text-base'>可用节点</CardTitle>
+        <CardTitle className='text-base'>{t('editNodesDialog.availableNodes')}</CardTitle>
         <CardDescription className='text-xs'>
-          {filteredNodes.length} / {totalNodes} 个节点
+          {t('editNodesDialog.nodesCount', { filtered: filteredNodes.length, total: totalNodes })}
         </CardDescription>
       </div>
     </div>
@@ -845,7 +853,7 @@ export function EditNodesDialog({
   open,
   onOpenChange,
   title,
-  description = '拖拽节点到不同的代理组，自定义每个组的节点列表',
+  description: descriptionProp,
   proxyGroups,
   availableNodes,
   onProxyGroupsChange,
@@ -854,19 +862,28 @@ export function EditNodesDialog({
   showAllNodes,
   onShowAllNodesChange,
   onConfigureChainProxy,
-  cancelButtonText: _cancelButtonText = '取消',
-  saveButtonText = '确定',
+  cancelButtonText: _cancelButtonText,
+  saveButtonText: saveButtonTextProp,
   showSpecialNodesAtBottom = false,
   proxyProviderConfigs = [],
   onRemoveNodeFromGroup,
   onRemoveGroup,
   onRenameGroup
 }: EditNodesDialogProps) {
+  const { t } = useTranslation('nodes')
+  const description = descriptionProp ?? t('editNodesDialog.defaultDescription')
+  const saveButtonText = saveButtonTextProp ?? t('actions.confirm', { ns: 'common' })
   // 获取代理组配置
   const { data: proxyGroupCategories = [] } = useProxyGroupCategories()
 
   // 合并基础 emoji 和从 proxy-groups.json 获取的 emoji
   const allServiceEmojis = useMemo(() => {
+    // 翻译静态 emoji 标签
+    const staticEmojis = PROXY_SERVICE_EMOJIS.map(item => ({
+      emoji: item.emoji,
+      label: t(item.labelKey) as string,
+    }))
+
     // 从 proxy-groups.json 提取 emoji 列表
     const dynamicEmojis = proxyGroupCategories.map(category => ({
       emoji: category.emoji,
@@ -874,8 +891,8 @@ export function EditNodesDialog({
     }))
 
     // 合并基础 emoji 和动态 emoji
-    return [...PROXY_SERVICE_EMOJIS, ...dynamicEmojis]
-  }, [proxyGroupCategories])
+    return [...staticEmojis, ...dynamicEmojis]
+  }, [proxyGroupCategories, t])
 
   // 添加代理组对话框状态
   const [addGroupDialogOpen, setAddGroupDialogOpen] = useState(false)
@@ -1555,8 +1572,8 @@ export function EditNodesDialog({
                   <DialogTitle>{title}</DialogTitle>
                   <DialogDescription>{description}</DialogDescription>
                   <p className='mt-2 text-sm text-primary flex flex-wrap items-center gap-1'>
-                    <GripVertical className='h-4 w-4 inline' /> 为可拖动元素，
-                    <Settings2 className='h-4 w-4 inline' /> 切换代理组类型、双击代理组标题编辑代理组名称，拖动可用节点标题时，代表拖动可用节点内的所有节点
+                    <GripVertical className='h-4 w-4 inline' /> {t('editNodesDialog.dragHint')}
+                    <Settings2 className='h-4 w-4 inline' /> {t('editNodesDialog.switchGroupType')}
                   </p>
                 </div>
                 {/* 快捷拖放区 */}
@@ -1610,10 +1627,10 @@ export function EditNodesDialog({
                       className='flex-1'
                     >
                       <Plus className='h-4 w-4 mr-1' />
-                      添加代理组
+                      {t('editNodesDialog.addProxyGroup')}
                     </Button>
                     <Button onClick={onSave} disabled={isSaving} className='flex-1'>
-                      {isSaving ? '保存中...' : saveButtonText}
+                      {isSaving ? t('editNodesDialog.saving') : saveButtonText}
                     </Button>
                   </div>
                 </div>
@@ -1627,7 +1644,7 @@ export function EditNodesDialog({
                       onClick={() => onShowAllNodesChange(!showAllNodes)}
                     >
                       {showAllNodes ? <Eye className='h-4 w-4 mr-2' /> : <EyeOff className='h-4 w-4 mr-2' />}
-                      {showAllNodes ? '显示已添加节点' : '隐藏已添加节点'}
+                      {showAllNodes ? t('editNodesDialog.showAddedNodes') : t('editNodesDialog.hideAddedNodes')}
                       {!showAllNodes && (
                         <span className='absolute -top-1 -right-1 h-4 w-4 bg-green-500 rounded-full flex items-center justify-center'>
                           <Check className='h-3 w-3 text-white' />
@@ -1645,7 +1662,7 @@ export function EditNodesDialog({
                       className='w-full'
                       onClick={onConfigureChainProxy}
                     >
-                      配置链式代理
+                      {t('editNodesDialog.configChainProxy')}
                     </Button>
                   </div>
                 )}
@@ -1655,7 +1672,7 @@ export function EditNodesDialog({
                   <div className='relative flex-1'>
                     <Search className='absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground' />
                     <Input
-                      placeholder='按名称筛选...'
+                      placeholder={t('editNodesDialog.filterByName')}
                       value={nodeNameFilter}
                       onChange={(e) => setNodeNameFilter(e.target.value)}
                       className='pl-8 h-9 text-sm'
@@ -1665,20 +1682,20 @@ export function EditNodesDialog({
                   {(uniqueTags.length > 0 || showSpecialNodesAtBottom || proxyProviderConfigs.length > 0) && (
                     <Select value={nodeTagFilter} onValueChange={setNodeTagFilter}>
                       <SelectTrigger className='h-9 text-sm w-[120px]'>
-                        <SelectValue placeholder='所有标签' />
+                        <SelectValue placeholder={t('editNodesDialog.allTags')} />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value='all'>所有</SelectItem>
+                        <SelectItem value='all'>{t('editNodesDialog.all')}</SelectItem>
                         {uniqueTags.map(tag => (
                           <SelectItem key={tag} value={tag}>
                             {tag}
                           </SelectItem>
                         ))}
                         {showSpecialNodesAtBottom && (
-                          <SelectItem value='__special__'>特殊节点</SelectItem>
+                          <SelectItem value='__special__'>{t('editNodesDialog.specialNodes')}</SelectItem>
                         )}
                         {proxyProviderConfigs.length > 0 && (
-                          <SelectItem value='__provider__'>代理集合</SelectItem>
+                          <SelectItem value='__provider__'>{t('editNodesDialog.proxyProviders')}</SelectItem>
                         )}
                       </SelectContent>
                     </Select>
@@ -1710,7 +1727,7 @@ export function EditNodesDialog({
                       <>
                         {nodeTagFilter === 'all' && (
                           <div className='pt-3 pb-1 border-t mt-3'>
-                            <span className='text-xs text-purple-600 dark:text-purple-400 font-medium'>📦 代理集合</span>
+                            <span className='text-xs text-purple-600 dark:text-purple-400 font-medium'>📦 {t('editNodesDialog.proxyProviders')}</span>
                           </div>
                         )}
                         {proxyProviderConfigs.map((config) => (
@@ -1727,7 +1744,7 @@ export function EditNodesDialog({
                       <>
                         {nodeTagFilter === 'all' && (
                           <div className='pt-3 pb-1 border-t mt-3'>
-                            <span className='text-xs text-muted-foreground font-medium'>特殊节点</span>
+                            <span className='text-xs text-muted-foreground font-medium'>{t('editNodesDialog.specialNodes')}</span>
                           </div>
                         )}
                         {SPECIAL_NODES.map((node, idx) => (
@@ -1756,7 +1773,7 @@ export function EditNodesDialog({
                 <div className='flex items-center gap-2 p-2 rounded border bg-background shadow-2xl pointer-events-none'>
                   <GripVertical className='h-4 w-4 text-muted-foreground flex-shrink-0' />
                   <span className='text-sm'>
-                    批量添加 {activeDragItem.data.nodeNames?.length || 0} 个节点
+                    {t('label.batchAdd', { count: activeDragItem.data.nodeNames?.length || 0 })}
                   </span>
                 </div>
               )}
@@ -1798,7 +1815,7 @@ export function EditNodesDialog({
                         <div className='flex-1 min-w-0'>
                           <CardTitle className='text-base truncate'><Twemoji>{activeDragItem.data.groupName}</Twemoji></CardTitle>
                           <CardDescription className='text-xs'>
-                            {group?.type || 'select'} ({group?.proxies.length || 0} 个节点)
+                            {group?.type || 'select'} ({t('editNodesDialog.nodeCountOnly', { count: group?.proxies.length || 0 })})
                           </CardDescription>
                         </div>
                       </div>
@@ -1815,12 +1832,12 @@ export function EditNodesDialog({
                       ))}
                       {(group?.proxies.length || 0) > 8 && (
                         <div className='text-xs text-center text-muted-foreground py-1'>
-                          还有 {(group?.proxies.length || 0) - 8} 个节点...
+                          {t('label.moreNodes', { count: (group?.proxies.length || 0) - 8 })}
                         </div>
                       )}
                       {(group?.proxies.length || 0) === 0 && (
                         <div className='text-sm text-center py-4 text-muted-foreground'>
-                          暂无节点
+                          {t('label.noNodes')}
                         </div>
                       )}
                     </CardContent>
@@ -1846,9 +1863,9 @@ export function EditNodesDialog({
       >
         <DialogContent className='max-w-2xl'>
           <DialogHeader>
-            <DialogTitle>添加代理组</DialogTitle>
+            <DialogTitle>{t('editNodesDialog.addGroupDialog.title')}</DialogTitle>
             <DialogDescription>
-              输入自定义名称或从预定义选项中快速选择
+              {t('editNodesDialog.addGroupDialog.description')}
             </DialogDescription>
           </DialogHeader>
 
@@ -1887,13 +1904,13 @@ export function EditNodesDialog({
                         className='w-full mt-2 text-muted-foreground'
                         onClick={() => setSelectedEmoji('')}
                       >
-                        清除选择
+                        {t('editNodesDialog.addGroupDialog.clearSelection')}
                       </Button>
                     )}
                   </PopoverContent>
                 </Popover>
                 <Input
-                  placeholder='输入代理组名称...'
+                  placeholder={t('editNodesDialog.addGroupDialog.namePlaceholder')}
                   value={newGroupName}
                   onChange={(e) => setNewGroupName(e.target.value)}
                   onKeyDown={(e) => {
@@ -1903,12 +1920,12 @@ export function EditNodesDialog({
                 />
               </div>
               {isGroupNameDuplicate && (
-                <p className='text-sm text-destructive mt-1'>已存在同名代理组</p>
+                <p className='text-sm text-destructive mt-1'>{t('editNodesDialog.addGroupDialog.duplicateName')}</p>
               )}
             </div>
 
             <div>
-              <p className='text-sm text-muted-foreground mb-2'>快速选择：</p>
+              <p className='text-sm text-muted-foreground mb-2'>{t('editNodesDialog.addGroupDialog.quickSelect')}</p>
               <div className='grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2'>
                 {proxyGroupCategories.map((category) => {
                   const groupLabel = category.group_label
@@ -1932,10 +1949,10 @@ export function EditNodesDialog({
 
           <DialogFooter>
             <Button variant='outline' onClick={() => setAddGroupDialogOpen(false)}>
-              取消
+              {t('actions.cancel', { ns: 'common' })}
             </Button>
             <Button onClick={handleAddGroup} disabled={!finalGroupName || isGroupNameDuplicate}>
-              保存
+              {t('actions.save', { ns: 'common' })}
             </Button>
           </DialogFooter>
         </DialogContent>
