@@ -158,6 +158,15 @@ connection_mode: "auto"   # auto | websocket | http | pull
 <details>
 <summary>更新日志</summary>
 
+### v0.0.2 (2026-05-13)
+- 🛠️ fix:移植外部订阅功能
+- 🛠️ fix:topbar 按钮阴影消失
+- 🌈 支持i18n
+- 🌈 支持扁平主题
+- 🌈 优化发布流程
+- 🌈 增加2fa
+- 🌈 增加通知
+- 🌈 允许用户自行添加出站
 </details>
 
 ## Star History
