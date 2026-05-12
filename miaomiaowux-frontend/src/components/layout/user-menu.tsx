@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Link } from '@tanstack/react-router'
-import { LogOut, Settings2, ExternalLink, BookOpen, HardDrive, RefreshCw, Bug } from 'lucide-react'
+import { LogOut, Settings2, ExternalLink, BookOpen, HardDrive, RefreshCw, Bug, Palette } from 'lucide-react'
 import { toast } from 'sonner'
 import useDialogState from '@/hooks/use-dialog-state'
 import { SignOutDialog } from '@/components/sign-out-dialog'
@@ -20,6 +20,7 @@ import { Switch } from '@/components/ui/switch'
 import { profileQueryFn } from '@/lib/profile'
 import { useAuthStore } from '@/stores/auth-store'
 import { useVersionCheck } from '@/hooks/use-version-check'
+import { getCookie, setCookie } from '@/lib/cookies'
 import { api } from '@/lib/api'
 import { handleServerError } from '@/lib/handle-server-error'
 
@@ -203,6 +204,40 @@ export function UserMenu() {
               }
               onClick={(e) => e.stopPropagation()}
             />
+          </DropdownMenuItem>
+
+          {/* 界面风格切换 */}
+          <DropdownMenuItem
+            className='cursor-pointer px-2'
+            onSelect={(e) => e.preventDefault()}
+          >
+            <Palette className='size-4 shrink-0' />
+            <div className='flex flex-1 gap-1'>
+              {[
+                { value: 'miaomiaowu', label: '妙妙屋' },
+                { value: 'flat', label: '扁平' },
+              ].map((opt) => (
+                <button
+                  key={opt.value}
+                  type='button'
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    const current = getCookie('mmw-theme-style') || 'miaomiaowu'
+                    if (current !== opt.value) {
+                      setCookie('mmw-theme-style', opt.value, 60 * 60 * 24 * 365)
+                      window.location.reload()
+                    }
+                  }}
+                  className={`flex-1 px-2 py-0.5 text-xs border transition-colors ${
+                    (getCookie('mmw-theme-style') || 'miaomiaowu') === opt.value
+                      ? 'bg-primary text-primary-foreground border-primary'
+                      : 'bg-background hover:bg-muted border-border'
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
           </DropdownMenuItem>
 
           <DropdownMenuItem asChild className='cursor-pointer justify-center'>

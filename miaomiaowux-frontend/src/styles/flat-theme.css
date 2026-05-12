@@ -1,0 +1,108 @@
+/* 扁平主题 - 覆盖像素风格 */
+
+:root.theme-flat {
+  --radius: 0.625rem;
+  --radius-sm: calc(0.625rem - 4px);
+  --radius-md: calc(0.625rem - 2px);
+  --radius-lg: 0.625rem;
+  --radius-xl: calc(0.625rem + 4px);
+}
+
+/* Tailwind rounded-* 类在构建时内联为 border-radius:0，需直接覆盖 */
+:root.theme-flat .rounded-xs { border-radius: calc(0.625rem - 6px); }
+:root.theme-flat .rounded-sm { border-radius: calc(0.625rem - 4px); }
+:root.theme-flat .rounded-md { border-radius: calc(0.625rem - 2px); }
+:root.theme-flat .rounded-lg { border-radius: 0.625rem; }
+:root.theme-flat .rounded-xl { border-radius: calc(0.625rem + 4px); }
+:root.theme-flat .rounded-t { border-top-left-radius: 0.625rem; border-top-right-radius: 0.625rem; }
+:root.theme-flat .rounded-b { border-bottom-left-radius: 0.625rem; border-bottom-right-radius: 0.625rem; }
+:root.theme-flat .rounded-l { border-top-left-radius: 0.625rem; border-bottom-left-radius: 0.625rem; }
+:root.theme-flat .rounded-r { border-top-right-radius: 0.625rem; border-bottom-right-radius: 0.625rem; }
+
+/* Card */
+:root.theme-flat .pixel-card {
+  border-width: 1px;
+  border-color: var(--border);
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1);
+  border-radius: var(--radius);
+}
+:root.theme-flat .pixel-card::before { display: none; }
+:root.theme-flat .pixel-card:hover {
+  transform: none;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+}
+
+/* Border */
+:root.theme-flat .pixel-border {
+  border-width: 1px;
+  border-color: var(--border);
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1);
+  border-radius: var(--radius);
+}
+:root.theme-flat .pixel-border:hover {
+  transform: none;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+}
+
+/* Button */
+:root.theme-flat .pixel-button {
+  border-width: 1px;
+  border-radius: var(--radius-md);
+  box-shadow: none;
+}
+:root.theme-flat .pixel-button::before,
+:root.theme-flat .pixel-button::after { display: none; }
+:root.theme-flat .pixel-button:hover {
+  transform: none;
+  box-shadow: none;
+}
+:root.theme-flat .pixel-button:active {
+  transform: none;
+  box-shadow: none;
+}
+
+/* Pill */
+:root.theme-flat .pixel-pill {
+  border-width: 1px;
+  border-radius: 9999px;
+  box-shadow: none;
+}
+:root.theme-flat .pixel-pill:hover {
+  transform: none;
+  box-shadow: none;
+}
+
+/* Badge */
+:root.theme-flat .pixel-badge {
+  border-width: 1px;
+  border-radius: var(--radius-md);
+  text-transform: none;
+  letter-spacing: normal;
+}
+
+/* Text */
+:root.theme-flat .pixel-text {
+  text-transform: none;
+  letter-spacing: normal;
+  text-shadow: none;
+}
+
+/* Body 背景 */
+:root.theme-flat body {
+  background-image: none;
+}
+
+/* Toast */
+:root.theme-flat [data-sonner-toast] {
+  border-radius: var(--radius) !important;
+  border-width: 1px !important;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1) !important;
+}
+:root.theme-flat [data-sonner-toast] button {
+  border-radius: var(--radius-md) !important;
+  border-width: 1px !important;
+}
+:root.theme-flat [data-sonner-toast] [data-close-button] {
+  border-radius: var(--radius-md) !important;
+  border-width: 1px !important;
+}

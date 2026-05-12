@@ -30,6 +30,7 @@ import {
   InputOTPSlot,
 } from '@/components/ui/input-otp'
 import { api } from '@/lib/api'
+import { getCookie, setCookie } from '@/lib/cookies'
 import { handleServerError } from '@/lib/handle-server-error'
 import { profileQueryFn } from '@/lib/profile'
 import { useAuthStore } from '@/stores/auth-store'
@@ -295,6 +296,40 @@ function SettingsPage() {
 
           {/* 右侧：修改密码和订阅Token */}
           <div className='space-y-6'>
+            <Card>
+              <CardHeader>
+                <CardTitle>界面风格</CardTitle>
+                <CardDescription>选择界面显示风格，切换后页面将刷新</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className='flex gap-2'>
+                  {[
+                    { value: 'miaomiaowu', label: '妙妙屋' },
+                    { value: 'flat', label: '扁平' },
+                  ].map((opt) => (
+                    <button
+                      key={opt.value}
+                      type='button'
+                      onClick={() => {
+                        const current = getCookie('mmw-theme-style') || 'miaomiaowu'
+                        if (current !== opt.value) {
+                          setCookie('mmw-theme-style', opt.value, 60 * 60 * 24 * 365)
+                          window.location.reload()
+                        }
+                      }}
+                      className={`flex items-center gap-2 px-3 py-1.5 rounded-md border text-sm transition-colors ${
+                        (getCookie('mmw-theme-style') || 'miaomiaowu') === opt.value
+                          ? 'bg-primary text-primary-foreground border-primary'
+                          : 'bg-background hover:bg-muted border-border'
+                      }`}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+
             <Card>
               <CardHeader>
                 <CardTitle>修改密码</CardTitle>
