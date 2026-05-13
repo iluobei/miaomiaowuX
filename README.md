@@ -158,6 +158,11 @@ connection_mode: "auto"   # auto | websocket | http | pull
 <details>
 <summary>更新日志</summary>
 
+### v0.0.3-beta (2026-05-14)
+- 🌈 支持套餐限速与用户限速
+- 🌈 支持套餐限速与用户限速
+- 🌈 同步mmw功能
+- 🌈 同步mmw功能
 ### v0.0.2 (2026-05-13)
 - 🛠️ fix:移植外部订阅功能
 - 🛠️ fix:topbar 按钮阴影消失
