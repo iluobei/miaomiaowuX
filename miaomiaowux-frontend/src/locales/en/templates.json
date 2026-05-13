@@ -1,6 +1,6 @@
 {
   "title": "Template Management",
-  "subtitle": "mihomo subscription template configuration",
+  "subtitle": "Manage mihomo-style rule templates with include-all, filter and other advanced features",
   "unsaved": "Unsaved",
   "resetTooltip": "Reset to default template",
   "collapsePreview": "Collapse Preview",
@@ -15,6 +15,40 @@
   "yamlPlaceholder": "YAML content...",
   "emptyDesc": "No template found. Click the button below to create a default template.",
   "createDefault": "Create Default Template",
+  "list": {
+    "templateName": "Template Name",
+    "actions": "Actions",
+    "edit": "Edit",
+    "preview": "Preview",
+    "delete": "Delete",
+    "newTemplate": "New Template",
+    "empty": "No templates yet. Click the button above to create one."
+  },
+  "editor": {
+    "editTemplate": "Edit template configuration",
+    "close": "Close"
+  },
+  "listPreview": {
+    "title": "Preview",
+    "description": "Left: template config, Right: final subscription config",
+    "generating": "Generating preview...",
+    "templateConfig": "Template Config",
+    "finalConfig": "Final Subscription Config"
+  },
+  "deleteConfirm": {
+    "title": "Confirm Delete",
+    "description": "Are you sure you want to delete template \"{{name}}\"? This action cannot be undone."
+  },
+  "renameDialog": {
+    "title": "Rename Template",
+    "description": "Enter a new template name",
+    "placeholder": "New template name"
+  },
+  "closeConfirm": {
+    "title": "Confirm Close",
+    "description": "You have unsaved changes. Are you sure you want to close?",
+    "confirm": "Close Anyway"
+  },
   "draftRecovery": {
     "title": "Recover Local Cache",
     "description": "Unsaved local cache detected. Recover it?",
@@ -30,6 +64,63 @@
     "title": "Reset Template",
     "description": "This will restore the default template for the current DNS mode. All unsaved changes will be lost. Continue?",
     "confirm": "Confirm Reset"
+  },
+  "upload": {
+    "title": "Create Template",
+    "description": "Upload YAML file, paste content, create blank, import from URL, convert from V2 or generate from subscription",
+    "tabs": {
+      "upload": "Upload",
+      "paste": "Paste",
+      "blank": "Blank",
+      "fromUrl": "URL",
+      "v2import": "V2 Import",
+      "fromSub": "From Sub"
+    },
+    "selectYamlFile": "Select YAML file",
+    "selected": "Selected",
+    "templateName": "Template Name",
+    "yamlContent": "YAML Content",
+    "pasteYamlPlaceholder": "Paste YAML content...",
+    "blankDesc": "Creates a blank v3 template with basic structure including node selection, auto-select, and global direct proxy groups.",
+    "templateUrl": "Template URL",
+    "previewContent": "Preview Content",
+    "contentPreview": "Content Preview",
+    "fromUrlDesc": "Import V3 template YAML from external URL. Supports http/https.",
+    "selectV2": "Select V2 Template",
+    "selectTemplate": "Select template",
+    "myTemplates": "My Templates",
+    "presetTemplates": "Preset Templates",
+    "newTemplateName": "New Template Name",
+    "dnsConfig": "DNS Config",
+    "selectDns": "Select DNS config",
+    "v2importDesc": "Automatically converts custom_proxy_group and ruleset to v3 format.\n• .* converts to include-all: true\n• Regex converts to filter field",
+    "selectSubscriptionFile": "Select Subscription File",
+    "selectSub": "Select subscription",
+    "previewAnalysis": "Preview Analysis",
+    "analysisPreview": "Analysis Preview",
+    "fromSubDesc": "Analyze proxy group config from existing subscription files, smart inference of filter, include-all settings.\n• Auto-detect regional nodes and generate corresponding filters\n• Supports include-all-proxies, include-region-proxy-groups",
+    "create": "Create",
+    "convertAndCreate": "Convert & Create",
+    "generateAndCreate": "Generate & Create",
+    "importAndCreate": "Import & Create",
+    "processing": "Processing...",
+    "fetching": "Fetching...",
+    "analyzing": "Analyzing...",
+    "yamlOnly": "Please select a YAML file",
+    "selectFile": "Please select a file",
+    "enterContent": "Please enter template content",
+    "enterName": "Please enter a template name",
+    "enterUrl": "Please enter template URL",
+    "selectSubscription": "Please select a subscription file",
+    "selectV2Template": "Please select a V2 template",
+    "templateNotFound": "Selected template not found",
+    "presetNotFound": "Selected preset template not found",
+    "invalidSelection": "Invalid template selection",
+    "fetchTemplatesFailed": "Failed to fetch template list",
+    "fetchSubscriptionsFailed": "Failed to fetch subscription list",
+    "analyzeFailed": "Failed to analyze subscription",
+    "fetchUrlFailed": "Failed to fetch template content",
+    "convertFailed": "Conversion failed"
   },
   "proxyGroupEditor": {
     "groupTypes": {
@@ -105,9 +196,16 @@
     "saveSuccess": "Template saved",
     "saveFailed": "Save failed",
     "defaultCreated": "Default template created",
+    "createSuccess": "Template created",
     "createFailed": "Create failed",
     "loadFailed": "Failed to load template",
     "resetFailed": "Reset failed",
-    "previewFailed": "Preview generation failed"
+    "previewFailed": "Preview generation failed",
+    "deleteSuccess": "Template deleted",
+    "deleteFailed": "Delete failed",
+    "uploadSuccess": "Template uploaded",
+    "uploadFailed": "Upload failed",
+    "renameSuccess": "Template renamed",
+    "renameFailed": "Rename failed"
   }
 }

@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"miaomiaowux/internal/auth"
+	"miaomiaowux/internal/scriptengine"
 	"miaomiaowux/internal/storage"
 	"miaomiaowux/internal/substore"
 
@@ -515,6 +516,26 @@ func (h *SubscriptionHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 		}
 	}
 	logger.Info("[⏱️ 耗时监测] 节点排序完成", "step", "node_order", "duration_ms", time.Since(stepStart).Milliseconds())
+
+	// 执行覆写脚本（post_fetch 钩子）
+	stepStart = time.Now()
+	if username != "" && h.repo != nil {
+		if sysCfg, err := h.repo.GetSystemConfig(r.Context()); err == nil && sysCfg.EnableOverrideScripts {
+			scripts, _ := h.repo.ListOverrideScripts(r.Context(), username, "post_fetch")
+			for _, s := range scripts {
+				if !s.Enabled {
+					continue
+				}
+				modified, err := h.runPostFetchScript(r.Context(), s.Content, data)
+				if err != nil {
+					logger.Info("[OverrideScript] post_fetch 脚本执行失败", "script", s.Name, "error", err)
+					continue
+				}
+				data = modified
+			}
+		}
+	}
+	logger.Info("[⏱️ 耗时监测] 覆写脚本执行完成", "step", "override_script", "duration_ms", time.Since(stepStart).Milliseconds())
 
 	// 格式转换
 	stepStart = time.Now()
@@ -1035,6 +1056,29 @@ func (h *SubscriptionHandler) serveTokenInvalidResponse(w http.ResponseWriter, r
 	_, _ = w.Write(data)
 
 	logger.Info("[Token Invalid] 返回Token失效响应", "client_type", clientType)
+}
+
+func (h *SubscriptionHandler) runPostFetchScript(ctx context.Context, script string, yamlData []byte) ([]byte, error) {
+	var rootNode yaml.Node
+	if err := yaml.Unmarshal(yamlData, &rootNode); err != nil {
+		return nil, fmt.Errorf("parse YAML: %w", err)
+	}
+
+	config, err := yamlNodeToMap(&rootNode)
+	if err != nil {
+		return nil, fmt.Errorf("convert YAML node: %w", err)
+	}
+
+	modified, err := scriptengine.RunPostFetch(ctx, script, config)
+	if err != nil {
+		return nil, err
+	}
+
+	out, err := yaml.Marshal(modified)
+	if err != nil {
+		return nil, fmt.Errorf("marshal YAML: %w", err)
+	}
+	return out, nil
 }
 
 // ConvertSubscription 将 YAML 订阅文件转换为指定的客户端格式

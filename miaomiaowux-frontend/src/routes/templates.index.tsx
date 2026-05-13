@@ -3,40 +3,47 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { createFileRoute } from '@tanstack/react-router'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { Plus, Save, RefreshCw, RotateCcw } from 'lucide-react'
-
+import { Plus, Pencil, Trash2, Eye, Save } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
+
 import { Topbar } from '@/components/layout/topbar'
 import { api } from '@/lib/api'
 import { useMediaQuery } from '@/hooks/use-media-query'
 import { cn } from '@/lib/utils'
 
+const TEMPLATE_DRAFT_KEY_PREFIX = 'mmwx_template_v3_draft_'
+
+import { DataTable, type DataTableColumn } from '@/components/data-table'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { Badge } from '@/components/ui/badge'
-import { Switch } from '@/components/ui/switch'
-import { Label } from '@/components/ui/label'
-import {
-  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
-  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
-} from '@/components/ui/alert-dialog'
 
 import { ProxyGroupEditor } from '@/components/template-v3/proxy-group-editor'
 import { TemplatePreview } from '@/components/template-v3/template-preview'
+import { TemplateUploadDialog } from '@/components/template-v3/template-upload-dialog'
+import { Switch } from '@/components/ui/switch'
+import { Label } from '@/components/ui/label'
 import {
   extractProxyGroups,
   extractTemplateVariables,
   updateProxyGroups,
   createDefaultFormState,
-  parseTemplate,
   generateProxyGroupsPreview,
   generateRegionProxyGroups,
   getRegionProxyGroupNames,
+  PROXY_NODES_MARKER,
+  PROXY_PROVIDERS_MARKER,
   REGION_PROXY_GROUPS_MARKER,
+  getProxyNodesDisplay,
+  getProxyProvidersDisplay,
+  getRegionProxyGroupsDisplay,
   type ProxyGroupFormState,
 } from '@/lib/template-v3-utils'
 
@@ -44,28 +51,22 @@ export const Route = createFileRoute('/templates/')({
   component: TemplatesPage,
 })
 
-const TEMPLATE_DRAFT_KEY = 'mmwx_template_v3_draft'
-const DEFAULT_TEMPLATE_NAME = 'default.yaml'
-
-const REDIR_HOST_TEMPLATE = 'redirhost__v3.yaml'
-const FAKE_IP_TEMPLATE = 'fake_ip__v3.yaml'
-
-function getDnsMode(content: string): 'redir-host' | 'fake-ip' {
-  const parsed = parseTemplate(content)
-  const mode = (parsed?.dns as any)?.['enhanced-mode']
-  return mode === 'fake-ip' ? 'fake-ip' : 'redir-host'
-}
-
-function getDefaultTemplateName(mode: 'redir-host' | 'fake-ip'): string {
-  return mode === 'fake-ip' ? FAKE_IP_TEMPLATE : REDIR_HOST_TEMPLATE
-}
-
 function TemplatesPage() {
   const { t } = useTranslation('templates')
   const queryClient = useQueryClient()
   const isMobile = useMediaQuery('(max-width: 767px)')
   const isTablet = useMediaQuery('(min-width: 768px) and (max-width: 1024px)')
 
+  // Dialog states
+  const [isEditorOpen, setIsEditorOpen] = useState(false)
+  const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false)
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
+  const [isRenameDialogOpen, setIsRenameDialogOpen] = useState(false)
+  const [isCloseConfirmOpen, setIsCloseConfirmOpen] = useState(false)
+  const [isDraftRecoveryOpen, setIsDraftRecoveryOpen] = useState(false)
+
+  // Editing state
+  const [editingTemplateName, setEditingTemplateName] = useState<string | null>(null)
   const [templateContent, setTemplateContent] = useState('')
   const [proxyGroups, setProxyGroups] = useState<ProxyGroupFormState[]>([])
   const [editorTab, setEditorTab] = useState<'visual' | 'yaml'>('visual')
@@ -74,21 +75,26 @@ function TemplatesPage() {
   const pendingDraftRef = useRef<any>(null)
   const [enableRegionProxyGroups, setEnableRegionProxyGroups] = useState(false)
   const [templateVariables, setTemplateVariables] = useState<Record<string, string>>({})
-  const [isDraftRecoveryOpen, setIsDraftRecoveryOpen] = useState(false)
-  const [dnsMode, setDnsMode] = useState<'redir-host' | 'fake-ip'>('redir-host')
-  const [isSwitchConfirmOpen, setIsSwitchConfirmOpen] = useState(false)
-  const [pendingSwitchMode, setPendingSwitchMode] = useState<'redir-host' | 'fake-ip' | null>(null)
-  const [isResetConfirmOpen, setIsResetConfirmOpen] = useState(false)
 
+  // Delete/Rename state
+  const [deletingTemplateName, setDeletingTemplateName] = useState<string | null>(null)
+  const [renamingTemplate, setRenamingTemplate] = useState<string | null>(null)
+  const [newTemplateName, setNewTemplateName] = useState('')
+
+  // Preview state
   const [previewContent, setPreviewContent] = useState('')
   const [isPreviewLoading, setIsPreviewLoading] = useState(false)
   const [isPreviewOpen, setIsPreviewOpen] = useState(false)
 
-  const [templateName, setTemplateName] = useState<string | null>(null)
-  const [isLoaded, setIsLoaded] = useState(false)
+  // List preview state (for eye button in table)
+  const [listPreviewOpen, setListPreviewOpen] = useState(false)
+  const [listPreviewContent, setListPreviewContent] = useState('')
+  const [listPreviewLoading, setListPreviewLoading] = useState(false)
+  const [listPreviewTemplateName, setListPreviewTemplateName] = useState<string | null>(null)
+  const [listPreviewTemplateContent, setListPreviewTemplateContent] = useState('')
 
-  // Fetch templates list to find the first one (or default.yaml)
-  const { data: templates = [], isLoading: isListLoading } = useQuery<string[]>({
+  // Fetch templates list
+  const { data: templates = [], isLoading } = useQuery<string[]>({
     queryKey: ['rule-templates'],
     queryFn: async () => {
       const response = await api.get('/api/admin/rule-templates')
@@ -96,26 +102,14 @@ function TemplatesPage() {
     },
   })
 
-  // Determine which template to use
-  useEffect(() => {
-    if (isListLoading) return
-    if (templates.length > 0) {
-      const name = templates.includes(DEFAULT_TEMPLATE_NAME) ? DEFAULT_TEMPLATE_NAME : templates[0]
-      setTemplateName(name)
-    } else {
-      setTemplateName(null)
-      setIsLoaded(true)
-    }
-  }, [templates, isListLoading])
-
-  // Fetch template content
+  // Fetch template content when editing
   const { data: templateData } = useQuery({
-    queryKey: ['rule-template', templateName],
+    queryKey: ['rule-template', editingTemplateName],
     queryFn: async () => {
-      const response = await api.get(`/api/admin/rule-templates/${encodeURIComponent(templateName!)}`)
+      const response = await api.get(`/api/admin/rule-templates/${encodeURIComponent(editingTemplateName!)}`)
       return response.data.content as string
     },
-    enabled: !!templateName,
+    enabled: !!editingTemplateName && isEditorOpen,
   })
 
   // Fetch nodes for preview
@@ -126,31 +120,77 @@ function TemplatesPage() {
       const nodes = response.data.nodes || []
       return nodes.map((node: any) => {
         if (node.clash_config) {
-          try { return JSON.parse(node.clash_config) } catch { return { name: node.node_name, type: node.protocol } }
+          try {
+            return JSON.parse(node.clash_config)
+          } catch {
+            return { name: node.node_name, type: node.protocol }
+          }
         }
         return { name: node.node_name, type: node.protocol }
       }).filter((n: any) => n.name && n.type)
     },
+    enabled: isEditorOpen,
   })
 
-  // Save mutation
-  const saveMutation = useMutation({
+  // Update template mutation
+  const updateMutation = useMutation({
     mutationFn: async ({ name, content }: { name: string; content: string }) => {
       await api.put(`/api/admin/rule-templates/${encodeURIComponent(name)}`, { content })
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['rule-templates'] })
-      queryClient.invalidateQueries({ queryKey: ['rule-template', templateName] })
-      localStorage.removeItem(TEMPLATE_DRAFT_KEY)
+      queryClient.invalidateQueries({ queryKey: ['rule-template', editingTemplateName] })
+      if (editingTemplateName) {
+        localStorage.removeItem(TEMPLATE_DRAFT_KEY_PREFIX + editingTemplateName)
+      }
       toast.success(t('toast.saveSuccess'))
       setIsDirty(false)
+      setIsEditorOpen(false)
+      setEditingTemplateName(null)
+      setTemplateContent('')
+      setProxyGroups([])
     },
     onError: (error: any) => {
       toast.error(error.response?.data?.error || t('toast.saveFailed'))
     },
   })
 
-  // Create default template mutation
+  // Delete template mutation
+  const deleteMutation = useMutation({
+    mutationFn: async (name: string) => {
+      await api.delete(`/api/admin/rule-templates/${encodeURIComponent(name)}`)
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['rule-templates'] })
+      toast.success(t('toast.deleteSuccess'))
+      setIsDeleteDialogOpen(false)
+      setDeletingTemplateName(null)
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.error || t('toast.deleteFailed'))
+    },
+  })
+
+  // Upload template mutation
+  const uploadMutation = useMutation({
+    mutationFn: async (file: File) => {
+      const formData = new FormData()
+      formData.append('template', file)
+      await api.post('/api/admin/rule-templates/upload', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      })
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['rule-templates'] })
+      toast.success(t('toast.uploadSuccess'))
+      setIsUploadDialogOpen(false)
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.error || t('toast.uploadFailed'))
+    },
+  })
+
+  // Create template mutation (for paste/blank)
   const createMutation = useMutation({
     mutationFn: async ({ name, content }: { name: string; content: string }) => {
       const formData = new FormData()
@@ -162,69 +202,97 @@ function TemplatesPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['rule-templates'] })
-      setTemplateName(DEFAULT_TEMPLATE_NAME)
-      toast.success(t('toast.defaultCreated'))
+      toast.success(t('toast.createSuccess'))
+      setIsUploadDialogOpen(false)
     },
     onError: (error: any) => {
       toast.error(error.response?.data?.error || t('toast.createFailed'))
     },
   })
 
-  // Load template content
-  useEffect(() => {
-    if (!templateData) return
-    isInitLoadRef.current = true
-    setTemplateContent(templateData)
-    setDnsMode(getDnsMode(templateData))
-    const vars = extractTemplateVariables(templateData)
-    setTemplateVariables(vars)
-    const groups = extractProxyGroups(templateData, vars)
-    setProxyGroups(groups)
-    const hasRegion = groups.some(g => g.includeRegionProxyGroups)
-    setEnableRegionProxyGroups(hasRegion)
-    setIsDirty(false)
-    setIsLoaded(true)
-    setTimeout(() => {
-      isInitLoadRef.current = false
-      const draftJson = localStorage.getItem(TEMPLATE_DRAFT_KEY)
-      if (draftJson) {
-        try {
-          const draft = JSON.parse(draftJson)
-          const vars2 = extractTemplateVariables(templateData)
-          const groups2 = extractProxyGroups(templateData, vars2)
-          const normalized = groups2.length > 0 ? updateProxyGroups(templateData, groups2) : templateData
-          if (draft.templateContent !== normalized) {
-            pendingDraftRef.current = draft
-            setIsDraftRecoveryOpen(true)
-          } else {
-            localStorage.removeItem(TEMPLATE_DRAFT_KEY)
-          }
-        } catch { localStorage.removeItem(TEMPLATE_DRAFT_KEY) }
-      }
-    }, 50)
-  }, [templateData])
+  // Rename template mutation
+  const renameMutation = useMutation({
+    mutationFn: async ({ oldName, newName }: { oldName: string; newName: string }) => {
+      await api.post('/api/admin/rule-templates/rename', { old_name: oldName, new_name: newName })
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['rule-templates'] })
+      toast.success(t('toast.renameSuccess'))
+      setIsRenameDialogOpen(false)
+      setRenamingTemplate(null)
+      setNewTemplateName('')
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.error || t('toast.renameFailed'))
+    },
+  })
 
-  // Auto-refresh preview when proxyGroups changes
+  // Load template content when data is fetched
   useEffect(() => {
+    if (templateData && isEditorOpen) {
+      isInitLoadRef.current = true
+      setTemplateContent(templateData)
+      const vars = extractTemplateVariables(templateData)
+      setTemplateVariables(vars)
+      const groups = extractProxyGroups(templateData, vars)
+      setProxyGroups(groups)
+      const hasRegionProxyGroups = groups.some(g => g.includeRegionProxyGroups)
+      setEnableRegionProxyGroups(hasRegionProxyGroups)
+      setIsDirty(false)
+      setTimeout(() => {
+        isInitLoadRef.current = false
+        if (editingTemplateName) {
+          const draftJson = localStorage.getItem(TEMPLATE_DRAFT_KEY_PREFIX + editingTemplateName)
+          if (draftJson) {
+            try {
+              const draft = JSON.parse(draftJson)
+              const vars = extractTemplateVariables(templateData)
+              const groups = extractProxyGroups(templateData, vars)
+              const normalizedData = groups.length > 0 ? updateProxyGroups(templateData, groups) : templateData
+              if (draft.templateContent !== normalizedData) {
+                pendingDraftRef.current = draft
+                setIsDraftRecoveryOpen(true)
+              } else {
+                localStorage.removeItem(TEMPLATE_DRAFT_KEY_PREFIX + editingTemplateName)
+              }
+            } catch {
+              localStorage.removeItem(TEMPLATE_DRAFT_KEY_PREFIX + editingTemplateName)
+            }
+          }
+        }
+      }, 50)
+    }
+  }, [templateData, isEditorOpen])
+
+  // Auto-refresh proxy-groups preview when proxyGroups changes
+  useEffect(() => {
+    if (!isEditorOpen) return
     if (proxyGroups.length > 0) {
       setPreviewContent(generateProxyGroupsPreview(proxyGroups))
     } else {
       setPreviewContent('')
     }
-  }, [proxyGroups])
+  }, [proxyGroups, isEditorOpen])
 
-  // Save draft to localStorage
+  // Write draft to localStorage when dirty
   useEffect(() => {
-    if (!isDirty || !templateName || isInitLoadRef.current) return
+    if (!isDirty || !editingTemplateName || isInitLoadRef.current) return
     let content = templateContent
     if (editorTab === 'visual' && proxyGroups.length > 0) {
       content = updateProxyGroups(templateContent, proxyGroups)
     }
-    localStorage.setItem(TEMPLATE_DRAFT_KEY, JSON.stringify({
-      templateContent: content, proxyGroups, enableRegionProxyGroups, templateVariables, editorTab, savedAt: Date.now(),
-    }))
-  }, [isDirty, templateContent, proxyGroups, enableRegionProxyGroups, templateVariables, editorTab, templateName])
+    const draft = {
+      templateContent: content,
+      proxyGroups,
+      enableRegionProxyGroups,
+      templateVariables,
+      editorTab,
+      savedAt: Date.now(),
+    }
+    localStorage.setItem(TEMPLATE_DRAFT_KEY_PREFIX + editingTemplateName, JSON.stringify(draft))
+  }, [isDirty, templateContent, proxyGroups, enableRegionProxyGroups, templateVariables, editorTab, editingTemplateName])
 
+  // Sync proxy groups to YAML when switching tabs
   const syncProxyGroupsToYaml = useCallback(() => {
     if (proxyGroups.length > 0) {
       setTemplateContent(updateProxyGroups(templateContent, proxyGroups))
@@ -232,8 +300,9 @@ function TemplatesPage() {
   }, [proxyGroups, templateContent])
 
   const handleTabChange = (tab: string) => {
-    if (editorTab === 'visual' && tab === 'yaml') syncProxyGroupsToYaml()
-    else if (editorTab === 'yaml' && tab === 'visual') {
+    if (editorTab === 'visual' && tab === 'yaml') {
+      syncProxyGroupsToYaml()
+    } else if (editorTab === 'yaml' && tab === 'visual') {
       const vars = extractTemplateVariables(templateContent)
       setTemplateVariables(vars)
       setProxyGroups(extractProxyGroups(templateContent, vars))
@@ -241,77 +310,87 @@ function TemplatesPage() {
     setEditorTab(tab as 'visual' | 'yaml')
   }
 
-  const handleSave = () => {
-    if (!templateName) return
-    let content = templateContent
-    if (editorTab === 'visual') content = updateProxyGroups(templateContent, proxyGroups)
-    saveMutation.mutate({ name: templateName, content })
+  const handleEdit = (name: string) => {
+    setEditingTemplateName(name)
+    setIsEditorOpen(true)
+    setEditorTab('visual')
+    setPreviewContent('')
   }
 
-  const applyTemplateContent = useCallback((content: string) => {
-    isInitLoadRef.current = true
-    setTemplateContent(content)
-    setDnsMode(getDnsMode(content))
-    const vars = extractTemplateVariables(content)
-    setTemplateVariables(vars)
-    const groups = extractProxyGroups(content, vars)
-    setProxyGroups(groups)
-    const hasRegion = groups.some(g => g.includeRegionProxyGroups)
-    setEnableRegionProxyGroups(hasRegion)
-    setIsDirty(true)
-    setTimeout(() => { isInitLoadRef.current = false }, 50)
-  }, [])
+  const handleDelete = (name: string) => {
+    setDeletingTemplateName(name)
+    setIsDeleteDialogOpen(true)
+  }
 
-  const handleDnsModeSwitch = async (mode: 'redir-host' | 'fake-ip') => {
-    if (mode === dnsMode) return
+  const handleRename = (name: string) => {
+    setRenamingTemplate(name)
+    setNewTemplateName(name)
+    setIsRenameDialogOpen(true)
+  }
+
+  const handleListPreview = async (name: string) => {
+    setListPreviewTemplateName(name)
+    setListPreviewOpen(true)
+    setListPreviewLoading(true)
+    setListPreviewContent('')
+    setListPreviewTemplateContent('')
+
+    try {
+      const templateResponse = await api.get(`/api/admin/rule-templates/${encodeURIComponent(name)}`)
+      const content = templateResponse.data.content
+      setListPreviewTemplateContent(content)
+
+      const nodesResponse = await api.get('/api/admin/nodes')
+      const nodes = (nodesResponse.data.nodes || []).map((node: any) => {
+        if (node.clash_config) {
+          try {
+            return JSON.parse(node.clash_config)
+          } catch {
+            return { name: node.node_name, type: node.protocol }
+          }
+        }
+        return { name: node.node_name, type: node.protocol }
+      }).filter((n: any) => n.name && n.type)
+
+      const previewResponse = await api.post('/api/admin/template-v3/preview', {
+        template_content: content,
+        proxies: nodes,
+      })
+      setListPreviewContent(previewResponse.data.content)
+    } catch (error: any) {
+      toast.error(error.response?.data?.error || t('toast.previewFailed'))
+      setListPreviewOpen(false)
+    } finally {
+      setListPreviewLoading(false)
+    }
+  }
+
+  const handleSave = () => {
+    if (!editingTemplateName) return
+    let content = templateContent
+    if (editorTab === 'visual') {
+      content = updateProxyGroups(templateContent, proxyGroups)
+    }
+    updateMutation.mutate({ name: editingTemplateName, content })
+  }
+
+  const handleCloseEditor = () => {
     if (isDirty) {
-      setPendingSwitchMode(mode)
-      setIsSwitchConfirmOpen(true)
+      setIsCloseConfirmOpen(true)
       return
     }
-    await doSwitchDnsMode(mode)
+    doCloseEditor()
   }
 
-  const doSwitchDnsMode = async (mode: 'redir-host' | 'fake-ip') => {
-    try {
-      const name = getDefaultTemplateName(mode)
-      const response = await api.get(`/api/admin/rule-templates/${encodeURIComponent(name)}`)
-      applyTemplateContent(response.data.content)
-    } catch (error: any) {
-      toast.error(error.response?.data?.error || t('toast.loadFailed'))
-    }
-  }
-
-  const handleConfirmSwitch = async () => {
-    setIsSwitchConfirmOpen(false)
-    if (pendingSwitchMode) {
-      await doSwitchDnsMode(pendingSwitchMode)
-      setPendingSwitchMode(null)
-    }
-  }
-
-  const handleReset = () => {
-    setIsResetConfirmOpen(true)
-  }
-
-  const handleConfirmReset = async () => {
-    setIsResetConfirmOpen(false)
-    try {
-      const name = getDefaultTemplateName(dnsMode)
-      const response = await api.get(`/api/admin/rule-templates/${encodeURIComponent(name)}`)
-      applyTemplateContent(response.data.content)
-    } catch (error: any) {
-      toast.error(error.response?.data?.error || t('toast.resetFailed'))
-    }
-  }
-
-  const handleCreateDefault = async () => {
-    try {
-      const response = await api.get(`/api/admin/rule-templates/${encodeURIComponent(REDIR_HOST_TEMPLATE)}`)
-      createMutation.mutate({ name: DEFAULT_TEMPLATE_NAME, content: response.data.content })
-    } catch (error: any) {
-      toast.error(error.response?.data?.error || t('toast.createFailed'))
-    }
+  const doCloseEditor = () => {
+    setIsEditorOpen(false)
+    setEditingTemplateName(null)
+    setTemplateContent('')
+    setProxyGroups([])
+    setPreviewContent('')
+    setIsDirty(false)
+    setIsCloseConfirmOpen(false)
+    setEnableRegionProxyGroups(false)
   }
 
   const handleRecoverDraft = () => {
@@ -323,7 +402,6 @@ function TemplatesPage() {
     setEnableRegionProxyGroups(draft.enableRegionProxyGroups)
     setTemplateVariables(draft.templateVariables)
     setEditorTab(draft.editorTab)
-    setDnsMode(getDnsMode(draft.templateContent))
     setIsDirty(true)
     setTimeout(() => { isInitLoadRef.current = false }, 50)
     setIsDraftRecoveryOpen(false)
@@ -331,7 +409,9 @@ function TemplatesPage() {
   }
 
   const handleDiscardDraft = () => {
-    localStorage.removeItem(TEMPLATE_DRAFT_KEY)
+    if (editingTemplateName) {
+      localStorage.removeItem(TEMPLATE_DRAFT_KEY_PREFIX + editingTemplateName)
+    }
     setIsDraftRecoveryOpen(false)
     pendingDraftRef.current = null
   }
@@ -341,16 +421,20 @@ function TemplatesPage() {
   const handleRegionProxyGroupsToggle = (enabled: boolean) => {
     setEnableRegionProxyGroups(enabled)
     setIsDirty(true)
+
     if (enabled) {
       const regionGroups = generateRegionProxyGroups('url-test')
       const nonRegionGroups = proxyGroups.filter(g => !regionGroupNames.includes(g.name))
       setProxyGroups([...nonRegionGroups, ...regionGroups])
     } else {
-      setProxyGroups(
-        proxyGroups
-          .filter(g => !regionGroupNames.includes(g.name))
-          .map(g => ({ ...g, includeRegionProxyGroups: false, proxyOrder: g.proxyOrder.filter(item => item !== REGION_PROXY_GROUPS_MARKER) }))
-      )
+      const updatedGroups = proxyGroups
+        .filter(g => !regionGroupNames.includes(g.name))
+        .map(g => ({
+          ...g,
+          includeRegionProxyGroups: false,
+          proxyOrder: g.proxyOrder.filter(item => item !== REGION_PROXY_GROUPS_MARKER),
+        }))
+      setProxyGroups(updatedGroups)
     }
   }
 
@@ -358,7 +442,9 @@ function TemplatesPage() {
     const newGroups = [...proxyGroups]
     newGroups[index] = group
     setProxyGroups(newGroups)
-    if (!isInitLoadRef.current) setIsDirty(true)
+    if (!isInitLoadRef.current) {
+      setIsDirty(true)
+    }
   }
 
   const handleProxyGroupDelete = (index: number) => {
@@ -368,17 +454,17 @@ function TemplatesPage() {
 
   const handleProxyGroupMoveUp = (index: number) => {
     if (index === 0) return
-    const g = [...proxyGroups]
-    ;[g[index - 1], g[index]] = [g[index], g[index - 1]]
-    setProxyGroups(g)
+    const newGroups = [...proxyGroups]
+    ;[newGroups[index - 1], newGroups[index]] = [newGroups[index], newGroups[index - 1]]
+    setProxyGroups(newGroups)
     setIsDirty(true)
   }
 
   const handleProxyGroupMoveDown = (index: number) => {
     if (index === proxyGroups.length - 1) return
-    const g = [...proxyGroups]
-    ;[g[index], g[index + 1]] = [g[index + 1], g[index]]
-    setProxyGroups(g)
+    const newGroups = [...proxyGroups]
+    ;[newGroups[index], newGroups[index + 1]] = [newGroups[index + 1], newGroups[index]]
+    setProxyGroups(newGroups)
     setIsDirty(true)
   }
 
@@ -391,7 +477,9 @@ function TemplatesPage() {
     setIsPreviewLoading(true)
     try {
       let content = templateContent
-      if (editorTab === 'visual') content = updateProxyGroups(templateContent, proxyGroups)
+      if (editorTab === 'visual') {
+        content = updateProxyGroups(templateContent, proxyGroups)
+      }
       const response = await api.post('/api/admin/template-v3/preview', {
         template_content: content,
         proxies: nodesData || [],
@@ -409,166 +497,340 @@ function TemplatesPage() {
     setIsDirty(true)
   }
 
-  // Empty state: no template exists yet
-  if (isLoaded && !templateName) {
-    return (
-      <div className="min-h-svh bg-background">
-        <Topbar />
-        <main className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 pt-24">
-          <Card>
-            <CardHeader>
-              <CardTitle>{t('title')}</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="flex flex-col items-center justify-center py-12 gap-4">
-                <p className="text-muted-foreground">{t('emptyDesc')}</p>
-                <Button onClick={handleCreateDefault} disabled={createMutation.isPending}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  {t('createDefault')}
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        </main>
-      </div>
-    )
+  const formatTemplateForDisplay = (content: string) => {
+    return content
+      .replace(new RegExp(PROXY_NODES_MARKER, 'g'), getProxyNodesDisplay())
+      .replace(new RegExp(PROXY_PROVIDERS_MARKER, 'g'), getProxyProvidersDisplay())
+      .replace(new RegExp(REGION_PROXY_GROUPS_MARKER, 'g'), getRegionProxyGroupsDisplay())
   }
 
-  // Loading state
-  if (!isLoaded || isListLoading) {
-    return (
-      <div className="min-h-svh bg-background">
-        <Topbar />
-        <main className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 pt-24">
-          <Card>
-            <CardContent className="flex items-center justify-center py-12">
-              <span className="text-muted-foreground">{t('actions.loading', { ns: 'common' })}</span>
-            </CardContent>
-          </Card>
-        </main>
-      </div>
-    )
-  }
+  // Table columns
+  const columns: DataTableColumn<string>[] = [
+    {
+      header: t('list.templateName'),
+      cell: (name) => <span className="font-medium">{name}</span>,
+    },
+    {
+      header: t('list.actions'),
+      cell: (name) => (
+        <div className="flex items-center gap-1">
+          <Button variant="ghost" size="icon" onClick={() => handleEdit(name)} title={t('list.edit')}>
+            <Pencil className="h-4 w-4" />
+          </Button>
+          <Button variant="ghost" size="icon" onClick={() => handleListPreview(name)} title={t('list.preview')}>
+            <Eye className="h-4 w-4" />
+          </Button>
+          <Button variant="ghost" size="icon" onClick={() => handleDelete(name)} title={t('list.delete')}>
+            <Trash2 className="h-4 w-4 text-destructive" />
+          </Button>
+        </div>
+      ),
+    },
+  ]
 
   return (
     <div className="min-h-svh bg-background">
       <Topbar />
-      <main className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 pt-24 space-y-4">
-      {/* Header */}
-      <div className={cn("flex justify-between gap-4", isMobile ? "flex-col" : "items-center")}>
-        <div>
-          <h2 className="text-lg font-semibold">{t('title')}</h2>
-          <p className="text-sm text-muted-foreground">{t('subtitle')}</p>
-        </div>
-        <div className={cn("flex items-center gap-2 flex-wrap", isMobile ? "justify-between" : "")}>
-          {isDirty && <Badge variant="secondary">{t('unsaved')}</Badge>}
-          <div className="flex items-center gap-1 border rounded-md p-0.5">
-            <Button
-              variant={dnsMode === 'redir-host' ? 'default' : 'ghost'}
-              size="sm"
-              className="h-7 text-xs"
-              onClick={() => handleDnsModeSwitch('redir-host')}
-            >
-              redir-host
-            </Button>
-            <Button
-              variant={dnsMode === 'fake-ip' ? 'default' : 'ghost'}
-              size="sm"
-              className="h-7 text-xs"
-              onClick={() => handleDnsModeSwitch('fake-ip')}
-            >
-              fake-ip
-            </Button>
+      <main className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 pt-24">
+      <Card>
+        <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <CardTitle>{t('title')}</CardTitle>
+            <CardDescription>{t('subtitle')}</CardDescription>
           </div>
-          <Button variant="outline" onClick={handleReset} size={isMobile ? "sm" : "default"} title={t('resetTooltip')}>
-            <RotateCcw className="h-4 w-4 mr-1.5" />
-            {t('actions.reset', { ns: 'common' })}
+          <Button onClick={() => setIsUploadDialogOpen(true)} className="w-full sm:w-auto">
+            <Plus className="h-4 w-4 mr-2" />
+            {t('list.newTemplate')}
           </Button>
-          <Button onClick={handleSave} disabled={saveMutation.isPending} size={isMobile ? "sm" : "default"}>
-            <Save className="h-4 w-4 mr-1.5" />
-            {t('actions.save', { ns: 'common' })}
-          </Button>
-        </div>
-      </div>
-
-      {/* Mobile: collapsible preview */}
-      {isMobile && (
-        <Collapsible open={isPreviewOpen} onOpenChange={setIsPreviewOpen}>
-          <CollapsibleTrigger asChild>
-            <Button variant="outline" className="w-full h-8 text-sm">
-              {isPreviewOpen ? t('collapsePreview') : t('expandPreview')}
-            </Button>
-          </CollapsibleTrigger>
-          <CollapsibleContent className="mt-2 h-[250px]">
-            <TemplatePreview content={previewContent} isLoading={isPreviewLoading} onRefresh={handlePreview} title={t('previewTitle')} className="h-full" />
-          </CollapsibleContent>
-        </Collapsible>
-      )}
-
-      {/* Main layout */}
-      <div className={cn("flex gap-4", isMobile ? "flex-col" : "flex-row", !isMobile && "h-[calc(100vh-200px)]")}>
-        {/* Editor panel */}
-        <div className={cn("flex flex-col overflow-hidden", isMobile ? "w-full min-h-[500px]" : isTablet ? "w-[55%]" : "w-[40%]")}>
-          <Tabs value={editorTab} onValueChange={handleTabChange} className="flex flex-col h-full overflow-hidden">
-            <TabsList className="flex-shrink-0 w-full grid grid-cols-2">
-              <TabsTrigger value="visual">{t('visualEdit')}</TabsTrigger>
-              <TabsTrigger value="yaml">{t('yamlCode')}</TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="visual" className="flex-1 min-h-0 overflow-hidden mt-4 flex flex-col data-[state=inactive]:hidden">
-              <ScrollArea className="flex-1 h-full">
-                <div className="space-y-3 pb-4 pr-3">
-                  <div className="flex items-center justify-between p-3 border rounded-lg bg-muted/30">
-                    <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
-                      <Label htmlFor="region-toggle" className="font-medium">{t('enableRegionGroups')}</Label>
-                      <span className="text-xs text-muted-foreground">{t('enableRegionGroupsDesc')}</span>
-                    </div>
-                    <Switch id="region-toggle" checked={enableRegionProxyGroups} onCheckedChange={handleRegionProxyGroupsToggle} />
-                  </div>
-
-                  {proxyGroups.map((group, index) => (
-                    <ProxyGroupEditor
-                      key={index}
-                      group={group}
-                      index={index}
-                      allGroupNames={proxyGroups.map(g => g.name)}
-                      onChange={handleProxyGroupChange}
-                      onDelete={handleProxyGroupDelete}
-                      onMoveUp={handleProxyGroupMoveUp}
-                      onMoveDown={handleProxyGroupMoveDown}
-                      isFirst={index === 0}
-                      isLast={index === proxyGroups.length - 1}
-                      showRegionToggle={enableRegionProxyGroups}
-                      isRegionGroup={regionGroupNames.includes(group.name)}
-                      variables={templateVariables}
-                    />
-                  ))}
-                  <Button variant="outline" className="w-full mt-2" onClick={handleAddProxyGroup}>
-                    <Plus className="h-4 w-4 mr-2" />
-                    {t('addProxyGroup')}
+        </CardHeader>
+        <CardContent>
+          <DataTable
+            columns={columns}
+            data={templates}
+            getRowKey={(name) => name}
+            emptyText={t('list.empty')}
+            mobileCard={{
+              header: (name) => <span className="font-medium text-base">{name}</span>,
+              actions: (name) => (
+                <div className="flex items-center gap-4 w-full justify-between px-2">
+                  <Button variant="ghost" size="sm" onClick={() => handleEdit(name)} className="flex-1">
+                    <Pencil className="h-4 w-4 mr-1.5" /> {t('list.edit')}
+                  </Button>
+                  <Button variant="ghost" size="sm" onClick={() => handleListPreview(name)} className="flex-1">
+                    <Eye className="h-4 w-4 mr-1.5" /> {t('list.preview')}
+                  </Button>
+                  <Button variant="ghost" size="sm" onClick={() => handleDelete(name)} className="flex-1 text-destructive hover:text-destructive hover:bg-destructive/10">
+                    <Trash2 className="h-4 w-4 mr-1.5" /> {t('list.delete')}
                   </Button>
                 </div>
-              </ScrollArea>
-            </TabsContent>
+              )
+            }}
+          />
+        </CardContent>
+      </Card>
 
-            <TabsContent value="yaml" className="flex-1 min-h-0 overflow-hidden mt-4 flex flex-col data-[state=inactive]:hidden">
-              <Textarea
-                value={templateContent}
-                onChange={(e) => handleYamlChange(e.target.value)}
-                className="flex-1 font-mono text-xs sm:text-sm resize-none p-4"
-                placeholder={t('yamlPlaceholder')}
-              />
-            </TabsContent>
-          </Tabs>
-        </div>
+      {/* Editor Dialog */}
+      <Dialog open={isEditorOpen} onOpenChange={(open) => !open && handleCloseEditor()}>
+        <DialogContent className={cn(
+          "h-[90vh] flex flex-col",
+          isMobile ? "!w-[95vw] !max-w-[95vw] p-4" : "!w-[85vw] !max-w-[85vw]"
+        )} showCloseButton={false}>
+          <DialogHeader className="flex-shrink-0">
+            <div className={cn(
+              "flex justify-between gap-4",
+              isMobile ? "flex-col items-start" : "items-center"
+            )}>
+              <div>
+                <DialogTitle className="break-all">{editingTemplateName}</DialogTitle>
+                <DialogDescription>{t('editor.editTemplate')}</DialogDescription>
+              </div>
+              <div className={cn(
+                "flex items-center gap-2",
+                isMobile ? "w-full justify-between" : ""
+              )}>
+                {isDirty && <Badge variant="secondary">{t('unsaved')}</Badge>}
+                <div className="flex gap-2">
+                  <Button onClick={handleSave} disabled={updateMutation.isPending} size={isMobile ? "sm" : "default"}>
+                    <Save className="h-4 w-4 mr-1 sm:mr-2" />
+                    {t('actions.save', { ns: 'common' })}
+                  </Button>
+                  <Button variant="outline" onClick={handleCloseEditor} size={isMobile ? "sm" : "default"}>
+                    {t('editor.close')}
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </DialogHeader>
 
-        {/* Preview panel - desktop/tablet only */}
-        {!isMobile && (
-          <div className={cn("border-l pl-4 flex overflow-hidden", isTablet ? "w-[45%]" : "w-[60%]")}>
-            <TemplatePreview content={previewContent} isLoading={isPreviewLoading} onRefresh={handlePreview} className="flex-1 h-full" title={t('previewTitle')} />
+          {/* Mobile: Preview below save button */}
+          {isMobile && (
+            <div className="flex-shrink-0 border-b pb-4 mt-2">
+              <Collapsible open={isPreviewOpen} onOpenChange={setIsPreviewOpen}>
+                <CollapsibleTrigger asChild>
+                  <Button variant="outline" className="w-full h-8 text-sm">
+                    {isPreviewOpen ? t('collapsePreview') : t('expandPreview')}
+                  </Button>
+                </CollapsibleTrigger>
+                <CollapsibleContent className="mt-4 h-[250px]">
+                  <TemplatePreview
+                    content={previewContent}
+                    isLoading={isPreviewLoading}
+                    onRefresh={handlePreview}
+                    title={t('previewTitle')}
+                    className="h-full"
+                  />
+                </CollapsibleContent>
+              </Collapsible>
+            </div>
+          )}
+
+          <div className={cn(
+            "flex-1 flex gap-4 overflow-hidden mt-4",
+            isMobile ? "flex-col" : "flex-row"
+          )}>
+            {/* Editor Panel */}
+            <div className={cn(
+              "flex flex-col overflow-hidden",
+              isMobile ? "w-full flex-1" : isTablet ? "w-[55%]" : "w-[40%]"
+            )}>
+              <Tabs value={editorTab} onValueChange={handleTabChange} className="flex flex-col h-full overflow-hidden">
+                <TabsList className="flex-shrink-0 w-full grid grid-cols-2">
+                  <TabsTrigger value="visual">{t('visualEdit')}</TabsTrigger>
+                  <TabsTrigger value="yaml">{t('yamlCode')}</TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="visual" className="flex-1 min-h-0 overflow-hidden mt-4 flex flex-col data-[state=inactive]:hidden">
+                  <ScrollArea className="flex-1 h-full">
+                    <div className="space-y-3 pb-4 pr-3">
+                      {/* Region Proxy Groups Toggle */}
+                      <div className="flex items-center justify-between p-3 border rounded-lg bg-muted/30">
+                        <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
+                          <Label htmlFor="region-toggle" className="font-medium">{t('enableRegionGroups')}</Label>
+                          <span className="text-xs text-muted-foreground">{t('enableRegionGroupsDesc')}</span>
+                        </div>
+                        <Switch
+                          id="region-toggle"
+                          checked={enableRegionProxyGroups}
+                          onCheckedChange={handleRegionProxyGroupsToggle}
+                        />
+                      </div>
+
+                      {proxyGroups.map((group, index) => (
+                        <ProxyGroupEditor
+                          key={index}
+                          group={group}
+                          index={index}
+                          allGroupNames={proxyGroups.map(g => g.name)}
+                          onChange={handleProxyGroupChange}
+                          onDelete={handleProxyGroupDelete}
+                          onMoveUp={handleProxyGroupMoveUp}
+                          onMoveDown={handleProxyGroupMoveDown}
+                          isFirst={index === 0}
+                          isLast={index === proxyGroups.length - 1}
+                          showRegionToggle={enableRegionProxyGroups}
+                          isRegionGroup={regionGroupNames.includes(group.name)}
+                          variables={templateVariables}
+                        />
+                      ))}
+                      <Button variant="outline" className="w-full mt-2" onClick={handleAddProxyGroup}>
+                        <Plus className="h-4 w-4 mr-2" />
+                        {t('addProxyGroup')}
+                      </Button>
+                    </div>
+                  </ScrollArea>
+                </TabsContent>
+
+                <TabsContent value="yaml" className="flex-1 min-h-0 overflow-hidden mt-4 flex flex-col data-[state=inactive]:hidden">
+                  <Textarea
+                    value={templateContent}
+                    onChange={(e) => handleYamlChange(e.target.value)}
+                    className="flex-1 font-mono text-xs sm:text-sm resize-none p-4"
+                    placeholder={t('yamlPlaceholder')}
+                  />
+                </TabsContent>
+              </Tabs>
+            </div>
+
+            {/* Preview Panel */}
+            {!isMobile && (
+              <div className={cn(
+                "border-l pl-4 flex overflow-hidden",
+                isTablet ? "w-[45%]" : "w-[60%]"
+              )}>
+                <TemplatePreview
+                  content={previewContent}
+                  isLoading={isPreviewLoading}
+                  onRefresh={handlePreview}
+                  className="flex-1 h-full"
+                  title={t('previewTitle')}
+                />
+              </div>
+            )}
           </div>
-        )}
-      </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Upload Dialog */}
+      <TemplateUploadDialog
+        open={isUploadDialogOpen}
+        onOpenChange={setIsUploadDialogOpen}
+        onUpload={(file) => uploadMutation.mutate(file)}
+        onCreate={(name, content) => createMutation.mutate({ name, content })}
+        isLoading={uploadMutation.isPending || createMutation.isPending}
+      />
+
+      {/* List Preview Dialog */}
+      <Dialog open={listPreviewOpen} onOpenChange={setListPreviewOpen}>
+        <DialogContent className={cn(
+          "h-[85vh] flex flex-col",
+          isMobile ? "!w-[95vw] !max-w-[95vw] p-4" : "!w-[90vw] !max-w-[90vw]"
+        )} showCloseButton={false}>
+          <DialogHeader className="flex-shrink-0">
+            <div className="flex items-center justify-between">
+              <div>
+                <DialogTitle className="break-all truncate w-[200px] sm:w-auto">{t('listPreview.title')}: {listPreviewTemplateName}</DialogTitle>
+                <DialogDescription className="hidden sm:block">{t('listPreview.description')}</DialogDescription>
+              </div>
+              <Button variant="outline" onClick={() => setListPreviewOpen(false)} size={isMobile ? "sm" : "default"}>
+                {t('editor.close')}
+              </Button>
+            </div>
+          </DialogHeader>
+          <div className={cn("flex-1 overflow-hidden flex gap-4", isMobile ? "flex-col" : "flex-row")}>
+            {listPreviewLoading ? (
+              <div className="flex items-center justify-center w-full h-full">
+                <span className="text-muted-foreground">{t('listPreview.generating')}</span>
+              </div>
+            ) : (
+              <>
+                <div className={cn("flex flex-col overflow-hidden", isMobile ? "h-1/2 w-full" : "w-1/2")}>
+                  <div className="text-sm font-medium mb-2 text-muted-foreground">{t('listPreview.templateConfig')}</div>
+                  <Card className="flex-1 overflow-hidden">
+                    <ScrollArea className="h-full">
+                      <pre className="text-xs p-2 sm:p-4 font-mono whitespace-pre-wrap break-all">
+                        {formatTemplateForDisplay(listPreviewTemplateContent)}
+                      </pre>
+                    </ScrollArea>
+                  </Card>
+                </div>
+                <div className={cn("flex flex-col overflow-hidden", isMobile ? "h-1/2 w-full" : "w-1/2")}>
+                  <div className="text-sm font-medium mb-2 text-muted-foreground">{t('listPreview.finalConfig')}</div>
+                  <Card className="flex-1 overflow-hidden">
+                    <ScrollArea className="h-full">
+                      <pre className="text-xs p-2 sm:p-4 font-mono whitespace-pre-wrap break-all">
+                        {listPreviewContent}
+                      </pre>
+                    </ScrollArea>
+                  </Card>
+                </div>
+              </>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t('deleteConfirm.title')}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t('deleteConfirm.description', { name: deletingTemplateName })}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t('actions.cancel', { ns: 'common' })}</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => deletingTemplateName && deleteMutation.mutate(deletingTemplateName)}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {t('actions.delete', { ns: 'common' })}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Rename Dialog */}
+      <Dialog open={isRenameDialogOpen} onOpenChange={setIsRenameDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t('renameDialog.title')}</DialogTitle>
+            <DialogDescription>{t('renameDialog.description')}</DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <Input
+              value={newTemplateName}
+              onChange={(e) => setNewTemplateName(e.target.value)}
+              placeholder={t('renameDialog.placeholder')}
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsRenameDialogOpen(false)}>
+              {t('actions.cancel', { ns: 'common' })}
+            </Button>
+            <Button
+              onClick={() => renamingTemplate && renameMutation.mutate({ oldName: renamingTemplate, newName: newTemplateName })}
+              disabled={renameMutation.isPending || !newTemplateName.trim()}
+            >
+              {t('actions.confirm', { ns: 'common' })}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Close Confirmation Dialog */}
+      <AlertDialog open={isCloseConfirmOpen} onOpenChange={setIsCloseConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t('closeConfirm.title')}</AlertDialogTitle>
+            <AlertDialogDescription>{t('closeConfirm.description')}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t('actions.cancel', { ns: 'common' })}</AlertDialogCancel>
+            <AlertDialogAction onClick={doCloseEditor}>{t('closeConfirm.confirm')}</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Draft Recovery Dialog */}
       <AlertDialog open={isDraftRecoveryOpen} onOpenChange={setIsDraftRecoveryOpen}>
@@ -580,34 +842,6 @@ function TemplatesPage() {
           <AlertDialogFooter>
             <AlertDialogCancel onClick={handleDiscardDraft}>{t('draftRecovery.discard')}</AlertDialogCancel>
             <AlertDialogAction onClick={handleRecoverDraft}>{t('draftRecovery.recover')}</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      {/* DNS Switch Confirm Dialog */}
-      <AlertDialog open={isSwitchConfirmOpen} onOpenChange={setIsSwitchConfirmOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>{t('dnsSwitchConfirm.title')}</AlertDialogTitle>
-            <AlertDialogDescription>{t('dnsSwitchConfirm.description')}</AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setPendingSwitchMode(null)}>{t('actions.cancel', { ns: 'common' })}</AlertDialogCancel>
-            <AlertDialogAction onClick={handleConfirmSwitch}>{t('dnsSwitchConfirm.confirm')}</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      {/* Reset Confirm Dialog */}
-      <AlertDialog open={isResetConfirmOpen} onOpenChange={setIsResetConfirmOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>{t('resetConfirm.title')}</AlertDialogTitle>
-            <AlertDialogDescription>{t('resetConfirm.description')}</AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>{t('actions.cancel', { ns: 'common' })}</AlertDialogCancel>
-            <AlertDialogAction onClick={handleConfirmReset}>{t('resetConfirm.confirm')}</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

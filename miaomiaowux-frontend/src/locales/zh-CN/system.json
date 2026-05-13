@@ -57,6 +57,12 @@
     "usageHint": "使用此 Token 在请求头 MM-Authorization 中访问 API",
     "warning": "• 携带此 Token 可以不需要登录直接访问所有后台 API\n• 请妥善保管此 Token，泄露可能导致数据安全问题\n• 服务启动时会在日志中打印此 Token\n• 点击刷新按钮可重新生成 Token，旧 Token 立即失效"
   },
+  "overrideScripts": {
+    "title": "覆写脚本",
+    "description": "开启后，覆写管理页面的脚本功能将在订阅生成时执行",
+    "enableLabel": "启用覆写脚本",
+    "updated": "覆写脚本设置已更新"
+  },
   "sync": {
     "title": "外部订阅同步设置",
     "description": "配置外部订阅的同步行为",

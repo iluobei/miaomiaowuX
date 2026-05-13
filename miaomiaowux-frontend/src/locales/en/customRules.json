@@ -1,18 +1,19 @@
 {
-  "title": "Custom Rules",
-  "subtitle": "Manage custom DNS, rules and rule provider configurations",
-  "createRule": "New Rule",
-  "ruleList": "Rule List",
-  "ruleCount": "{{count}} rules",
+  "title": "Override Management",
+  "subtitle": "Manage custom DNS, rules, rule providers and override scripts",
+  "createRule": "Add Override",
+  "ruleList": "Override List",
+  "ruleCount": "{{count}} overrides",
   "filterAll": "All",
   "filterDns": "DNS",
   "filterRules": "Rules",
   "filterRuleProviders": "Rule Providers",
-  "emptyText": "No rules",
+  "filterScript": "Scripts",
+  "emptyText": "No overrides",
   "columns": {
     "name": "Name",
     "type": "Type",
-    "mode": "Mode",
+    "mode": "Mode/Hook",
     "status": "Status",
     "createdAt": "Created",
     "actions": "Actions"
@@ -25,7 +26,12 @@
   "type": {
     "dns": "DNS",
     "rules": "Rules",
-    "ruleProviders": "Rule Providers"
+    "ruleProviders": "Rule Providers",
+    "script": "Script"
+  },
+  "hook": {
+    "post_fetch": "Before client conversion",
+    "pre_save_nodes": "Before saving external nodes"
   },
   "mode": {
     "replace": "Replace",
@@ -33,25 +39,30 @@
     "append": "Append"
   },
   "dialog": {
-    "createTitle": "New Rule",
-    "editTitle": "Edit Rule",
+    "createTitle": "Add Override",
+    "editTitle": "Edit Override",
     "createDesc": "Create a new custom rule",
     "editDesc": "Modify custom rule configuration",
-    "enableRule": "Enable this rule",
+    "scriptCreateDesc": "Script must define a main function that receives a config object and returns the modified result",
+    "enableRule": "Enable",
     "nameLabel": "Name",
-    "namePlaceholder": "Rule name",
+    "namePlaceholder": "Override name",
     "typeLabel": "Type",
     "modeLabel": "Mode",
+    "hookLabel": "Hook",
     "templateLabel": "Template (optional)",
     "templatePlaceholder": "Select a template or enter manually",
+    "scriptTemplatePlaceholder": "Select a template to fill content",
     "noTemplate": "No template",
     "contentLabel": "Rule Content (YAML)",
+    "scriptContentLabel": "Script Content",
     "contentPlaceholder": "Enter YAML rule content...",
-    "contentHint": "Ensure content is valid YAML format"
+    "contentHint": "Ensure content is valid YAML format",
+    "scriptContentHint": "Script must define a main function that receives a config object and returns the modified result"
   },
   "deleteConfirm": {
     "title": "Confirm Delete",
-    "description": "This action cannot be undone. Are you sure you want to delete this rule?",
+    "description": "This action cannot be undone. Are you sure you want to delete this override?",
     "deleting": "Deleting...",
     "confirm": "Delete"
   },
@@ -91,18 +102,24 @@
     "helpProtocol": "Protocol: match network protocol types"
   },
   "toast": {
-    "created": "Custom rule created",
+    "created": "Override rule created",
+    "scriptCreated": "Override script created",
+    "scriptUpdated": "Override script updated",
+    "scriptDeleted": "Override script deleted",
+    "scriptCreateError": "Error creating script",
+    "scriptUpdateError": "Error updating script",
+    "scriptDeleteError": "Error deleting script",
     "createdWithGroups": "Custom rule created. Added {{groups}} proxy groups with default nodes: 🚀 Node Select, DIRECT. Edit subscription to modify.",
-    "updated": "Custom rule updated",
+    "updated": "Override rule updated",
     "updatedWithGroups": "Custom rule updated. Added {{groups}} proxy groups with default nodes: 🚀 Node Select, DIRECT. Edit subscription to modify.",
-    "deleted": "Custom rule deleted",
+    "deleted": "Override rule deleted",
     "statusUpdated": "Status updated",
     "createError": "Error creating rule",
     "updateError": "Error updating rule",
     "deleteError": "Error deleting rule",
     "statusError": "Error updating status",
-    "nameRequired": "Please enter a rule name",
-    "contentRequired": "Please enter rule content",
+    "nameRequired": "Please enter a name",
+    "contentRequired": "Please enter content",
     "ruleNotFound": "Rule not found",
     "ruleProviderCreated": "Rule provider and rule config created",
     "ruleProviderOnlyCreated": "Rule provider created",

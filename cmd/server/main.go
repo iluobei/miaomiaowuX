@@ -216,6 +216,8 @@ func main() {
 	mux.Handle("/api/admin/custom-rules", auth.RequireAdmin(tokenStore, userRepo, handler.NewCustomRulesHandler(repo)))
 	mux.Handle("/api/admin/custom-rules/", auth.RequireAdmin(tokenStore, userRepo, handler.NewCustomRuleHandler(repo)))
 	mux.Handle("/api/admin/apply-custom-rules", auth.RequireAdmin(tokenStore, userRepo, handler.NewApplyCustomRulesHandler(repo)))
+	mux.Handle("/api/admin/override-scripts", auth.RequireAdmin(tokenStore, userRepo, handler.NewOverrideScriptsHandler(repo)))
+	mux.Handle("/api/admin/override-scripts/", auth.RequireAdmin(tokenStore, userRepo, handler.NewOverrideScriptsHandler(repo)))
 	mux.Handle("/api/admin/templates", auth.RequireAdmin(tokenStore, userRepo, handler.NewTemplatesHandler(repo)))
 	mux.Handle("/api/admin/templates/", auth.RequireAdmin(tokenStore, userRepo, handler.NewTemplateHandler(repo)))
 	mux.Handle("/api/admin/templates/convert", auth.RequireAdmin(tokenStore, userRepo, handler.NewTemplateConvertHandler()))
@@ -535,6 +537,17 @@ func main() {
 			systemSettingsHandler.GetAgentLogEnabled(w, r)
 		case http.MethodPut:
 			systemSettingsHandler.SetAgentLogEnabled(w, r)
+		default:
+			http.Error(w, "方法不允许", http.StatusMethodNotAllowed)
+		}
+	})))
+
+	mux.Handle("/api/admin/system-settings/override-scripts", auth.RequireAdmin(tokenStore, userRepo, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case http.MethodGet:
+			systemSettingsHandler.GetOverrideScriptsEnabled(w, r)
+		case http.MethodPut:
+			systemSettingsHandler.SetOverrideScriptsEnabled(w, r)
 		default:
 			http.Error(w, "方法不允许", http.StatusMethodNotAllowed)
 		}

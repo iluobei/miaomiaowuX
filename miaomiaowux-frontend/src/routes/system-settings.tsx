@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { createFileRoute, redirect } from '@tanstack/react-router'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
-import { Bell, CircleHelp, Copy, Eye, EyeOff, Link, RefreshCw, Timer } from 'lucide-react'
+import { Bell, CircleHelp, Code, Copy, Eye, EyeOff, Link, RefreshCw, Timer } from 'lucide-react'
 import { Topbar } from '@/components/layout/topbar'
 import {
   Card,
@@ -134,7 +134,35 @@ function SystemSettingsPage() {
   }, [shortLinkData])
 
   const [enableShortLink, setEnableShortLink] = useState(true)
+  const [enableOverrideScripts, setEnableOverrideScripts] = useState(false)
   const [useNewTemplateSystem, setUseNewTemplateSystem] = useState(true)
+
+  const { data: overrideScriptsData } = useQuery({
+    queryKey: ['override-scripts-enabled'],
+    queryFn: async () => {
+      const response = await api.get('/api/admin/system-settings/override-scripts')
+      return response.data as { success: boolean; enable_override_scripts: boolean }
+    },
+    enabled: Boolean(auth.accessToken),
+    staleTime: 5 * 60 * 1000,
+  })
+
+  const toggleOverrideScriptsMutation = useMutation({
+    mutationFn: async (enabled: boolean) => {
+      await api.put('/api/admin/system-settings/override-scripts', { enable_override_scripts: enabled })
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['override-scripts-enabled'] })
+      toast.success(t('overrideScripts.updated'))
+    },
+    onError: handleServerError,
+  })
+
+  useEffect(() => {
+    if (overrideScriptsData?.enable_override_scripts !== undefined) {
+      setEnableOverrideScripts(overrideScriptsData.enable_override_scripts)
+    }
+  }, [overrideScriptsData])
 
   // 定时配置
   const [speedCollectInterval, setSpeedCollectInterval] = useState(3)
@@ -593,6 +621,31 @@ function SystemSettingsPage() {
                     toggleShortLinkMutation.mutate(checked)
                   }}
                   disabled={toggleShortLinkMutation.isPending}
+                />
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* 覆写脚本开关 */}
+          <Card>
+            <CardHeader className='pb-4'>
+              <CardTitle className='flex items-center gap-2'>
+                <Code className='h-5 w-5' />
+                {t('overrideScripts.title')}
+              </CardTitle>
+              <CardDescription>{t('overrideScripts.description')}</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className='flex items-center justify-between'>
+                <Label htmlFor='override-scripts-toggle'>{t('overrideScripts.enableLabel')}</Label>
+                <Switch
+                  id='override-scripts-toggle'
+                  checked={enableOverrideScripts}
+                  onCheckedChange={(checked) => {
+                    setEnableOverrideScripts(checked)
+                    toggleOverrideScriptsMutation.mutate(checked)
+                  }}
+                  disabled={toggleOverrideScriptsMutation.isPending}
                 />
               </div>
             </CardContent>

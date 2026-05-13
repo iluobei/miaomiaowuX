@@ -57,6 +57,12 @@
     "usageHint": "Use this Token in the MM-Authorization header to access APIs",
     "warning": "• This Token grants full access to all backend APIs without login\n• Keep this Token secure — leaks may cause data security issues\n• The Token is printed in logs on server startup\n• Click refresh to regenerate — the old Token is immediately invalidated"
   },
+  "overrideScripts": {
+    "title": "Override Scripts",
+    "description": "When enabled, scripts in Override Management will execute during subscription generation",
+    "enableLabel": "Enable Override Scripts",
+    "updated": "Override scripts settings updated"
+  },
   "sync": {
     "title": "External Subscription Sync",
     "description": "Configure external subscription sync behavior",

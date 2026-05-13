@@ -275,6 +275,7 @@ type SystemConfig struct {
 	NotifyTrafficThreshold      bool
 	NotifyDailyTrafficTime      string // "HH:MM"，默认 "08:00"
 	NotifyTrafficThresholdPercent int  // 0-100，默认 80
+	EnableOverrideScripts       bool   // 启用覆写脚本功能
 }
 
 // ExternalSubscription表示用户导入的外部订阅URL。
@@ -303,6 +304,19 @@ type CustomRule struct {
 	Mode      string // “替换”、“前置”
 	Content   string
 	Enabled   bool
+	CreatedAt time.Time
+	UpdatedAt time.Time
+}
+
+// OverrideScript 表示 JavaScript 覆写脚本。
+type OverrideScript struct {
+	ID        int64
+	Username  string
+	Name      string
+	Hook      string // "post_fetch" | "pre_save_nodes"
+	Content   string
+	Enabled   bool
+	SortOrder int
 	CreatedAt time.Time
 	UpdatedAt time.Time
 }
@@ -1113,6 +1127,29 @@ CREATE INDEX IF NOT EXISTS idx_custom_rule_applications_rule ON custom_rule_appl
 
 	if _, err := r.db.Exec(customRuleApplicationsSchema); err != nil {
 		return fmt.Errorf("migrate custom_rule_applications: %w", err)
+	}
+
+	const overrideScriptsSchema = `
+CREATE TABLE IF NOT EXISTS override_scripts (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    username TEXT NOT NULL,
+    name TEXT NOT NULL,
+    hook TEXT NOT NULL,
+    content TEXT NOT NULL,
+    enabled INTEGER NOT NULL DEFAULT 1,
+    sort_order INTEGER NOT NULL DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_override_scripts_username ON override_scripts(username);
+CREATE INDEX IF NOT EXISTS idx_override_scripts_hook ON override_scripts(hook);
+`
+	if _, err := r.db.Exec(overrideScriptsSchema); err != nil {
+		return fmt.Errorf("migrate override_scripts: %w", err)
+	}
+
+	if err := r.ensureSystemConfigColumn("enable_override_scripts", "INTEGER NOT NULL DEFAULT 0"); err != nil {
+		return err
 	}
 
 	const xrayServersSchema = `
@@ -5084,7 +5121,8 @@ SELECT proxy_groups_source_url, client_compatibility_mode, COALESCE(enable_short
        COALESCE(notify_enabled, 0), COALESCE(telegram_bot_token, ''), COALESCE(telegram_chat_id, ''),
        COALESCE(notify_login, 0), COALESCE(notify_subscribe_fetch, 0), COALESCE(notify_daily_traffic, 0),
        COALESCE(notify_server_offline, 0), COALESCE(notify_server_online, 0), COALESCE(notify_traffic_threshold, 0),
-       COALESCE(notify_daily_traffic_time, '08:00'), COALESCE(notify_traffic_threshold_percent, 80)
+       COALESCE(notify_daily_traffic_time, '08:00'), COALESCE(notify_traffic_threshold_percent, 80),
+       COALESCE(enable_override_scripts, 0)
 FROM system_config
 WHERE id = 1
 `
@@ -5093,6 +5131,7 @@ WHERE id = 1
 	var compatibilityMode, enableShortLink, agentLogEnabled int
 	var notifyEnabled, notifyLogin, notifySubFetch, notifyDailyTraffic int
 	var notifyServerOffline, notifyServerOnline, notifyTrafficThreshold int
+	var enableOverrideScripts int
 	err := r.db.QueryRowContext(ctx, query).Scan(
 		&cfg.ProxyGroupsSourceURL, &compatibilityMode, &enableShortLink,
 		&cfg.SpeedCollectInterval, &cfg.TrafficCollectInterval,
@@ -5102,6 +5141,7 @@ WHERE id = 1
 		&notifyLogin, &notifySubFetch, &notifyDailyTraffic,
 		&notifyServerOffline, &notifyServerOnline, &notifyTrafficThreshold,
 		&cfg.NotifyDailyTrafficTime, &cfg.NotifyTrafficThresholdPercent,
+		&enableOverrideScripts,
 	)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -5120,6 +5160,7 @@ WHERE id = 1
 	cfg.NotifyServerOffline = notifyServerOffline != 0
 	cfg.NotifyServerOnline = notifyServerOnline != 0
 	cfg.NotifyTrafficThreshold = notifyTrafficThreshold != 0
+	cfg.EnableOverrideScripts = enableOverrideScripts != 0
 	return cfg, nil
 }
 
@@ -5147,6 +5188,7 @@ SET proxy_groups_source_url = ?,
     notify_traffic_threshold = ?,
     notify_daily_traffic_time = ?,
     notify_traffic_threshold_percent = ?,
+    enable_override_scripts = ?,
     updated_at = CURRENT_TIMESTAMP
 WHERE id = 1
 `
@@ -5177,7 +5219,8 @@ WHERE id = 1
 		boolToInt(cfg.NotifyEnabled), cfg.TelegramBotToken, cfg.TelegramChatID,
 		boolToInt(cfg.NotifyLogin), boolToInt(cfg.NotifySubscribeFetch), boolToInt(cfg.NotifyDailyTraffic),
 		boolToInt(cfg.NotifyServerOffline), boolToInt(cfg.NotifyServerOnline), boolToInt(cfg.NotifyTrafficThreshold),
-		cfg.NotifyDailyTrafficTime, cfg.NotifyTrafficThresholdPercent)
+		cfg.NotifyDailyTrafficTime, cfg.NotifyTrafficThresholdPercent,
+		boolToInt(cfg.EnableOverrideScripts))
 	if err != nil {
 		return fmt.Errorf("update system config: %w", err)
 	}
@@ -5193,15 +5236,16 @@ INSERT INTO system_config (id, proxy_groups_source_url, client_compatibility_mod
     speed_collect_interval, traffic_collect_interval, traffic_check_interval, heartbeat_interval, agent_log_enabled,
     notify_enabled, telegram_bot_token, telegram_chat_id, notify_login, notify_subscribe_fetch,
     notify_daily_traffic, notify_server_offline, notify_server_online, notify_traffic_threshold,
-    notify_daily_traffic_time, notify_traffic_threshold_percent)
-VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    notify_daily_traffic_time, notify_traffic_threshold_percent, enable_override_scripts)
+VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `
 		if _, err := r.db.ExecContext(ctx, insertStmt, cfg.ProxyGroupsSourceURL, compatibilityMode, enableShortLink,
 			cfg.SpeedCollectInterval, cfg.TrafficCollectInterval, cfg.TrafficCheckInterval, cfg.HeartbeatInterval, agentLogEnabled,
 			boolToInt(cfg.NotifyEnabled), cfg.TelegramBotToken, cfg.TelegramChatID,
 			boolToInt(cfg.NotifyLogin), boolToInt(cfg.NotifySubscribeFetch), boolToInt(cfg.NotifyDailyTraffic),
 			boolToInt(cfg.NotifyServerOffline), boolToInt(cfg.NotifyServerOnline), boolToInt(cfg.NotifyTrafficThreshold),
-			cfg.NotifyDailyTrafficTime, cfg.NotifyTrafficThresholdPercent); err != nil {
+			cfg.NotifyDailyTrafficTime, cfg.NotifyTrafficThresholdPercent,
+			boolToInt(cfg.EnableOverrideScripts)); err != nil {
 			return fmt.Errorf("insert system config: %w", err)
 		}
 	}
@@ -8507,5 +8551,71 @@ func (r *TrafficRepository) EnableUserTOTP(ctx context.Context, username, recove
 
 func (r *TrafficRepository) DisableUserTOTP(ctx context.Context, username string) error {
 	_, err := r.db.ExecContext(ctx, `UPDATE users SET totp_enabled = 0, totp_secret = '', recovery_codes = '[]', updated_at = CURRENT_TIMESTAMP WHERE username = ?`, username)
+	return err
+}
+
+// OverrideScript CRUD
+
+func (r *TrafficRepository) ListOverrideScripts(ctx context.Context, username string, hook string) ([]OverrideScript, error) {
+	query := `SELECT id, username, name, hook, content, enabled, sort_order, created_at, updated_at
+		FROM override_scripts WHERE username = ?`
+	args := []interface{}{username}
+
+	if hook != "" {
+		query += " AND hook = ?"
+		args = append(args, hook)
+	}
+	query += " ORDER BY sort_order ASC, id ASC"
+
+	rows, err := r.db.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var scripts []OverrideScript
+	for rows.Next() {
+		var s OverrideScript
+		if err := rows.Scan(&s.ID, &s.Username, &s.Name, &s.Hook, &s.Content, &s.Enabled, &s.SortOrder, &s.CreatedAt, &s.UpdatedAt); err != nil {
+			return nil, err
+		}
+		scripts = append(scripts, s)
+	}
+	return scripts, rows.Err()
+}
+
+func (r *TrafficRepository) GetOverrideScript(ctx context.Context, id int64, username string) (*OverrideScript, error) {
+	var s OverrideScript
+	err := r.db.QueryRowContext(ctx,
+		`SELECT id, username, name, hook, content, enabled, sort_order, created_at, updated_at
+		FROM override_scripts WHERE id = ? AND username = ?`, id, username).Scan(
+		&s.ID, &s.Username, &s.Name, &s.Hook, &s.Content, &s.Enabled, &s.SortOrder, &s.CreatedAt, &s.UpdatedAt)
+	if err != nil {
+		return nil, err
+	}
+	return &s, nil
+}
+
+func (r *TrafficRepository) CreateOverrideScript(ctx context.Context, s *OverrideScript) (int64, error) {
+	result, err := r.db.ExecContext(ctx,
+		`INSERT INTO override_scripts (username, name, hook, content, enabled, sort_order) VALUES (?, ?, ?, ?, ?, ?)`,
+		s.Username, s.Name, s.Hook, s.Content, s.Enabled, s.SortOrder)
+	if err != nil {
+		return 0, err
+	}
+	return result.LastInsertId()
+}
+
+func (r *TrafficRepository) UpdateOverrideScript(ctx context.Context, s *OverrideScript) error {
+	_, err := r.db.ExecContext(ctx,
+		`UPDATE override_scripts SET name = ?, hook = ?, content = ?, enabled = ?, sort_order = ?, updated_at = CURRENT_TIMESTAMP
+		WHERE id = ? AND username = ?`,
+		s.Name, s.Hook, s.Content, s.Enabled, s.SortOrder, s.ID, s.Username)
+	return err
+}
+
+func (r *TrafficRepository) DeleteOverrideScript(ctx context.Context, id int64, username string) error {
+	_, err := r.db.ExecContext(ctx,
+		`DELETE FROM override_scripts WHERE id = ? AND username = ?`, id, username)
 	return err
 }

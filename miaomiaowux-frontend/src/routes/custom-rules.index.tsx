@@ -47,9 +47,10 @@ import { toast } from 'sonner'
 import { useTranslation } from 'react-i18next'
 import { api } from '@/lib/api'
 import { RULE_TEMPLATES, RULE_PROVIDER_RULES } from '../config/custom-rules-templates'
+import { OVERRIDE_SCRIPT_TEMPLATES } from '@/config/override-script-templates'
 
 export const Route = createFileRoute('/custom-rules/')({
-	component: CustomRulesPage,
+	component: OverrideManagementPage,
 })
 
 interface CustomRule {
@@ -64,67 +65,136 @@ interface CustomRule {
 	added_proxy_groups?: string[]
 }
 
-type RuleFormData = Omit<CustomRule, 'id' | 'created_at' | 'updated_at'>
+interface OverrideScript {
+	id: number
+	name: string
+	hook: 'post_fetch' | 'pre_save_nodes'
+	content: string
+	enabled: boolean
+	sort_order: number
+	created_at: string
+	updated_at: string
+}
 
-function CustomRulesPage() {
+interface OverrideItem {
+	id: number
+	name: string
+	kind: 'rule' | 'script'
+	type: 'dns' | 'rules' | 'rule-providers' | 'script'
+	mode?: string
+	hook?: string
+	content: string
+	enabled: boolean
+	sort_order?: number
+	created_at: string
+	updated_at: string
+}
+
+type OverrideType = 'dns' | 'rules' | 'rule-providers' | 'script'
+
+interface FormData {
+	name: string
+	type: OverrideType
+	mode: string
+	hook: string
+	content: string
+	enabled: boolean
+	sort_order: number
+}
+
+function ruleToItem(rule: CustomRule): OverrideItem {
+	return {
+		id: rule.id,
+		name: rule.name,
+		kind: 'rule',
+		type: rule.type,
+		mode: rule.mode,
+		content: rule.content,
+		enabled: rule.enabled,
+		created_at: rule.created_at,
+		updated_at: rule.updated_at,
+	}
+}
+
+function scriptToItem(script: OverrideScript): OverrideItem {
+	return {
+		id: script.id,
+		name: script.name,
+		kind: 'script',
+		type: 'script',
+		hook: script.hook,
+		content: script.content,
+		enabled: script.enabled,
+		sort_order: script.sort_order,
+		created_at: script.created_at,
+		updated_at: script.updated_at,
+	}
+}
+
+function OverrideManagementPage() {
 	const { t } = useTranslation('customRules')
 	const queryClient = useQueryClient()
 	const [filterType, setFilterType] = useState<string>('')
 	const [isDialogOpen, setIsDialogOpen] = useState(false)
 	const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
-	const [editingRule, setEditingRule] = useState<CustomRule | null>(null)
-	const [deletingRuleId, setDeletingRuleId] = useState<number | null>(null)
-	const [formData, setFormData] = useState<RuleFormData>({
+	const [editingItem, setEditingItem] = useState<OverrideItem | null>(null)
+	const [deletingItem, setDeletingItem] = useState<OverrideItem | null>(null)
+	const [formData, setFormData] = useState<FormData>({
 		name: '',
 		type: 'dns',
 		mode: 'replace',
+		hook: 'post_fetch',
 		content: '',
 		enabled: true,
+		sort_order: 0,
 	})
 	const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null)
 	const [isRuleProviderConfirmOpen, setIsRuleProviderConfirmOpen] = useState(false)
-	const [pendingRuleProviderData, setPendingRuleProviderData] = useState<RuleFormData | null>(null)
+	const [pendingRuleProviderData, setPendingRuleProviderData] = useState<FormData | null>(null)
 
-	// Fetch rules
-	const { data: rules = [], isLoading } = useQuery<CustomRule[]>({
-		queryKey: ['custom-rules', filterType],
+	const { data: rules = [], isLoading: isLoadingRules } = useQuery<CustomRule[]>({
+		queryKey: ['custom-rules'],
 		queryFn: async () => {
-			const params = filterType ? { type: filterType } : {}
-			const response = await api.get('/api/admin/custom-rules', { params })
+			const response = await api.get('/api/admin/custom-rules')
 			return response.data
 		},
 	})
 
-	// Create rule mutation
-	const createMutation = useMutation({
-		mutationFn: async (rule: RuleFormData) => {
-			// 如果是启用状态且模式为替换，需要先禁用同类型的其他替换模式规则
-			if (rule.enabled && rule.mode === 'replace') {
-				const conflictingRules = rules.filter(
-					r => r.type === rule.type &&
-					r.mode === 'replace' &&
-					r.enabled
-				)
+	const { data: scripts = [], isLoading: isLoadingScripts } = useQuery<OverrideScript[]>({
+		queryKey: ['override-scripts'],
+		queryFn: async () => {
+			const response = await api.get('/api/admin/override-scripts')
+			return response.data
+		},
+	})
 
-				for (const conflictRule of conflictingRules) {
-					await api.put(`/api/admin/custom-rules/${conflictRule.id}`, {
-						name: conflictRule.name,
-						type: conflictRule.type,
-						mode: conflictRule.mode,
-						content: conflictRule.content,
-						enabled: false,
-					})
+	const isLoading = isLoadingRules || isLoadingScripts
+
+	const allItems: OverrideItem[] = [
+		...rules.map(ruleToItem),
+		...scripts.map(scriptToItem),
+	]
+
+	const filteredItems = filterType
+		? allItems.filter((item) => item.type === filterType)
+		: allItems
+
+	// Rule mutations
+	const createRuleMutation = useMutation({
+		mutationFn: async (data: { name: string; type: string; mode: string; content: string; enabled: boolean }) => {
+			if (data.enabled && data.mode === 'replace') {
+				const conflicting = rules.filter(
+					(r) => r.type === data.type && r.mode === 'replace' && r.enabled
+				)
+				for (const c of conflicting) {
+					await api.put(`/api/admin/custom-rules/${c.id}`, { ...c, enabled: false })
 				}
 			}
-
-			const response = await api.post('/api/admin/custom-rules', rule)
+			const response = await api.post('/api/admin/custom-rules', data)
 			return response.data
 		},
 		onSuccess: (data: CustomRule) => {
 			queryClient.invalidateQueries({ queryKey: ['custom-rules'] })
-			setIsDialogOpen(false)
-			resetForm()
-
 			if (data.added_proxy_groups && data.added_proxy_groups.length > 0) {
 				toast.success(
 					t('toast.createdWithGroups', { groups: data.added_proxy_groups.join('、') }),
@@ -139,40 +209,21 @@ function CustomRulesPage() {
 		},
 	})
 
-	// Update rule mutation
-	const updateMutation = useMutation({
-		mutationFn: async ({
-			id,
-			...rule
-		}: RuleFormData & { id: number }) => {
-			// 如果是启用状态且模式为替换，需要先禁用同类型的其他替换模式规则
-			if (rule.enabled && rule.mode === 'replace') {
-				const conflictingRules = rules.filter(
-					r => r.id !== id &&
-					r.type === rule.type &&
-					r.mode === 'replace' &&
-					r.enabled
+	const updateRuleMutation = useMutation({
+		mutationFn: async ({ id, ...data }: { id: number; name: string; type: string; mode: string; content: string; enabled: boolean }) => {
+			if (data.enabled && data.mode === 'replace') {
+				const conflicting = rules.filter(
+					(r) => r.id !== id && r.type === data.type && r.mode === 'replace' && r.enabled
 				)
-
-				for (const conflictRule of conflictingRules) {
-					await api.put(`/api/admin/custom-rules/${conflictRule.id}`, {
-						name: conflictRule.name,
-						type: conflictRule.type,
-						mode: conflictRule.mode,
-						content: conflictRule.content,
-						enabled: false,
-					})
+				for (const c of conflicting) {
+					await api.put(`/api/admin/custom-rules/${c.id}`, { ...c, enabled: false })
 				}
 			}
-
-			const response = await api.put(`/api/admin/custom-rules/${id}`, rule)
+			const response = await api.put(`/api/admin/custom-rules/${id}`, data)
 			return response.data
 		},
 		onSuccess: (data: CustomRule) => {
 			queryClient.invalidateQueries({ queryKey: ['custom-rules'] })
-			setIsDialogOpen(false)
-			resetForm()
-
 			if (data.added_proxy_groups && data.added_proxy_groups.length > 0) {
 				toast.success(
 					t('toast.updatedWithGroups', { groups: data.added_proxy_groups.join('、') }),
@@ -187,15 +238,12 @@ function CustomRulesPage() {
 		},
 	})
 
-	// Delete rule mutation
-	const deleteMutation = useMutation({
+	const deleteRuleMutation = useMutation({
 		mutationFn: async (id: number) => {
 			await api.delete(`/api/admin/custom-rules/${id}`)
 		},
 		onSuccess: () => {
 			queryClient.invalidateQueries({ queryKey: ['custom-rules'] })
-			setIsDeleteDialogOpen(false)
-			setDeletingRuleId(null)
 			toast.success(t('toast.deleted'))
 		},
 		onError: (error: any) => {
@@ -203,43 +251,19 @@ function CustomRulesPage() {
 		},
 	})
 
-	// Toggle enabled state mutation
-	const toggleEnabledMutation = useMutation({
+	const toggleRuleMutation = useMutation({
 		mutationFn: async ({ id, enabled }: { id: number; enabled: boolean }) => {
-			const rule = rules.find(r => r.id === id)
+			const rule = rules.find((r) => r.id === id)
 			if (!rule) throw new Error(t('toast.ruleNotFound'))
-
-			// 如果是启用操作且模式为替换，需要检查同类型的其他替换模式规则
 			if (enabled && rule.mode === 'replace') {
-				// 找出同类型且为替换模式的其他已启用规则
-				const conflictingRules = rules.filter(
-					r => r.id !== id &&
-					r.type === rule.type &&
-					r.mode === 'replace' &&
-					r.enabled
+				const conflicting = rules.filter(
+					(r) => r.id !== id && r.type === rule.type && r.mode === 'replace' && r.enabled
 				)
-
-				// 如果有冲突的规则，先禁用它们
-				for (const conflictRule of conflictingRules) {
-					await api.put(`/api/admin/custom-rules/${conflictRule.id}`, {
-						name: conflictRule.name,
-						type: conflictRule.type,
-						mode: conflictRule.mode,
-						content: conflictRule.content,
-						enabled: false,
-					})
+				for (const c of conflicting) {
+					await api.put(`/api/admin/custom-rules/${c.id}`, { ...c, enabled: false })
 				}
 			}
-
-			// 更新当前规则
-			const response = await api.put(`/api/admin/custom-rules/${id}`, {
-				name: rule.name,
-				type: rule.type,
-				mode: rule.mode,
-				content: rule.content,
-				enabled: enabled,
-			})
-			return response.data
+			await api.put(`/api/admin/custom-rules/${id}`, { ...rule, enabled })
 		},
 		onSuccess: () => {
 			queryClient.invalidateQueries({ queryKey: ['custom-rules'] })
@@ -250,15 +274,67 @@ function CustomRulesPage() {
 		},
 	})
 
+	// Script mutations
+	const createScriptMutation = useMutation({
+		mutationFn: async (data: { name: string; hook: string; content: string; enabled: boolean; sort_order: number }) => {
+			return api.post('/api/admin/override-scripts', data)
+		},
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: ['override-scripts'] })
+			toast.success(t('toast.scriptCreated'))
+		},
+		onError: () => toast.error(t('toast.scriptCreateError')),
+	})
+
+	const updateScriptMutation = useMutation({
+		mutationFn: async ({ id, ...data }: { id: number; name: string; hook: string; content: string; enabled: boolean; sort_order: number }) => {
+			return api.put(`/api/admin/override-scripts/${id}`, data)
+		},
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: ['override-scripts'] })
+			toast.success(t('toast.scriptUpdated'))
+		},
+		onError: () => toast.error(t('toast.scriptUpdateError')),
+	})
+
+	const deleteScriptMutation = useMutation({
+		mutationFn: async (id: number) => {
+			return api.delete(`/api/admin/override-scripts/${id}`)
+		},
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: ['override-scripts'] })
+			toast.success(t('toast.scriptDeleted'))
+		},
+		onError: () => toast.error(t('toast.scriptDeleteError')),
+	})
+
+	const toggleScriptMutation = useMutation({
+		mutationFn: async ({ id, script, enabled }: { id: number; script: OverrideScript; enabled: boolean }) => {
+			return api.put(`/api/admin/override-scripts/${id}`, {
+				name: script.name,
+				hook: script.hook,
+				content: script.content,
+				enabled,
+				sort_order: script.sort_order,
+			})
+		},
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: ['override-scripts'] })
+			toast.success(t('toast.statusUpdated'))
+		},
+	})
+
 	const resetForm = () => {
 		setFormData({
 			name: '',
 			type: 'dns',
 			mode: 'replace',
+			hook: 'post_fetch',
 			content: '',
 			enabled: true,
+			sort_order: 0,
 		})
-		setEditingRule(null)
+		setEditingItem(null)
 		setSelectedTemplate(null)
 	}
 
@@ -267,21 +343,45 @@ function CustomRulesPage() {
 		setIsDialogOpen(true)
 	}
 
-	const handleEdit = (rule: CustomRule) => {
-		setEditingRule(rule)
+	const handleEdit = (item: OverrideItem) => {
+		setEditingItem(item)
 		setFormData({
-			name: rule.name,
-			type: rule.type,
-			mode: rule.mode,
-			content: rule.content,
-			enabled: rule.enabled,
+			name: item.name,
+			type: item.type,
+			mode: item.mode || 'replace',
+			hook: item.hook || 'post_fetch',
+			content: item.content,
+			enabled: item.enabled,
+			sort_order: item.sort_order || 0,
 		})
 		setIsDialogOpen(true)
 	}
 
-	const handleDelete = (id: number) => {
-		setDeletingRuleId(id)
+	const handleDelete = (item: OverrideItem) => {
+		setDeletingItem(item)
 		setIsDeleteDialogOpen(true)
+	}
+
+	const handleDeleteConfirm = () => {
+		if (!deletingItem) return
+		if (deletingItem.kind === 'rule') {
+			deleteRuleMutation.mutate(deletingItem.id)
+		} else {
+			deleteScriptMutation.mutate(deletingItem.id)
+		}
+		setIsDeleteDialogOpen(false)
+		setDeletingItem(null)
+	}
+
+	const handleToggle = (item: OverrideItem, enabled: boolean) => {
+		if (item.kind === 'rule') {
+			toggleRuleMutation.mutate({ id: item.id, enabled })
+		} else {
+			const script = scripts.find((s) => s.id === item.id)
+			if (script) {
+				toggleScriptMutation.mutate({ id: item.id, script, enabled })
+			}
+		}
 	}
 
 	const handleSubmit = () => {
@@ -289,87 +389,104 @@ function CustomRulesPage() {
 			toast.error(t('toast.nameRequired'))
 			return
 		}
-
 		if (!formData.content.trim()) {
 			toast.error(t('toast.contentRequired'))
 			return
 		}
 
-		// 如果是新建规则集且使用了模板，询问是否创建对应的规则配置
-		if (!editingRule && formData.type === 'rule-providers' && selectedTemplate && selectedTemplate in RULE_PROVIDER_RULES) {
+		const isScript = formData.type === 'script'
+
+		if (isScript) {
+			if (editingItem) {
+				updateScriptMutation.mutate({
+					id: editingItem.id,
+					name: formData.name,
+					hook: formData.hook,
+					content: formData.content,
+					enabled: formData.enabled,
+					sort_order: formData.sort_order,
+				})
+			} else {
+				createScriptMutation.mutate({
+					name: formData.name,
+					hook: formData.hook,
+					content: formData.content,
+					enabled: formData.enabled,
+					sort_order: formData.sort_order,
+				})
+			}
+			setIsDialogOpen(false)
+			resetForm()
+			return
+		}
+
+		if (!editingItem && formData.type === 'rule-providers' && selectedTemplate && selectedTemplate in RULE_PROVIDER_RULES) {
 			setPendingRuleProviderData(formData)
 			setIsRuleProviderConfirmOpen(true)
 			return
 		}
 
-		if (editingRule) {
-			updateMutation.mutate({ id: editingRule.id, ...formData })
-		} else {
-			createMutation.mutate(formData)
+		const ruleData = {
+			name: formData.name,
+			type: formData.type,
+			mode: formData.mode,
+			content: formData.content,
+			enabled: formData.enabled,
 		}
+
+		if (editingItem) {
+			updateRuleMutation.mutate({ id: editingItem.id, ...ruleData })
+		} else {
+			createRuleMutation.mutate(ruleData)
+		}
+		setIsDialogOpen(false)
+		resetForm()
 	}
 
-
-	// 处理规则集确认创建
 	const handleRuleProviderConfirm = async (createRuleConfig: boolean) => {
 		if (!pendingRuleProviderData) return
-
 		try {
-			// 先创建规则集
-			await createMutation.mutateAsync(pendingRuleProviderData)
+			await createRuleMutation.mutateAsync({
+				name: pendingRuleProviderData.name,
+				type: pendingRuleProviderData.type,
+				mode: pendingRuleProviderData.mode,
+				content: pendingRuleProviderData.content,
+				enabled: pendingRuleProviderData.enabled,
+			})
 
-			// 如果用户选择创建规则配置
 			if (createRuleConfig && selectedTemplate && selectedTemplate in RULE_PROVIDER_RULES) {
 				const ruleContent = RULE_PROVIDER_RULES[selectedTemplate as keyof typeof RULE_PROVIDER_RULES]
-
-				// 重新获取最新的规则列表
 				await queryClient.invalidateQueries({ queryKey: ['custom-rules'] })
-				const latestRules = await api.get('/api/admin/custom-rules').then(res => res.data)
-
-				// 查找现有的 rules 类型规则
+				const latestRules = await api.get('/api/admin/custom-rules').then((res) => res.data)
 				const existingRulesRules = latestRules?.filter((r: CustomRule) => r.type === 'rules')
-
-				// 处理规则内容：移除与现有规则重复的部分（忽略大小写）
 				let finalRuleContent = ruleContent
 
 				if (existingRulesRules && existingRulesRules.length > 0) {
-					// 收集所有现有 rules 的内容
 					const allExistingLines: string[] = []
 					existingRulesRules.forEach((rule: CustomRule) => {
-						const lines = rule.content.split('\n').map((line: string) => line.trim()).filter((line: string) => line)
-						// 从第二行开始收集（跳过第一行，通常是注释或标题）
+						const lines = rule.content.split('\n').map((l: string) => l.trim()).filter((l: string) => l)
 						allExistingLines.push(...lines.slice(1))
 					})
-
-					const newLines = ruleContent.split('\n').map((line: string) => line.trim()).filter((line: string) => line)
-					const existingLinesLower = allExistingLines.map((line: string) => line.toLowerCase())
-
-					// 过滤掉与现有规则重复的内容
-					const filteredNewLines = newLines.filter((line: string) =>
-						!existingLinesLower.includes(line.toLowerCase())
-					)
-
-					// 如果过滤后还有内容，则使用过滤后的内容
+					const newLines = ruleContent.split('\n').map((l: string) => l.trim()).filter((l: string) => l)
+					const existingLinesLower = allExistingLines.map((l: string) => l.toLowerCase())
+					const filteredNewLines = newLines.filter((l: string) => !existingLinesLower.includes(l.toLowerCase()))
 					if (filteredNewLines.length > 0) {
 						finalRuleContent = filteredNewLines.join('\n')
 					}
 				}
 
-				// 创建新的 rules 规则
-				const rulesData: RuleFormData = {
+				await createRuleMutation.mutateAsync({
 					name: t('toast.routeRuleName', { name: pendingRuleProviderData.name }),
 					type: 'rules',
 					mode: 'append',
 					content: finalRuleContent,
-					enabled: true
-				}
-				await createMutation.mutateAsync(rulesData)
+					enabled: true,
+				})
 				toast.success(t('toast.ruleProviderCreated'))
 			} else {
 				toast.success(t('toast.ruleProviderOnlyCreated'))
 			}
-		} catch (error) {
-			console.error('Failed to create rule config:', error)
+		} catch {
 			toast.error(t('toast.ruleProviderError'))
 		} finally {
 			setIsRuleProviderConfirmOpen(false)
@@ -378,16 +495,14 @@ function CustomRulesPage() {
 			resetForm()
 		}
 	}
+
 	const getTypeLabel = (type: string) => {
 		switch (type) {
-			case 'dns':
-				return t('type.dns')
-			case 'rules':
-				return t('type.rules')
-			case 'rule-providers':
-				return t('type.ruleProviders')
-			default:
-				return type
+			case 'dns': return t('type.dns')
+			case 'rules': return t('type.rules')
+			case 'rule-providers': return t('type.ruleProviders')
+			case 'script': return t('type.script')
+			default: return type
 		}
 	}
 
@@ -399,23 +514,32 @@ function CustomRulesPage() {
 				return 'bg-green-500/10 text-green-700 border-green-500/20 dark:bg-green-500/20 dark:text-green-400 dark:border-green-500/30'
 			case 'rule-providers':
 				return 'bg-purple-500/10 text-purple-700 border-purple-500/20 dark:bg-purple-500/20 dark:text-purple-400 dark:border-purple-500/30'
+			case 'script':
+				return 'bg-orange-500/10 text-orange-700 border-orange-500/20 dark:bg-orange-500/20 dark:text-orange-400 dark:border-orange-500/30'
 			default:
 				return ''
 		}
 	}
 
-	const getModeLabel = (mode: string) => {
-		switch (mode) {
-			case 'replace':
-				return t('mode.replace')
-			case 'prepend':
-				return t('mode.prepend')
-			case 'append':
-				return t('mode.append')
-			default:
-				return mode
+	const getModeOrHookLabel = (item: OverrideItem) => {
+		if (item.kind === 'script') {
+			return t(`hook.${item.hook}`, { defaultValue: item.hook || '-' })
+		}
+		switch (item.mode) {
+			case 'replace': return t('mode.replace')
+			case 'prepend': return t('mode.prepend')
+			case 'append': return t('mode.append')
+			default: return item.mode || '-'
 		}
 	}
+
+	const isScript = formData.type === 'script'
+
+	const isMutating =
+		createRuleMutation.isPending ||
+		updateRuleMutation.isPending ||
+		createScriptMutation.isPending ||
+		updateScriptMutation.isPending
 
 	return (
 		<main className='mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 pt-24'>
@@ -438,9 +562,7 @@ function CustomRulesPage() {
 						<div className='flex items-center justify-between'>
 							<div>
 								<CardTitle>{t('ruleList')}</CardTitle>
-								<CardDescription>
-									{t('ruleCount', { count: rules.length })}
-								</CardDescription>
+								<CardDescription>{t('ruleCount', { count: filteredItems.length })}</CardDescription>
 							</div>
 							<Tabs value={filterType} onValueChange={setFilterType}>
 								<TabsList>
@@ -448,6 +570,7 @@ function CustomRulesPage() {
 									<TabsTrigger value='dns'>{t('filterDns')}</TabsTrigger>
 									<TabsTrigger value='rules'>{t('filterRules')}</TabsTrigger>
 									<TabsTrigger value='rule-providers'>{t('filterRuleProviders')}</TabsTrigger>
+									<TabsTrigger value='script'>{t('filterScript')}</TabsTrigger>
 								</TabsList>
 							</Tabs>
 						</div>
@@ -459,91 +582,75 @@ function CustomRulesPage() {
 							</div>
 						) : (
 							<DataTable
-								data={rules}
-								getRowKey={(rule) => rule.id}
+								data={filteredItems}
+								getRowKey={(item) => `${item.kind}-${item.id}`}
 								emptyText={t('emptyText')}
-
 								columns={[
 									{
 										header: t('columns.name'),
-										cell: (rule) => rule.name,
-										cellClassName: 'font-medium'
+										cell: (item) => item.name,
+										cellClassName: 'font-medium',
 									},
 									{
 										header: t('columns.type'),
-										cell: (rule) => (
-											<Badge variant='outline' className={getTypeBadgeClass(rule.type)}>
-												{getTypeLabel(rule.type)}
+										cell: (item) => (
+											<Badge variant='outline' className={getTypeBadgeClass(item.type)}>
+												{getTypeLabel(item.type)}
 											</Badge>
-										)
+										),
 									},
 									{
 										header: t('columns.mode'),
-										cell: (rule) => getModeLabel(rule.mode)
+										cell: (item) => getModeOrHookLabel(item),
 									},
 									{
 										header: t('columns.status'),
-										cell: (rule) => (
+										cell: (item) => (
 											<div className='flex items-center gap-2'>
 												<Switch
-													checked={rule.enabled}
-													onCheckedChange={(checked) => {
-														toggleEnabledMutation.mutate({
-															id: rule.id,
-															enabled: checked,
-														})
-													}}
-													disabled={toggleEnabledMutation.isPending}
+													checked={item.enabled}
+													onCheckedChange={(checked) => handleToggle(item, checked)}
+													disabled={toggleRuleMutation.isPending || toggleScriptMutation.isPending}
 												/>
 												<span className='text-sm text-muted-foreground'>
-													{rule.enabled ? t('actions.enable', { ns: 'common' }) : t('actions.disable', { ns: 'common' })}
+													{item.enabled ? t('actions.enable', { ns: 'common' }) : t('actions.disable', { ns: 'common' })}
 												</span>
 											</div>
-										)
+										),
 									},
 									{
 										header: t('columns.createdAt'),
-										cell: (rule) => (
+										cell: (item) => (
 											<span className='text-sm text-muted-foreground'>
-												{new Date(rule.created_at).toLocaleString('zh-CN')}
+												{new Date(item.created_at).toLocaleString('zh-CN')}
 											</span>
-										)
+										),
 									},
 									{
 										header: t('columns.actions'),
-										cell: (rule) => (
+										cell: (item) => (
 											<div className='flex justify-end gap-2'>
-												<Button
-													variant='ghost'
-													size='icon'
-													onClick={() => handleEdit(rule)}
-												>
+												<Button variant='ghost' size='icon' onClick={() => handleEdit(item)}>
 													<Pencil className='h-4 w-4' />
 												</Button>
-												<Button
-													variant='ghost'
-													size='icon'
-													onClick={() => handleDelete(rule.id)}
-												>
+												<Button variant='ghost' size='icon' onClick={() => handleDelete(item)}>
 													<Trash2 className='h-4 w-4' />
 												</Button>
 											</div>
 										),
 										headerClassName: 'text-right',
-										cellClassName: 'text-right'
-									}
-								] as DataTableColumn<CustomRule>[]}
-
+										cellClassName: 'text-right',
+									},
+								] as DataTableColumn<OverrideItem>[]}
 								mobileCard={{
-									header: (rule) => (
+									header: (item) => (
 										<div className='space-y-1'>
-											{/* 第一行：标签 + 名称 + 删除按钮 */}
 											<div className='flex items-start justify-between gap-2'>
 												<div className='flex items-center gap-2 flex-1 min-w-0'>
-													<Badge variant='outline' className={`${getTypeBadgeClass(rule.type)} shrink-0`}>
-														{getTypeLabel(rule.type)}
+													<Badge variant='outline' className={`${getTypeBadgeClass(item.type)} shrink-0`}>
+														{getTypeLabel(item.type)}
 													</Badge>
-													<div className='font-medium text-sm truncate flex-1 min-w-0'>{rule.name}</div>
+													<div className='font-medium text-sm truncate flex-1 min-w-0'>{item.name}</div>
 												</div>
 												<Button
 													variant='outline'
@@ -551,56 +658,44 @@ function CustomRulesPage() {
 													className='size-8 shrink-0 text-destructive hover:text-destructive hover:bg-destructive/10'
 													onClick={(e) => {
 														e.stopPropagation()
-														handleDelete(rule.id)
+														handleDelete(item)
 													}}
 												>
 													<Trash2 className='size-4' />
 												</Button>
 											</div>
-
-											{/* 第二行：模式 + 状态 */}
 											<div className='flex items-center justify-between gap-4 text-xs'>
 												<div className='flex items-center gap-2 min-w-0'>
-													<span className='text-muted-foreground shrink-0'>{t('mobileLabels.mode')}</span>
-													<span className='truncate'>{getModeLabel(rule.mode)}</span>
+													<span className='text-muted-foreground shrink-0'>
+														{item.kind === 'script' ? t('dialog.hookLabel') + ':' : t('mobileLabels.mode')}
+													</span>
+													<span className='truncate'>{getModeOrHookLabel(item)}</span>
 												</div>
 												<div className='flex items-center gap-2 shrink-0'>
 													<span className='text-muted-foreground shrink-0'>{t('mobileLabels.status')}</span>
 													<div className='flex items-center gap-2'>
 														<Switch
-															checked={rule.enabled}
-															onCheckedChange={(checked) => {
-																toggleEnabledMutation.mutate({
-																	id: rule.id,
-																	enabled: checked,
-																})
-															}}
-															disabled={toggleEnabledMutation.isPending}
+															checked={item.enabled}
+															onCheckedChange={(checked) => handleToggle(item, checked)}
+															disabled={toggleRuleMutation.isPending || toggleScriptMutation.isPending}
 														/>
-														<span>{rule.enabled ? t('actions.enable', { ns: 'common' }) : t('actions.disable', { ns: 'common' })}</span>
+														<span>{item.enabled ? t('actions.enable', { ns: 'common' }) : t('actions.disable', { ns: 'common' })}</span>
 													</div>
 												</div>
 											</div>
-
-											{/* 第三行：创建时间 */}
 											<div className='flex items-center gap-2 text-xs'>
 												<span className='text-muted-foreground shrink-0'>{t('mobileLabels.createdAt')}</span>
-												<span>{new Date(rule.created_at).toLocaleString('zh-CN')}</span>
+												<span>{new Date(item.created_at).toLocaleString('zh-CN')}</span>
 											</div>
 										</div>
 									),
 									fields: [],
-									actions: (rule) => (
-										<Button
-											variant='outline'
-											size='sm'
-											className='w-full'
-											onClick={() => handleEdit(rule)}
-										>
+									actions: (item) => (
+										<Button variant='outline' size='sm' className='w-full' onClick={() => handleEdit(item)}>
 											<Pencil className='mr-1 h-4 w-4' />
 											{t('actions.edit', { ns: 'common' })}
 										</Button>
-									)
+									),
 								}}
 							/>
 						)}
@@ -613,49 +708,42 @@ function CustomRulesPage() {
 				<DialogContent className='max-w-3xl max-h-[90vh] overflow-y-auto'>
 					<DialogHeader>
 						<DialogTitle>
-							{editingRule ? t('dialog.editTitle') : t('dialog.createTitle')}
+							{editingItem ? t('dialog.editTitle') : t('dialog.createTitle')}
 						</DialogTitle>
 						<DialogDescription>
-							{editingRule
-								? t('dialog.editDesc')
-								: t('dialog.createDesc')}
+							{isScript
+								? t('dialog.scriptCreateDesc')
+								: editingItem
+									? t('dialog.editDesc')
+									: t('dialog.createDesc')}
 						</DialogDescription>
 					</DialogHeader>
 
-				{/* 顶部操作区 */}
-				<div className='flex items-center justify-between border-b pb-4'>
-					<div className='flex items-center space-x-2'>
-						<Switch
-							id='enabled'
-							checked={formData.enabled}
-							onCheckedChange={(checked) =>
-								setFormData({ ...formData, enabled: checked })
-							}
-						/>
-						<Label htmlFor='enabled'>{t('dialog.enableRule')}</Label>
+					{/* 顶部操作区 */}
+					<div className='flex items-center justify-between border-b pb-4'>
+						<div className='flex items-center space-x-2'>
+							<Switch
+								id='enabled'
+								checked={formData.enabled}
+								onCheckedChange={(checked) => setFormData({ ...formData, enabled: checked })}
+							/>
+							<Label htmlFor='enabled'>{t('dialog.enableRule')}</Label>
+						</div>
+						<div className='flex items-center space-x-2'>
+							<Button
+								variant='outline'
+								onClick={() => {
+									setIsDialogOpen(false)
+									resetForm()
+								}}
+							>
+								{t('actions.cancel', { ns: 'common' })}
+							</Button>
+							<Button onClick={handleSubmit} disabled={isMutating}>
+								{isMutating ? t('actions.saving', { ns: 'common' }) : t('actions.save', { ns: 'common' })}
+							</Button>
+						</div>
 					</div>
-					<div className='flex items-center space-x-2'>
-						<Button
-							variant='outline'
-							onClick={() => {
-								setIsDialogOpen(false)
-								resetForm()
-							}}
-						>
-							{t('actions.cancel', { ns: 'common' })}
-						</Button>
-						<Button
-							onClick={handleSubmit}
-							disabled={
-								createMutation.isPending || updateMutation.isPending
-							}
-						>
-							{createMutation.isPending || updateMutation.isPending
-								? t('actions.saving', { ns: 'common' })
-								: t('actions.save', { ns: 'common' })}
-						</Button>
-					</div>
-				</div>
 
 					<div className='space-y-4 py-4'>
 						<div className='space-y-2'>
@@ -663,32 +751,24 @@ function CustomRulesPage() {
 							<Input
 								id='name'
 								value={formData.name}
-								onChange={(e) =>
-									setFormData({ ...formData, name: e.target.value })
-								}
+								onChange={(e) => setFormData({ ...formData, name: e.target.value })}
 								placeholder={t('dialog.namePlaceholder')}
 							/>
 						</div>
 
-						<div className={`grid gap-4 ${!editingRule ? 'grid-cols-4' : 'grid-cols-2'}`}>
+						<div className={`grid gap-4 ${!editingItem && !isScript ? 'grid-cols-4' : isScript ? 'grid-cols-2' : 'grid-cols-2'}`}>
 							<div className='space-y-2'>
 								<Label htmlFor='type'>{t('dialog.typeLabel')}</Label>
 								<Select
 									value={formData.type}
 									onValueChange={(value: any) => {
-										const newFormData = {
-											...formData,
-											type: value,
-										}
-										// DNS type always uses replace mode
-										if (value === 'dns') {
-											newFormData.mode = 'replace'
-										}
+										const newFormData = { ...formData, type: value }
+										if (value === 'dns') newFormData.mode = 'replace'
+										if (value === 'script') newFormData.hook = formData.hook || 'post_fetch'
 										setFormData(newFormData)
-										// Reset selected template when changing type
 										setSelectedTemplate(null)
 									}}
-									disabled={!!editingRule}
+									disabled={!!editingItem}
 								>
 									<SelectTrigger id='type'>
 										<SelectValue />
@@ -697,102 +777,144 @@ function CustomRulesPage() {
 										<SelectItem value='dns'>{t('type.dns')}</SelectItem>
 										<SelectItem value='rules'>{t('type.rules')}</SelectItem>
 										<SelectItem value='rule-providers'>{t('type.ruleProviders')}</SelectItem>
+										<SelectItem value='script'>{t('type.script')}</SelectItem>
 									</SelectContent>
 								</Select>
 							</div>
 
-							<div className='space-y-2'>
-								<Label htmlFor='mode'>{t('dialog.modeLabel')}</Label>
-								<Select
-									value={formData.mode}
-									onValueChange={(value: any) =>
-										setFormData({ ...formData, mode: value })
-									}
-									disabled={formData.type === 'dns'}
-								>
-									<SelectTrigger id='mode'>
-										<SelectValue />
-									</SelectTrigger>
-									<SelectContent>
-										<SelectItem value='replace'>{t('mode.replace')}</SelectItem>
-										<SelectItem value='prepend'>{t('mode.prepend')}</SelectItem>
-										<SelectItem value='append'>{t('mode.append')}</SelectItem>
-									</SelectContent>
-								</Select>
-							</div>
-				{/* 模板选择 - 仅在新建时显示 */}
-				{!editingRule && (
-					<div className='space-y-2 col-span-2'>
-						<Label htmlFor='template'>{t('dialog.templateLabel')}</Label>
-						<Select
-							value={selectedTemplate || 'none'}
-							onValueChange={(value: string) => {
-								if (value === 'none') {
-									setSelectedTemplate(null)
-									return
-								}
+							{isScript ? (
+								<div className='space-y-2'>
+									<Label htmlFor='hook'>{t('dialog.hookLabel')}</Label>
+									<Select
+										value={formData.hook}
+										onValueChange={(value) => setFormData({ ...formData, hook: value })}
+									>
+										<SelectTrigger id='hook'>
+											<SelectValue />
+										</SelectTrigger>
+										<SelectContent>
+											<SelectItem value='post_fetch'>{t('hook.post_fetch')}</SelectItem>
+											<SelectItem value='pre_save_nodes'>{t('hook.pre_save_nodes')}</SelectItem>
+										</SelectContent>
+									</Select>
+								</div>
+							) : (
+								<div className='space-y-2'>
+									<Label htmlFor='mode'>{t('dialog.modeLabel')}</Label>
+									<Select
+										value={formData.mode}
+										onValueChange={(value: any) => setFormData({ ...formData, mode: value })}
+										disabled={formData.type === 'dns'}
+									>
+										<SelectTrigger id='mode'>
+											<SelectValue />
+										</SelectTrigger>
+										<SelectContent>
+											<SelectItem value='replace'>{t('mode.replace')}</SelectItem>
+											<SelectItem value='prepend'>{t('mode.prepend')}</SelectItem>
+											<SelectItem value='append'>{t('mode.append')}</SelectItem>
+										</SelectContent>
+									</Select>
+								</div>
+							)}
 
-								const templates = RULE_TEMPLATES[formData.type as keyof typeof RULE_TEMPLATES]
-								const template = templates[value as keyof typeof templates] as { name: string; content: string } | undefined
+							{/* 模板选择 - 仅在新建时显示 */}
+							{!editingItem && !isScript && (
+								<div className='space-y-2 col-span-2'>
+									<Label htmlFor='template'>{t('dialog.templateLabel')}</Label>
+									<Select
+										value={selectedTemplate || 'none'}
+										onValueChange={(value: string) => {
+											if (value === 'none') {
+												setSelectedTemplate(null)
+												return
+											}
+											const templates = RULE_TEMPLATES[formData.type as keyof typeof RULE_TEMPLATES]
+											const template = templates[value as keyof typeof templates] as { name: string; content: string } | undefined
+											if (template) {
+												setSelectedTemplate(value)
+												const allTemplates = RULE_TEMPLATES[formData.type as keyof typeof RULE_TEMPLATES]
+												const isTemplateName = Object.values(allTemplates).some(
+													(t: any) => t.name === formData.name
+												)
+												setFormData({
+													...formData,
+													name: formData.name === '' || isTemplateName ? template.name : formData.name,
+													content: template.content,
+												})
+											}
+										}}
+									>
+										<SelectTrigger id='template'>
+											<SelectValue placeholder={t('dialog.templatePlaceholder')} />
+										</SelectTrigger>
+										<SelectContent>
+											<SelectItem value='none'>{t('dialog.noTemplate')}</SelectItem>
+											{Object.entries(RULE_TEMPLATES[formData.type as keyof typeof RULE_TEMPLATES] || {}).map(
+												([key, template]) => (
+													<SelectItem key={key} value={key}>
+														{template.name}
+													</SelectItem>
+												)
+											)}
+										</SelectContent>
+									</Select>
+								</div>
+							)}
 
-								if (template) {
-									setSelectedTemplate(value)
-
-									// 检查当前名称是否为空或是某个模板的名称
-									const allTemplates = RULE_TEMPLATES[formData.type as keyof typeof RULE_TEMPLATES]
-									const isTemplateName = Object.values(allTemplates).some(
-										(t: any) => t.name === formData.name
-									)
-
-									setFormData({
-										...formData,
-										// 只在名称为空或当前名称是模板名称时才更新名称
-										name: (formData.name === '' || isTemplateName) ? template.name : formData.name,
-										content: template.content
-									})
-								}
-							}}
-						>
-							<SelectTrigger id='template'>
-								<SelectValue placeholder={t('dialog.templatePlaceholder')} />
-							</SelectTrigger>
-							<SelectContent>
-								<SelectItem value='none'>{t('dialog.noTemplate')}</SelectItem>
-								{Object.entries(RULE_TEMPLATES[formData.type as keyof typeof RULE_TEMPLATES]).map(([key, template]) => (
-									<SelectItem key={key} value={key}>
-										{template.name}
-									</SelectItem>
-								))}
-							</SelectContent>
-						</Select>
+							{/* 脚本模板 */}
+							{!editingItem && isScript && (
+								<div className='space-y-2'>
+									<Label>{t('dialog.templateLabel')}</Label>
+									<Select
+										onValueChange={(templateName) => {
+											const hookTemplates = OVERRIDE_SCRIPT_TEMPLATES[formData.hook as keyof typeof OVERRIDE_SCRIPT_TEMPLATES] || []
+											const template = hookTemplates.find((t) => t.name === templateName)
+											if (template) {
+												setFormData((prev) => ({ ...prev, content: template.content }))
+											}
+										}}
+									>
+										<SelectTrigger>
+											<SelectValue placeholder={t('dialog.scriptTemplatePlaceholder')} />
+										</SelectTrigger>
+										<SelectContent>
+											{(OVERRIDE_SCRIPT_TEMPLATES[formData.hook as keyof typeof OVERRIDE_SCRIPT_TEMPLATES] || []).map((t) => (
+												<SelectItem key={t.name} value={t.name}>
+													{t.name}
+												</SelectItem>
+											))}
+										</SelectContent>
+									</Select>
+								</div>
+							)}
 						</div>
-					)}
-					</div>
+
 						<div className='space-y-2'>
-							<Label htmlFor='content'>{t('dialog.contentLabel')}</Label>
+							<Label htmlFor='content'>
+								{isScript ? t('dialog.scriptContentLabel') : t('dialog.contentLabel')}
+							</Label>
 							<Textarea
 								id='content'
 								value={formData.content}
-								onChange={(e) =>
-									setFormData({ ...formData, content: e.target.value })
+								onChange={(e) => setFormData({ ...formData, content: e.target.value })}
+								placeholder={
+									isScript
+										? `function main(${formData.hook === 'post_fetch' ? 'config' : 'proxies'}) {\n  // ...\n  return ${formData.hook === 'post_fetch' ? 'config' : 'proxies'};\n}`
+										: t('dialog.contentPlaceholder')
 								}
-								placeholder={t('dialog.contentPlaceholder')}
 								className='font-mono text-sm min-h-[300px] whitespace-pre-wrap break-all [field-sizing:fixed]'
 							/>
 							<p className='text-xs text-muted-foreground'>
-								{t('dialog.contentHint')}
+								{isScript ? t('dialog.scriptContentHint') : t('dialog.contentHint')}
 							</p>
 						</div>
-
 					</div>
 				</DialogContent>
 			</Dialog>
 
 			{/* Delete Confirmation Dialog */}
-			<AlertDialog
-				open={isDeleteDialogOpen}
-				onOpenChange={setIsDeleteDialogOpen}
-			>
+			<AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
 				<AlertDialogContent>
 					<AlertDialogHeader>
 						<AlertDialogTitle>{t('deleteConfirm.title')}</AlertDialogTitle>
@@ -803,24 +925,17 @@ function CustomRulesPage() {
 					<AlertDialogFooter>
 						<AlertDialogCancel>{t('actions.cancel', { ns: 'common' })}</AlertDialogCancel>
 						<AlertDialogAction
-							onClick={() => {
-								if (deletingRuleId) {
-									deleteMutation.mutate(deletingRuleId)
-								}
-							}}
-							disabled={deleteMutation.isPending}
+							onClick={handleDeleteConfirm}
+							disabled={deleteRuleMutation.isPending || deleteScriptMutation.isPending}
 						>
-							{deleteMutation.isPending ? t('deleteConfirm.deleting') : t('deleteConfirm.confirm')}
+							{deleteRuleMutation.isPending || deleteScriptMutation.isPending ? t('deleteConfirm.deleting') : t('deleteConfirm.confirm')}
 						</AlertDialogAction>
 					</AlertDialogFooter>
 				</AlertDialogContent>
 			</AlertDialog>
 
 			{/* Rule Provider Confirmation Dialog */}
-			<AlertDialog
-				open={isRuleProviderConfirmOpen}
-				onOpenChange={setIsRuleProviderConfirmOpen}
-			>
+			<AlertDialog open={isRuleProviderConfirmOpen} onOpenChange={setIsRuleProviderConfirmOpen}>
 				<AlertDialogContent>
 					<AlertDialogHeader>
 						<AlertDialogTitle>{t('ruleProviderConfirm.title')}</AlertDialogTitle>
@@ -834,9 +949,7 @@ function CustomRulesPage() {
 						<AlertDialogCancel onClick={() => handleRuleProviderConfirm(false)}>
 							{t('ruleProviderConfirm.onlyRuleProvider')}
 						</AlertDialogCancel>
-						<AlertDialogAction
-							onClick={() => handleRuleProviderConfirm(true)}
-						>
+						<AlertDialogAction onClick={() => handleRuleProviderConfirm(true)}>
 							{t('ruleProviderConfirm.withRuleConfig')}
 						</AlertDialogAction>
 					</AlertDialogFooter>

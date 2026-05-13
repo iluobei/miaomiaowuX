@@ -1,18 +1,19 @@
 {
-  "title": "自定义规则",
-  "subtitle": "管理 DNS、规则和规则集的自定义配置",
-  "createRule": "新建规则",
-  "ruleList": "规则列表",
-  "ruleCount": "{{count}} 条规则",
+  "title": "覆写管理",
+  "subtitle": "管理 DNS、规则、规则集和覆写脚本的自定义配置",
+  "createRule": "添加覆写设置",
+  "ruleList": "覆写列表",
+  "ruleCount": "{{count}} 条覆写设置",
   "filterAll": "全部",
   "filterDns": "DNS",
   "filterRules": "规则",
   "filterRuleProviders": "规则集",
-  "emptyText": "暂无规则",
+  "filterScript": "脚本",
+  "emptyText": "暂无覆写设置",
   "columns": {
     "name": "名称",
     "type": "类型",
-    "mode": "模式",
+    "mode": "模式/钩子",
     "status": "状态",
     "createdAt": "创建时间",
     "actions": "操作"
@@ -25,7 +26,12 @@
   "type": {
     "dns": "DNS",
     "rules": "规则",
-    "ruleProviders": "规则集"
+    "ruleProviders": "规则集",
+    "script": "脚本"
+  },
+  "hook": {
+    "post_fetch": "转换为客户端配置前",
+    "pre_save_nodes": "保存外部订阅节点前"
   },
   "mode": {
     "replace": "替换",
@@ -33,25 +39,30 @@
     "append": "添加至尾部"
   },
   "dialog": {
-    "createTitle": "新建规则",
-    "editTitle": "编辑规则",
+    "createTitle": "添加覆写设置",
+    "editTitle": "编辑覆写设置",
     "createDesc": "创建新的自定义规则",
     "editDesc": "修改自定义规则配置",
-    "enableRule": "启用此规则",
+    "scriptCreateDesc": "脚本需要定义 main 函数，接收配置对象并返回修改后的结果",
+    "enableRule": "启用",
     "nameLabel": "名称",
-    "namePlaceholder": "规则名称",
+    "namePlaceholder": "覆写设置名称",
     "typeLabel": "类型",
     "modeLabel": "模式",
+    "hookLabel": "钩子",
     "templateLabel": "模板（可选）",
     "templatePlaceholder": "选择模板或手动输入",
+    "scriptTemplatePlaceholder": "选择模板填充内容",
     "noTemplate": "不使用模板",
     "contentLabel": "规则内容（YAML 格式）",
+    "scriptContentLabel": "脚本内容",
     "contentPlaceholder": "输入 YAML 格式的规则内容...",
-    "contentHint": "请确保内容符合 YAML 格式规范"
+    "contentHint": "请确保内容符合 YAML 格式规范",
+    "scriptContentHint": "脚本需要定义 main 函数，接收配置对象并返回修改后的结果"
   },
   "deleteConfirm": {
     "title": "确认删除",
-    "description": "此操作无法撤销。确定要删除这条规则吗？",
+    "description": "此操作无法撤销。确定要删除这条覆写设置吗？",
     "deleting": "删除中...",
     "confirm": "删除"
   },
@@ -91,11 +102,17 @@
     "helpProtocol": "协议：匹配网络协议类型"
   },
   "toast": {
-    "created": "自定义规则已创建",
+    "created": "覆写规则已创建",
+    "scriptCreated": "覆写脚本已创建",
+    "scriptUpdated": "覆写脚本已更新",
+    "scriptDeleted": "覆写脚本已删除",
+    "scriptCreateError": "创建脚本时出错",
+    "scriptUpdateError": "更新脚本时出错",
+    "scriptDeleteError": "删除脚本时出错",
     "createdWithGroups": "自定义规则已创建。已新增 {{groups}} 代理组，默认节点：🚀 节点选择、DIRECT，如需修改请编辑订阅",
-    "updated": "自定义规则已更新",
+    "updated": "覆写规则已更新",
     "updatedWithGroups": "自定义规则已更新。已新增 {{groups}} 代理组，默认节点：🚀 节点选择、DIRECT，如需修改请编辑订阅",
-    "deleted": "自定义规则已删除",
+    "deleted": "覆写规则已删除",
     "statusUpdated": "状态已更新",
     "createError": "创建规则时出错",
     "updateError": "更新规则时出错",
