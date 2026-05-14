@@ -8269,6 +8269,18 @@ func (r *TrafficRepository) UpdateCertificateStatus(ctx context.Context, id int6
 	return nil
 }
 
+func (r *TrafficRepository) AppendCertificateLog(ctx context.Context, id int64, line string) error {
+	if r == nil || r.db == nil {
+		return errors.New("traffic repository not initialized")
+	}
+	ts := time.Now().Format("15:04:05")
+	entry := "[" + ts + "] " + line + "\n"
+	_, err := r.db.ExecContext(ctx, `
+		UPDATE certificates SET message = COALESCE(message, '') || ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?
+	`, entry, id)
+	return err
+}
+
 // 成功颁发后更新证书。
 func (r *TrafficRepository) UpdateCertificateIssued(ctx context.Context, id int64, certPath, keyPath, certPEM, keyPEM string, issueDate, expiryDate time.Time) error {
 	if r == nil || r.db == nil {

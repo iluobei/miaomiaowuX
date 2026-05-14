@@ -352,19 +352,35 @@ func (h *CertificateHandler) requestLocalCertificate(cert *storage.Certificate) 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	defer cancel()
 
+	appendLog := func(msg string) {
+		_ = h.repo.AppendCertificateLog(ctx, cert.ID, msg)
+	}
+
+	appendLog("开始申请证书: " + cert.Domain)
+
 	certReq, err := h.buildCertRequest(ctx, cert)
 	if err != nil {
 		log.Printf("[Certificate] buildCertRequest failed for %s: %v", cert.Domain, err)
+		appendLog("构建请求失败: " + err.Error())
 		_ = h.repo.UpdateCertificateStatus(ctx, cert.ID, storage.CertStatusFailed, err.Error())
 		return
 	}
 
+	appendLog(fmt.Sprintf("验证方式: %s, CA: %s", certReq.ChallengeMode, certReq.Provider))
+	if certReq.ChallengeMode == "dns" {
+		appendLog("DNS 提供商: " + certReq.DNSProvider)
+	}
+	appendLog("正在向 CA 请求证书...")
+
 	result, err := h.acmeClient.ObtainCertificateV2(ctx, certReq)
 	if err != nil {
 		log.Printf("[Certificate] ObtainCertificate failed for %s: %v", cert.Domain, err)
+		appendLog("证书申请失败: " + err.Error())
 		_ = h.repo.UpdateCertificateStatus(ctx, cert.ID, storage.CertStatusFailed, err.Error())
 		return
 	}
+
+	appendLog(fmt.Sprintf("证书颁发成功, 有效期至 %s", result.ExpiryDate.Format("2006-01-02")))
 
 	if err := h.repo.UpdateCertificateIssued(ctx, cert.ID, result.CertPath, result.KeyPath, result.CertPEM, result.KeyPEM, result.IssueDate, result.ExpiryDate); err != nil {
 		log.Printf("[Certificate] UpdateCertificateIssued failed for %s: %v", cert.Domain, err)
@@ -383,16 +399,26 @@ func (h *CertificateHandler) requestRemoteCertificate(cert *storage.Certificate)
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
+	appendLog := func(msg string) {
+		_ = h.repo.AppendCertificateLog(ctx, cert.ID, msg)
+	}
+
+	appendLog("开始远程证书申请: " + cert.Domain)
+
 	// 获取远程服务器令牌
 	server, err := h.repo.GetRemoteServer(ctx, cert.RemoteServerID)
 	if err != nil {
 		log.Printf("[Certificate] GetRemoteServer failed: %v", err)
+		appendLog("获取远程服务器信息失败: " + err.Error())
 		_ = h.repo.UpdateCertificateStatus(ctx, cert.ID, storage.CertStatusFailed, "获取远程服务器信息失败")
 		return
 	}
 
+	appendLog("目标服务器: " + server.Name)
+
 	if !h.wsHandler.IsConnected(server.Token) {
 		log.Printf("[Certificate] Remote server %s is not connected", server.Name)
+		appendLog("远程服务器未连接")
 		_ = h.repo.UpdateCertificateStatus(ctx, cert.ID, storage.CertStatusFailed, "远程服务器未连接")
 		return
 	}
@@ -404,12 +430,16 @@ func (h *CertificateHandler) requestRemoteCertificate(cert *storage.Certificate)
 		dnsProvider, dnsErr := h.repo.GetDNSProvider(ctx, cert.DNSProviderID)
 		if dnsErr != nil {
 			log.Printf("[Certificate] GetDNSProvider failed: %v", dnsErr)
+			appendLog("获取 DNS 凭证失败")
 			_ = h.repo.UpdateCertificateStatus(ctx, cert.ID, storage.CertStatusFailed, "获取DNS凭证失败")
 			return
 		}
 		dnsProviderType = dnsProvider.ProviderType
 		dnsCredentials = dnsProvider.Credentials
+		appendLog("DNS 提供商: " + dnsProviderType)
 	}
+
+	appendLog("正在通过 WebSocket 发送证书请求...")
 
 	// 通过 WebSocket 发送证书请求
 	payload := WSCertRequestPayload{

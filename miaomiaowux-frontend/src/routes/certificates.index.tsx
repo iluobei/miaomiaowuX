@@ -426,7 +426,20 @@ function CertificatesPage() {
       case 'valid':
         return <Badge variant="default" className="bg-green-500"><ShieldCheck className="h-3 w-3 mr-1" />{t('status.valid')}</Badge>
       case 'pending':
-        return <Badge variant="secondary"><Clock className="h-3 w-3 mr-1" />{t('status.pending')}</Badge>
+        return message ? (
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Badge variant="secondary" className="cursor-help"><Clock className="h-3 w-3 mr-1 animate-spin" />{t('status.pending')}</Badge>
+              </TooltipTrigger>
+              <TooltipContent side="top" className="max-w-sm">
+                <pre className="text-xs whitespace-pre-wrap font-mono">{message}</pre>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        ) : (
+          <Badge variant="secondary"><Clock className="h-3 w-3 mr-1 animate-spin" />{t('status.pending')}</Badge>
+        )
       case 'expired':
         return <Badge variant="destructive"><ShieldX className="h-3 w-3 mr-1" />{t('status.expired')}</Badge>
       case 'failed':
