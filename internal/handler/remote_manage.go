@@ -570,6 +570,10 @@ func (h *RemoteManageHandler) HandleSystemInfo(w http.ResponseWriter, r *http.Re
 }
 
 // 通过 HTTP 将请求转发到远程服务器
+func (h *RemoteManageHandler) ForwardToServer(ctx context.Context, serverID int64, method, path string, body []byte) ([]byte, error) {
+	return h.forwardToRemoteServer(ctx, serverID, method, path, body)
+}
+
 func (h *RemoteManageHandler) forwardToRemoteServer(ctx context.Context, serverID int64, method, path string, body []byte) ([]byte, error) {
 	// 获取服务器信息
 	server, err := h.repo.GetRemoteServer(ctx, serverID)

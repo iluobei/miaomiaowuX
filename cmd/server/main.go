@@ -318,6 +318,7 @@ func main() {
 
 	// 远程服务器管理代理（将命令转发到子服务器）
 	remoteManageHandler := handler.NewRemoteManageHandler(repo, remoteWSHandler)
+	xrayServerHandler.SetRemoteManager(remoteManageHandler)
 
 	// 依赖 limiterPusher 的端点
 	mux.Handle("/api/admin/packages/update", auth.RequireAdmin(tokenStore, userRepo, handler.NewPackageUpdateHandler(repo, limiterPusher)))

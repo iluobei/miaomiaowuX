@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"context"
 	"crypto/rand"
 	"encoding/base64"
 	"encoding/json"
@@ -11,6 +12,7 @@ import (
 	stdhttp "net/http"
 	"net/url"
 	"strings"
+	"time"
 
 	"miaomiaowux/internal/storage"
 	"miaomiaowux/internal/traffic"
@@ -26,6 +28,7 @@ type XrayServerHandler struct {
 	repo           *storage.TrafficRepository
 	collector      *traffic.Collector
 	limiterPusher  *LimiterConfigPusher
+	remoteManager  *RemoteManageHandler
 }
 
 func NewXrayServerHandler(repo *storage.TrafficRepository, collector *traffic.Collector) *XrayServerHandler {
@@ -37,6 +40,10 @@ func NewXrayServerHandler(repo *storage.TrafficRepository, collector *traffic.Co
 
 func (h *XrayServerHandler) SetLimiterPusher(p *LimiterConfigPusher) {
 	h.limiterPusher = p
+}
+
+func (h *XrayServerHandler) SetRemoteManager(rm *RemoteManageHandler) {
+	h.remoteManager = rm
 }
 
 // 远程服务器管理API
@@ -101,16 +108,16 @@ type RemoteServerDeleteRequest struct {
 
 // RemoteServerUpdateRequest 表示更新远程服务器的请求
 type RemoteServerUpdateRequest struct {
-	ID              int64  `json:”id”`
-	Name            string `json:”name”`
-	Domain          string `json:”domain”`            // 服务器域（可选）
-	TrafficLimit    int64  `json:”traffic_limit”`     // 流量限制（以字节为单位）
-	TrafficResetDay int    `json:”traffic_reset_day”` // 要重置的月份日期 (1-31)
-	ConnectionMode  string `json:”connection_mode”`   // “websocket”、”http”、”pull”、”auto”
-	PullAddress     string `json:”pull_address”`      // pull模式地址
-	PullPort        int    `json:”pull_port”`         // pull模式端口
-	PullToken       string `json:”pull_token”`        // pull模式令牌
-	XrayMode        string `json:”xray_mode”`         // “external” 或 “embedded”
+	ID              int64  `json:"id"`
+	Name            string `json:"name"`
+	Domain          string `json:"domain"`
+	TrafficLimit    int64  `json:"traffic_limit"`
+	TrafficResetDay int    `json:"traffic_reset_day"`
+	ConnectionMode  string `json:"connection_mode"`
+	PullAddress     string `json:"pull_address"`
+	PullPort        int    `json:"pull_port"`
+	PullToken       string `json:"pull_token"`
+	XrayMode        string `json:"xray_mode"`
 }
 
 // 生成加密安全令牌
@@ -535,11 +542,34 @@ func (h *XrayServerHandler) UpdateRemoteServer(w stdhttp.ResponseWriter, r *stdh
 		}
 	}
 
+	// xray_mode 变更：异步通知 Agent 切换模式
+	newXrayMode := req.XrayMode
+	if newXrayMode == "" {
+		newXrayMode = oldServer.XrayMode
+	}
+	if newXrayMode != oldServer.XrayMode && h.remoteManager != nil {
+		go h.switchRemoteXrayMode(req.ID, newXrayMode)
+	}
+
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(RemoteServerResponse{
 		Success: true,
 		Message: "服务器信息已更新",
 	})
+}
+
+// switchRemoteXrayMode 通知远程 Agent 切换 xray_mode 并重启。
+func (h *XrayServerHandler) switchRemoteXrayMode(serverID int64, newMode string) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+	defer cancel()
+
+	body, _ := json.Marshal(map[string]string{"xray_mode": newMode})
+	result, err := h.remoteManager.ForwardToServer(ctx, serverID, "POST", "/api/child/agent/switch-xray-mode", body)
+	if err != nil {
+		log.Printf("[Remote Server] Failed to switch xray_mode to %s for server %d: %v", newMode, serverID, err)
+		return
+	}
+	log.Printf("[Remote Server] Xray mode switch to %s for server %d: %s", newMode, serverID, string(result))
 }
 
 func resolveIPs(address string) []string {
