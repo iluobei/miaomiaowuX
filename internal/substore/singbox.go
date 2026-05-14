@@ -81,6 +81,8 @@ func (p *SingboxProducer) Produce(proxies []Proxy, outputType string, opts *Prod
 			if GetString(proxy, "plugin") == "shadow-tls" {
 				ssPart, stPart, err2 := p.shadowTLSParser(proxy)
 				if err2 == nil {
+					p.passthroughExtraFields(proxy, ssPart)
+					p.passthroughExtraFields(proxy, stPart)
 					list = append(list, ssPart)
 					list = append(list, stPart)
 				}
@@ -138,6 +140,7 @@ func (p *SingboxProducer) Produce(proxies []Proxy, outputType string, opts *Prod
 		}
 
 		if parsed != nil {
+			p.passthroughExtraFields(proxy, parsed)
 			list = append(list, parsed)
 		}
 	}
@@ -188,6 +191,51 @@ func (p *SingboxProducer) networkParser(proxy Proxy, parsed map[string]interface
 	network := GetString(proxy, "_network")
 	if network == "tcp" || network == "udp" {
 		parsed["network"] = network
+	}
+}
+
+var singboxConsumedKeys = map[string]bool{
+	"name": true, "type": true, "server": true, "port": true,
+	"password": true, "uuid": true, "cipher": true, "alterId": true,
+	"network": true, "tls": true, "skip-cert-verify": true,
+	"servername": true, "sni": true, "alpn": true,
+	"ws-opts": true, "grpc-opts": true, "h2-opts": true, "http-opts": true,
+	"reality-opts": true, "client-fingerprint": true, "fingerprint": true,
+	"flow": true, "udp": true, "xudp": true,
+	"fast-open": true, "tfo": true, "tcp-fast-open": true, "tcp_fast_open": true,
+	"smux": true, "ip-version": true,
+	"dialer-proxy": true, "detour": true,
+	"_dns_server": true, "_network": true,
+	"plugin": true, "plugin-opts": true,
+	"obfs": true, "obfs-param": true, "protocol": true, "protocol-param": true,
+	"up": true, "down": true,
+	"auth": true, "auth-str": true, "auth_str": true,
+	"ca": true, "ca-str": true, "ca_str": true,
+	"recv-window-conn": true, "recv-window": true, "recv_window_conn": true, "recv_window": true,
+	"disable-mtu-discovery": true,
+	"obfs-password": true, "ports": true, "hop-interval": true,
+	"congestion-controller": true, "udp-relay-mode": true,
+	"reduce-rtt": true, "heartbeat-interval": true,
+	"ip": true, "ipv6": true, "public-key": true, "private-key": true,
+	"pre-shared-key": true, "reserved": true, "mtu": true,
+	"allowed-ips": true, "peers": true, "remote-dns-resolve": true, "dns": true,
+	"username": true, "host-key": true, "host-key-algorithms": true,
+	"private-key-passphrase": true, "private-key-path": true,
+	"headers": true, "path": true,
+	"version": true, "token": true,
+	"idle-timeout": true, "padding": true,
+}
+
+func (p *SingboxProducer) passthroughExtraFields(proxy Proxy, parsed map[string]interface{}) {
+	for key, value := range proxy {
+		if singboxConsumedKeys[key] {
+			continue
+		}
+		sbKey := strings.ReplaceAll(key, "-", "_")
+		if _, exists := parsed[sbKey]; exists {
+			continue
+		}
+		parsed[sbKey] = value
 	}
 }
 

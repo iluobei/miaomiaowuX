@@ -699,10 +699,11 @@ function SubscribeFilesPage() {
     const nodes = allNodesData?.nodes ?? []
     const grouped: Record<string, string[]> = {}
     for (const node of nodes) {
-      if (!grouped[node.tag]) {
-        grouped[node.tag] = []
+      const tag = node.tag || '手动输入'
+      if (!grouped[tag]) {
+        grouped[tag] = []
       }
-      grouped[node.tag].push(node.node_name)
+      grouped[tag].push(node.node_name)
     }
     return grouped
   }, [allNodesData])

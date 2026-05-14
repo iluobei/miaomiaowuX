@@ -126,6 +126,7 @@ type TemplateV3Processor struct {
 	regionGroupsAdded bool                // Whether region proxy groups have been added
 	regionGroupNames  []string            // Names of region proxy groups
 	variables         map[string]string   // 模板自定义变量（非标准顶级键）
+	usedVariables     map[string]bool     // 被实际引用的变量
 }
 
 // Clash/mihomo 标准顶级键（不视为自定义变量）
@@ -152,6 +153,7 @@ func NewTemplateV3Processor(proxies []ProxyNode, providers map[string][]string) 
 		regionGroupsAdded: false,
 		regionGroupNames:  GetRegionProxyGroupNames(),
 		variables:         make(map[string]string),
+		usedVariables:     make(map[string]bool),
 	}
 }
 
@@ -264,8 +266,8 @@ func (p *TemplateV3Processor) ProcessTemplate(templateContent string, proxies []
 			// Remove add-region-proxy-groups from output
 			p.removeGlobalConfig(rootMap, "add-region-proxy-groups")
 
-			// 移除自定义变量键（不输出到最终 YAML）
-			for name := range p.variables {
+			// 只移除被实际引用的变量键（未引用的保留为全局配置）
+			for name := range p.usedVariables {
 				p.removeGlobalConfig(rootMap, name)
 			}
 		}
@@ -560,6 +562,7 @@ func (p *TemplateV3Processor) parseProxyGroup(groupNode *yaml.Node) ProxyGroupV3
 			// 解析变量引用：filter 值如果是自定义变量名，替换为变量值
 			if resolved, ok := p.variables[group.Filter]; ok {
 				logger.Info("[模板变量] 代理组 filter 引用变量已解析", "group", group.Name, "variable", group.Filter, "resolved", resolved)
+				p.usedVariables[group.Filter] = true
 				group.Filter = resolved
 			}
 		case "exclude-filter":
@@ -567,6 +570,7 @@ func (p *TemplateV3Processor) parseProxyGroup(groupNode *yaml.Node) ProxyGroupV3
 			// 解析变量引用
 			if resolved, ok := p.variables[group.ExcludeFilter]; ok {
 				logger.Info("[模板变量] 代理组 exclude-filter 引用变量已解析", "group", group.Name, "variable", group.ExcludeFilter, "resolved", resolved)
+				p.usedVariables[group.ExcludeFilter] = true
 				group.ExcludeFilter = resolved
 			}
 		case "exclude-type":

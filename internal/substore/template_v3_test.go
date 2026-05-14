@@ -964,3 +964,53 @@ proxy-groups:
 
 	t.Logf("Test passed: %d provider nodes with dialer-proxy, %d relay nodes without", providerNodesWithDialer, relayNodesWithoutDialer)
 }
+
+func TestTemplateV3Processor_PreservesUnusedGlobalKeys(t *testing.T) {
+	template := `
+mode: rule
+external-ui-name: "metacubexd"
+external-ui-url: "https://github.com/example/releases"
+my-filter-var: "香港|HK"
+dns:
+  enable: true
+proxies: null
+proxy-groups:
+  - name: 🚀 节点选择
+    type: select
+    include-all: true
+    filter: my-filter-var
+`
+
+	proxies := []map[string]any{
+		{"name": "🇭🇰 香港 01", "type": "vmess", "server": "hk1.example.com", "port": 443},
+		{"name": "🇺🇸 美国 01", "type": "vmess", "server": "us1.example.com", "port": 443},
+	}
+
+	processor := NewTemplateV3Processor(nil, nil)
+	result, err := processor.ProcessTemplate(template, proxies)
+	if err != nil {
+		t.Fatalf("ProcessTemplate failed: %v", err)
+	}
+
+	if !strings.Contains(result, "external-ui-name") {
+		t.Errorf("expected 'external-ui-name' to be preserved in output, but not found")
+	}
+	if !strings.Contains(result, "metacubexd") {
+		t.Errorf("expected 'metacubexd' value to be preserved in output, but not found")
+	}
+
+	if !strings.Contains(result, "external-ui-url") {
+		t.Errorf("expected 'external-ui-url' to be preserved in output, but not found")
+	}
+
+	if strings.Contains(result, "my-filter-var:") {
+		t.Errorf("expected 'my-filter-var' to be removed from output (it was used as a variable)")
+	}
+
+	if !strings.Contains(result, "香港 01") {
+		t.Errorf("expected '香港 01' in proxy group (filter should resolve to HK regex)")
+	}
+	if strings.Contains(result, "美国 01") {
+		t.Errorf("'美国 01' should be excluded by filter")
+	}
+}
