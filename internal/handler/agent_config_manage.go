@@ -25,16 +25,23 @@ var randReader io.Reader = rand.Reader
 var base64URLEncoding = base64.URLEncoding
 
 type XrayServerHandler struct {
-	repo           *storage.TrafficRepository
-	collector      *traffic.Collector
-	limiterPusher  *LimiterConfigPusher
-	remoteManager  *RemoteManageHandler
+	repo          *storage.TrafficRepository
+	collector     *traffic.Collector
+	limiterPusher *LimiterConfigPusher
+	remoteManager *RemoteManageHandler
+	wsHandler     *RemoteWSHandler
+	crypto        *CryptoConfig
 }
 
-func NewXrayServerHandler(repo *storage.TrafficRepository, collector *traffic.Collector) *XrayServerHandler {
+func (h *XrayServerHandler) SetWSHandler(ws *RemoteWSHandler) {
+	h.wsHandler = ws
+}
+
+func NewXrayServerHandler(repo *storage.TrafficRepository, collector *traffic.Collector, crypto *CryptoConfig) *XrayServerHandler {
 	return &XrayServerHandler{
 		repo:      repo,
 		collector: collector,
+		crypto:    crypto,
 	}
 }
 
@@ -45,6 +52,7 @@ func (h *XrayServerHandler) SetLimiterPusher(p *LimiterConfigPusher) {
 func (h *XrayServerHandler) SetRemoteManager(rm *RemoteManageHandler) {
 	h.remoteManager = rm
 }
+
 
 // 远程服务器管理API
 
@@ -90,8 +98,9 @@ type RemoteServerInboundInfo struct {
 // RemoteServerExtended 表示具有附加流量和入站信息的远程服务器
 type RemoteServerExtended struct {
 	storage.RemoteServer
-	TrafficUsed int64                     `json:"traffic_used"` // 当前使用的流量（以字节为单位）
-	Inbounds    []RemoteServerInboundInfo `json:"inbounds"`     // 入站信息（不包括 tag="api"）
+	TrafficUsed int64                     `json:"traffic_used"`
+	Inbounds    []RemoteServerInboundInfo `json:"inbounds"`
+	Encrypted   bool                      `json:"encrypted"`
 }
 
 // RemoteServersListResponse 表示所有远程服务器的响应
@@ -163,6 +172,9 @@ func (h *XrayServerHandler) ListRemoteServers(w stdhttp.ResponseWriter, r *stdht
 		extended := RemoteServerExtended{
 			RemoteServer: server,
 			Inbounds:     []RemoteServerInboundInfo{},
+		}
+		if h.wsHandler != nil {
+			extended.Encrypted = h.wsHandler.IsConnectionEncrypted(server.Token)
 		}
 
 		trafficUsed, _ := h.repo.GetServerTrafficUsed(ctx, server.ID)

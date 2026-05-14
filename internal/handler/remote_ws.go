@@ -2,6 +2,7 @@ package handler
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -13,6 +14,7 @@ import (
 
 	"miaomiaowux/internal/agentlog"
 	"miaomiaowux/internal/license"
+	"miaomiaowux/internal/securechan"
 	"miaomiaowux/internal/storage"
 	"miaomiaowux/internal/traffic"
 	"miaomiaowux/internal/version"
@@ -40,6 +42,8 @@ const (
 	WSMsgTypeHeartbeatAck        = "heartbeat_ack"         // Master -> Agent：心跳确认（含服务器时间）
 	WSMsgTypeLimiterConfig       = "limiter_config"        // Master -> Agent：限速配置下发
 	WSMsgTypeLicenseStatus       = "license_status"        // Master -> Agent：许可证状态下发
+	WSMsgTypeKeyExchange         = "key_exchange"           // Agent -> Master：密钥交换请求
+	WSMsgTypeKeyExchangeResp     = "key_exchange_resp"      // Master -> Agent：密钥交换响应
 )
 
 // WSMessage 表示 WebSocket 消息
@@ -154,6 +158,17 @@ type WSDomainLatencyResultItem struct {
 	NginxSSLPort int    `json:"nginx_ssl_port,omitempty"`
 }
 
+// WSKeyExchangePayload Agent -> Master
+type WSKeyExchangePayload struct {
+	AgentEphemeralPub string `json:"agent_ephemeral_pub"` // base64
+}
+
+// WSKeyExchangeRespPayload Master -> Agent
+type WSKeyExchangeRespPayload struct {
+	MasterEphemeralPub string `json:"master_ephemeral_pub"` // base64
+	Signature          string `json:"signature"`            // base64 Ed25519 签名
+}
+
 // RemoteWSConnection 表示来自子服务器的活动 WebSocket 连接
 type RemoteWSConnection struct {
 	ServerID   int64
@@ -161,6 +176,8 @@ type RemoteWSConnection struct {
 	Token      string
 	Conn       *websocket.Conn
 	LastPing   time.Time
+	session    *securechan.Session
+	Encrypted  bool
 	mu         sync.Mutex
 }
 
@@ -170,11 +187,11 @@ type RemoteWSHandler struct {
 	collector         *traffic.Collector
 	upgrader          websocket.Upgrader
 	conns             sync.Map // 令牌 -> *RemoteWSConnection
-	mu                sync.RWMutex
 	stealSelfDeployer func(ctx context.Context, serverID int64) error
 	pendingProbes     sync.Map // 详见上下文
 	limiterPusher     *LimiterConfigPusher
 	licenseManager    *license.Manager
+	crypto            *CryptoConfig
 }
 
 // 创建一个新的 WebSocket 处理程序
@@ -198,6 +215,10 @@ func (h *RemoteWSHandler) SetLicenseManager(mgr *license.Manager) {
 
 func (h *RemoteWSHandler) SetLimiterPusher(p *LimiterConfigPusher) {
 	h.limiterPusher = p
+}
+
+func (h *RemoteWSHandler) SetCrypto(cc *CryptoConfig) {
+	h.crypto = cc
 }
 
 // 处理 WebSocket 升级和连接
@@ -243,6 +264,16 @@ func (h *RemoteWSHandler) handleConnection(conn *websocket.Conn, remoteAddr stri
 			break
 		}
 
+		// 加密/明文检测：首字节 0x01 = 加密信封，'{' = 明文 JSON
+		if len(message) > 0 && message[0] == securechan.EnvelopeVersion && wsConn != nil && wsConn.session != nil {
+			plaintext, err := wsConn.session.Decrypt(message)
+			if err != nil {
+				log.Printf("[Remote WS] Decrypt error from %s: %v", remoteAddr, err)
+				continue
+			}
+			message = plaintext
+		}
+
 		var msg WSMessage
 		if err := json.Unmarshal(message, &msg); err != nil {
 			log.Printf("[Remote WS] Invalid message from %s: %v", remoteAddr, err)
@@ -250,10 +281,13 @@ func (h *RemoteWSHandler) handleConnection(conn *websocket.Conn, remoteAddr stri
 		}
 
 		switch msg.Type {
+		case WSMsgTypeKeyExchange:
+			h.handleKeyExchange(conn, remoteAddr, msg.Payload, &wsConn)
+			conn.SetReadDeadline(time.Now().Add(60 * time.Second))
+
 		case WSMsgTypeAuth:
-			wsConn, authenticated = h.handleAuth(conn, remoteAddr, msg.Payload)
+			wsConn, authenticated = h.handleAuth(conn, wsConn, remoteAddr, msg.Payload)
 			if authenticated {
-				// 重置经过身份验证的连接的读取截止时间
 				conn.SetReadDeadline(time.Now().Add(5 * time.Minute))
 			}
 
@@ -274,8 +308,11 @@ func (h *RemoteWSHandler) handleConnection(conn *websocket.Conn, remoteAddr stri
 			conn.SetReadDeadline(time.Now().Add(5 * time.Minute))
 
 		case WSMsgTypePing:
-			// 用乒乓球回应
-			h.sendMessage(conn, WSMessage{Type: WSMsgTypePong})
+			if wsConn != nil && wsConn.session != nil {
+				h.sendEncryptedMessage(wsConn, WSMessage{Type: WSMsgTypePong})
+			} else {
+				h.sendMessage(conn, WSMessage{Type: WSMsgTypePong})
+			}
 			conn.SetReadDeadline(time.Now().Add(5 * time.Minute))
 
 		case WSMsgTypeSpeed:
@@ -322,8 +359,80 @@ func (h *RemoteWSHandler) handleConnection(conn *websocket.Conn, remoteAddr stri
 	}
 }
 
+// 处理密钥交换请求
+func (h *RemoteWSHandler) handleKeyExchange(conn *websocket.Conn, remoteAddr string, payload json.RawMessage, wsConnPtr **RemoteWSConnection) {
+	if h.crypto == nil || h.crypto.Identity == nil {
+		log.Printf("[Remote WS] Key exchange from %s but no master identity configured", remoteAddr)
+		return
+	}
+
+	var kxPayload WSKeyExchangePayload
+	if err := json.Unmarshal(payload, &kxPayload); err != nil {
+		log.Printf("[Remote WS] Invalid key exchange payload from %s: %v", remoteAddr, err)
+		return
+	}
+
+	agentEphPub, err := base64.StdEncoding.DecodeString(kxPayload.AgentEphemeralPub)
+	if err != nil || len(agentEphPub) != 32 {
+		log.Printf("[Remote WS] Invalid agent ephemeral key from %s", remoteAddr)
+		return
+	}
+
+	masterEphPriv, masterEphPub, err := securechan.GenerateEphemeral()
+	if err != nil {
+		log.Printf("[Remote WS] Failed to generate ephemeral key: %v", err)
+		return
+	}
+
+	sharedSecret, err := securechan.ComputeSharedSecret(masterEphPriv, agentEphPub)
+	if err != nil {
+		log.Printf("[Remote WS] ECDH failed: %v", err)
+		return
+	}
+
+	session, err := securechan.DeriveSession(sharedSecret, agentEphPub, masterEphPub, true)
+	if err != nil {
+		log.Printf("[Remote WS] Session derivation failed: %v", err)
+		return
+	}
+
+	sig := securechan.Sign(h.crypto.Identity.PrivateKey, masterEphPub)
+
+	respPayload, _ := json.Marshal(WSKeyExchangeRespPayload{
+		MasterEphemeralPub: base64.StdEncoding.EncodeToString(masterEphPub),
+		Signature:          base64.StdEncoding.EncodeToString(sig),
+	})
+	h.sendMessage(conn, WSMessage{Type: WSMsgTypeKeyExchangeResp, Payload: respPayload})
+
+	// 创建临时 wsConn 持有 session，auth 后会绑定到正式连接
+	tempConn := &RemoteWSConnection{
+		Conn:    conn,
+		session: session,
+		Encrypted: true,
+	}
+	*wsConnPtr = tempConn
+
+	log.Printf("[Remote WS] Key exchange completed with %s", remoteAddr)
+}
+
+// 发送加密消息（如有 session 则加密，否则明文）
+func (h *RemoteWSHandler) sendEncryptedMessage(wsConn *RemoteWSConnection, msg WSMessage) error {
+	if wsConn.session != nil {
+		data, err := json.Marshal(msg)
+		if err != nil {
+			return err
+		}
+		envelope, err := wsConn.session.Encrypt(data)
+		if err != nil {
+			return err
+		}
+		return wsConn.Conn.WriteMessage(websocket.BinaryMessage, envelope)
+	}
+	return h.sendMessage(wsConn.Conn, msg)
+}
+
 // 处理认证消息
-func (h *RemoteWSHandler) handleAuth(conn *websocket.Conn, remoteAddr string, payload json.RawMessage) (*RemoteWSConnection, bool) {
+func (h *RemoteWSHandler) handleAuth(conn *websocket.Conn, preAuthConn *RemoteWSConnection, remoteAddr string, payload json.RawMessage) (*RemoteWSConnection, bool) {
 	var authPayload WSAuthPayload
 	if err := json.Unmarshal(payload, &authPayload); err != nil {
 		log.Printf("[Remote WS] Invalid auth payload from %s: %v", remoteAddr, err)
@@ -358,13 +467,24 @@ func (h *RemoteWSHandler) handleAuth(conn *websocket.Conn, remoteAddr string, pa
 		log.Printf("[Remote WS] Closed existing connection for server %s", server.Name)
 	}
 
-	// 创建新连接
+	// 强制加密检查
+	if h.crypto != nil && h.crypto.RequireEncryption() && (preAuthConn == nil || preAuthConn.session == nil) {
+		log.Printf("[Remote WS] Encryption required but agent %s has no encrypted session", remoteAddr)
+		h.sendAuthResult(conn, false, "Encryption required")
+		return nil, false
+	}
+
+	// 创建新连接，继承密钥交换阶段的 session
 	wsConn := &RemoteWSConnection{
 		ServerID:   server.ID,
 		ServerName: server.Name,
 		Token:      authPayload.Token,
 		Conn:       conn,
 		LastPing:   time.Now(),
+	}
+	if preAuthConn != nil && preAuthConn.session != nil {
+		wsConn.session = preAuthConn.session
+		wsConn.Encrypted = true
 	}
 
 	h.conns.Store(authPayload.Token, wsConn)
@@ -395,7 +515,8 @@ func (h *RemoteWSHandler) handleAuth(conn *websocket.Conn, remoteAddr string, pa
 	}
 
 	log.Printf("[Remote WS] Server %s (%d) authenticated via WebSocket from %s", server.Name, server.ID, remoteAddr)
-	h.sendAuthResult(conn, true, "Authenticated")
+	authResultPayload, _ := json.Marshal(WSAuthResultPayload{Success: true, Message: "Authenticated"})
+	h.sendEncryptedMessage(wsConn, WSMessage{Type: WSMsgTypeAuthResult, Payload: authResultPayload})
 
 	// 推送许可证状态给 Agent
 	if h.licenseManager != nil {
@@ -504,7 +625,7 @@ func (h *RemoteWSHandler) handleHeartbeat(wsConn *RemoteWSConnection, payload js
 	}
 
 	ackPayload, _ := json.Marshal(map[string]int64{"server_time": time.Now().Unix()})
-	h.sendMessage(wsConn.Conn, WSMessage{Type: WSMsgTypeHeartbeatAck, Payload: json.RawMessage(ackPayload)})
+	h.sendEncryptedMessage(wsConn, WSMessage{Type: WSMsgTypeHeartbeatAck, Payload: json.RawMessage(ackPayload)})
 }
 
 // 处理实时速度数据消息
@@ -574,6 +695,15 @@ func (h *RemoteWSHandler) GetConnectedServers() []string {
 	return tokens
 }
 
+func (h *RemoteWSHandler) IsConnectionEncrypted(token string) bool {
+	connInterface, ok := h.conns.Load(token)
+	if !ok {
+		return false
+	}
+	wsConn := connInterface.(*RemoteWSConnection)
+	return wsConn.Encrypted
+}
+
 // 将配置更新发送到特定服务器
 func (h *RemoteWSHandler) BroadcastConfig(token string, config interface{}) error {
 	connInterface, ok := h.conns.Load(token)
@@ -590,7 +720,7 @@ func (h *RemoteWSHandler) BroadcastConfig(token string, config interface{}) erro
 	wsConn.mu.Lock()
 	defer wsConn.mu.Unlock()
 
-	return h.sendMessage(wsConn.Conn, WSMessage{
+	return h.sendEncryptedMessage(wsConn, WSMessage{
 		Type:    WSMsgTypeConfig,
 		Payload: payload,
 	})
@@ -611,7 +741,7 @@ func (h *RemoteWSHandler) SendLimiterConfig(serverID int64, configs []WSLimiterC
 		if err != nil {
 			return err
 		}
-		if err := h.sendMessage(wsConn.Conn, WSMessage{
+		if err := h.sendEncryptedMessage(wsConn, WSMessage{
 			Type:    WSMsgTypeLimiterConfig,
 			Payload: payload,
 		}); err != nil {
@@ -633,7 +763,7 @@ func (h *RemoteWSHandler) SendLicenseStatus(wsConn *RemoteWSConnection) {
 	}
 	wsConn.mu.Lock()
 	defer wsConn.mu.Unlock()
-	_ = h.sendMessage(wsConn.Conn, WSMessage{
+	_ = h.sendEncryptedMessage(wsConn, WSMessage{
 		Type:    WSMsgTypeLicenseStatus,
 		Payload: payload,
 	})
@@ -700,7 +830,7 @@ func (h *RemoteWSHandler) SendCertRequest(token string, payload WSCertRequestPay
 	wsConn.mu.Lock()
 	defer wsConn.mu.Unlock()
 
-	return h.sendMessage(wsConn.Conn, WSMessage{
+	return h.sendEncryptedMessage(wsConn, WSMessage{
 		Type:    WSMsgTypeCertRequest,
 		Payload: payloadBytes,
 	})
@@ -722,7 +852,7 @@ func (h *RemoteWSHandler) SendCertDeploy(token string, payload WSCertDeployPaylo
 	wsConn.mu.Lock()
 	defer wsConn.mu.Unlock()
 
-	return h.sendMessage(wsConn.Conn, WSMessage{
+	return h.sendEncryptedMessage(wsConn, WSMessage{
 		Type:    WSMsgTypeCertDeploy,
 		Payload: payloadBytes,
 	})
@@ -823,7 +953,7 @@ func (h *RemoteWSHandler) SendTokenUpdate(oldToken string, newToken string, expi
 	wsConn.mu.Lock()
 	defer wsConn.mu.Unlock()
 
-	err = h.sendMessage(wsConn.Conn, WSMessage{
+	err = h.sendEncryptedMessage(wsConn, WSMessage{
 		Type:    WSMsgTypeTokenUpdate,
 		Payload: payloadBytes,
 	})
@@ -884,7 +1014,7 @@ func (h *RemoteWSHandler) SendDomainLatencyProbe(serverID int64, domains []strin
 	}
 
 	wsConn.mu.Lock()
-	err = h.sendMessage(wsConn.Conn, WSMessage{
+	err = h.sendEncryptedMessage(wsConn, WSMessage{
 		Type:    WSMsgTypeDomainLatencyProbe,
 		Payload: payloadBytes,
 	})

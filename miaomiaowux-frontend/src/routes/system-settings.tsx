@@ -198,6 +198,28 @@ function SystemSettingsPage() {
     }
   }, [silentModeData])
 
+  // 强制加密
+  const { data: encryptionData } = useQuery({
+    queryKey: ['require-encryption'],
+    queryFn: async () => {
+      const response = await api.get('/api/admin/system-settings/require-encryption')
+      return response.data as { success: boolean; require_encryption: boolean }
+    },
+    enabled: Boolean(auth.accessToken),
+    staleTime: 5 * 60 * 1000,
+  })
+
+  const updateEncryptionMutation = useMutation({
+    mutationFn: async (params: { require_encryption: boolean }) => {
+      await api.put('/api/admin/system-settings/require-encryption', params)
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['require-encryption'] })
+      toast.success(t('encryption.updated'))
+    },
+    onError: handleServerError,
+  })
+
   // 定时配置
   const [speedCollectInterval, setSpeedCollectInterval] = useState(3)
   const [trafficCollectInterval, setTrafficCollectInterval] = useState(60)
@@ -888,6 +910,36 @@ function SystemSettingsPage() {
                     className='max-w-32'
                   />
                 </div>
+              )}
+
+              {/* 强制加密通信 */}
+              <div className='mt-4 flex items-center justify-between rounded-lg border p-3'>
+                <div className='flex items-center gap-2'>
+                  <Label htmlFor='require-encryption-toggle' className='cursor-pointer'>
+                    {t('encryption.enableLabel')}
+                  </Label>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <CircleHelp className='h-4 w-4 text-muted-foreground cursor-help' />
+                    </TooltipTrigger>
+                    <TooltipContent side='top' className='max-w-xs'>
+                      <p>{t('encryption.description')}</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </div>
+                <Switch
+                  id='require-encryption-toggle'
+                  checked={encryptionData?.require_encryption ?? false}
+                  onCheckedChange={(checked) => {
+                    updateEncryptionMutation.mutate({ require_encryption: checked })
+                  }}
+                  disabled={updateEncryptionMutation.isPending}
+                />
+              </div>
+              {encryptionData?.require_encryption && (
+                <p className='mt-1 text-xs text-amber-600 dark:text-amber-400'>
+                  {t('encryption.warning')}
+                </p>
               )}
             </CardContent>
           </Card>

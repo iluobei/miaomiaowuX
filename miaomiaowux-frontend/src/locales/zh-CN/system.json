@@ -72,6 +72,13 @@
     "hint": "获取订阅后恢复访问 {{timeout}} 分钟，之后再次进入静默状态",
     "updated": "静默模式设置已更新"
   },
+  "encryption": {
+    "title": "强制加密通信",
+    "description": "开启后，所有 Agent 必须使用加密通信连接主控，未加密连接将被拒绝",
+    "enableLabel": "强制加密",
+    "warning": "请确保所有 Agent 已更新并配置了公钥，否则旧 Agent 将无法连接",
+    "updated": "加密设置已更新"
+  },
   "sync": {
     "title": "外部订阅同步设置",
     "description": "配置外部订阅的同步行为",

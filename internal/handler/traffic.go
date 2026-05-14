@@ -417,13 +417,15 @@ func (h *TrafficHandler) writeJSON(w http.ResponseWriter, status int, data inter
 type RemoteTrafficHandler struct {
 	repo      *storage.TrafficRepository
 	collector *traffic.Collector
+	crypto    *CryptoConfig
 }
 
 // 创建一个新的远程流量处理程序
-func NewRemoteTrafficHandler(repo *storage.TrafficRepository, collector *traffic.Collector) *RemoteTrafficHandler {
+func NewRemoteTrafficHandler(repo *storage.TrafficRepository, collector *traffic.Collector, crypto *CryptoConfig) *RemoteTrafficHandler {
 	return &RemoteTrafficHandler{
 		repo:      repo,
 		collector: collector,
+		crypto:    crypto,
 	}
 }
 
@@ -449,16 +451,14 @@ func (h *RemoteTrafficHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 
 	ctx := r.Context()
 
-	// 从标头获取令牌
-	token := r.Header.Get("X-Remote-Token")
-	if token == "" {
-		// 尝试授权标头
-		auth := r.Header.Get("Authorization")
-		if strings.HasPrefix(auth, "Bearer ") {
-			token = strings.TrimPrefix(auth, "Bearer ")
-		}
+	// 加密中间件处理
+	crypto, err := handleHTTPCrypto(r, w, h.crypto)
+	if crypto == nil {
+		return
 	}
+	_ = err
 
+	token := crypto.Token
 	if token == "" {
 		h.writeJSON(w, http.StatusUnauthorized, map[string]interface{}{
 			"success": false,
@@ -479,7 +479,7 @@ func (h *RemoteTrafficHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 
 	// 解析请求体
 	var req RemoteTrafficRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.Unmarshal(crypto.Body, &req); err != nil {
 		h.writeJSON(w, http.StatusBadRequest, map[string]interface{}{
 			"success": false,
 			"error":   "Invalid request body",
@@ -515,10 +515,11 @@ func (h *RemoteTrafficHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	h.writeJSON(w, http.StatusOK, map[string]interface{}{
+	respData, _ := json.Marshal(map[string]interface{}{
 		"success": true,
 		"message": "Traffic data received",
 	})
+	writeHTTPCryptoResponse(w, crypto.Session, respData)
 }
 
 func (h *RemoteTrafficHandler) writeJSON(w http.ResponseWriter, status int, data interface{}) {

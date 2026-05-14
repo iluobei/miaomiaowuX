@@ -9,11 +9,12 @@ import (
 )
 
 type SystemSettingsHandler struct {
-	repo *storage.TrafficRepository
+	repo   *storage.TrafficRepository
+	crypto *CryptoConfig
 }
 
-func NewSystemSettingsHandler(repo *storage.TrafficRepository) *SystemSettingsHandler {
-	return &SystemSettingsHandler{repo: repo}
+func NewSystemSettingsHandler(repo *storage.TrafficRepository, crypto *CryptoConfig) *SystemSettingsHandler {
+	return &SystemSettingsHandler{repo: repo, crypto: crypto}
 }
 
 type GetAPITokenResponse struct {
@@ -356,4 +357,41 @@ func (h *SystemSettingsHandler) SetSilentMode(w http.ResponseWriter, r *http.Req
 	}
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]any{"success": true, "message": "静默模式设置已更新"})
+}
+
+func (h *SystemSettingsHandler) GetRequireEncryption(w http.ResponseWriter, r *http.Request) {
+	value, _ := h.repo.GetSystemSetting(r.Context(), "require_encryption")
+	enabled := value == "true"
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]any{"success": true, "require_encryption": enabled})
+}
+
+func (h *SystemSettingsHandler) SetRequireEncryption(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		RequireEncryption bool `json:"require_encryption"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(map[string]any{"success": false, "message": "请求格式错误"})
+		return
+	}
+
+	value := "false"
+	if req.RequireEncryption {
+		value = "true"
+	}
+	if err := h.repo.SetSystemSetting(r.Context(), "require_encryption", value); err != nil {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]any{"success": false, "message": "保存失败"})
+		return
+	}
+
+	if h.crypto != nil {
+		h.crypto.SetRequireEncryption(req.RequireEncryption)
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]any{"success": true, "message": "加密设置已更新"})
 }

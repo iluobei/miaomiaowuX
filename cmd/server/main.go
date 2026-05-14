@@ -23,6 +23,7 @@ import (
 	"miaomiaowux/internal/license"
 	"miaomiaowux/internal/logger"
 	"miaomiaowux/internal/proxygroups"
+	"miaomiaowux/internal/securechan"
 	"miaomiaowux/internal/storage"
 	"miaomiaowux/internal/traffic"
 	"miaomiaowux/internal/version"
@@ -87,6 +88,15 @@ func main() {
 		os.Exit(1)
 	}
 	defer repo.Close()
+
+	masterIdentity, err := securechan.LoadOrGenerate(filepath.Join("data", "mmwx_master.key"))
+	if err != nil {
+		logger.Error("加密密钥初始化失败", "error", err)
+		os.Exit(1)
+	}
+	logger.Info("主控加密公钥已加载", "public_key", masterIdentity.PublicKeyBase64())
+
+	cryptoConfig := handler.NewCryptoConfig(masterIdentity, securechan.NewSessionCache(1*time.Hour))
 
 	licenseManager := license.NewManager(repo, license.GetMachineID())
 	licenseManager.Start(context.Background())
@@ -287,7 +297,7 @@ func main() {
 	}
 
 	// Xray 服务器处理程序（远程服务器管理复用）
-	xrayServerHandler := handler.NewXrayServerHandler(repo, trafficCollector)
+	xrayServerHandler := handler.NewXrayServerHandler(repo, trafficCollector, cryptoConfig)
 
 	// 远程服务器管理端点（仅限管理员）
 	mux.Handle("/api/admin/remote-servers", auth.RequireAdmin(tokenStore, userRepo, http.HandlerFunc(xrayServerHandler.ListRemoteServers)))
@@ -303,17 +313,18 @@ func main() {
 
 	// 流量采集与统计
 	trafficApiHandler := handler.NewTrafficHandler(repo, trafficCollector)
-	remoteTrafficHandler := handler.NewRemoteTrafficHandler(repo, trafficCollector)
+	remoteTrafficHandler := handler.NewRemoteTrafficHandler(repo, trafficCollector, cryptoConfig)
 	mux.Handle("/api/admin/traffic", auth.RequireAdmin(tokenStore, userRepo, trafficApiHandler))
 	mux.Handle("/api/admin/traffic/", auth.RequireAdmin(tokenStore, userRepo, trafficApiHandler))
 	mux.Handle("/api/remote/traffic", remoteTrafficHandler)
 
 	// 远程速度处理程序（来自子服务器的 HTTP 推送）
-	remoteSpeedHandler := handler.NewRemoteSpeedHandler(repo)
+	remoteSpeedHandler := handler.NewRemoteSpeedHandler(repo, cryptoConfig)
 	mux.Handle("/api/remote/speed", remoteSpeedHandler)
 
 	// 远程服务器的 WebSocket 处理程序
 	remoteWSHandler := handler.NewRemoteWSHandler(repo, trafficCollector)
+	remoteWSHandler.SetCrypto(cryptoConfig)
 	mux.Handle("/api/remote/ws", remoteWSHandler)
 
 	// 限速配置推送器
@@ -324,7 +335,9 @@ func main() {
 
 	// 远程服务器管理代理（将命令转发到子服务器）
 	remoteManageHandler := handler.NewRemoteManageHandler(repo, remoteWSHandler)
+	remoteManageHandler.SetCrypto(cryptoConfig)
 	xrayServerHandler.SetRemoteManager(remoteManageHandler)
+	xrayServerHandler.SetWSHandler(remoteWSHandler)
 
 	// 依赖 limiterPusher 的端点
 	mux.Handle("/api/admin/packages/update", auth.RequireAdmin(tokenStore, userRepo, handler.NewPackageUpdateHandler(repo, limiterPusher)))
@@ -511,7 +524,11 @@ func main() {
 	mux.Handle("/api/admin/xray/generate-x25519", auth.RequireAdmin(tokenStore, userRepo, http.HandlerFunc(xrayKeyGenHandler.GenerateX25519)))
 
 	// 系统设置 API（仅限管理员）
-	systemSettingsHandler := handler.NewSystemSettingsHandler(repo)
+	systemSettingsHandler := handler.NewSystemSettingsHandler(repo, cryptoConfig)
+	// 启动时加载加密设置
+	if encVal, _ := repo.GetSystemSetting(context.Background(), "require_encryption"); encVal == "true" {
+		cryptoConfig.SetRequireEncryption(true)
+	}
 	mux.Handle("/api/admin/system-settings/api-token", auth.RequireAdmin(tokenStore, userRepo, http.HandlerFunc(systemSettingsHandler.GetAPIToken)))
 	mux.Handle("/api/admin/system-settings/api-token/regenerate", auth.RequireAdmin(tokenStore, userRepo, http.HandlerFunc(systemSettingsHandler.RegenerateAPIToken)))
 	mux.Handle("/api/admin/system-settings/master-url", auth.RequireAdmin(tokenStore, userRepo, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -572,6 +589,16 @@ func main() {
 			systemSettingsHandler.GetSilentMode(w, r)
 		case http.MethodPut:
 			systemSettingsHandler.SetSilentMode(w, r)
+		default:
+			http.Error(w, "方法不允许", http.StatusMethodNotAllowed)
+		}
+	})))
+	mux.Handle("/api/admin/system-settings/require-encryption", auth.RequireAdmin(tokenStore, userRepo, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case http.MethodGet:
+			systemSettingsHandler.GetRequireEncryption(w, r)
+		case http.MethodPut:
+			systemSettingsHandler.SetRequireEncryption(w, r)
 		default:
 			http.Error(w, "方法不允许", http.StatusMethodNotAllowed)
 		}

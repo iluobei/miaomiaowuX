@@ -475,6 +475,8 @@
     "online": "在线",
     "pending": "等待连接",
     "offline": "离线",
+    "encrypted": "加密连接",
+    "unencrypted": "未加密",
     "degraded": "已降级",
     "realtimeSpeed": "实时网速",
     "upload": "上传",

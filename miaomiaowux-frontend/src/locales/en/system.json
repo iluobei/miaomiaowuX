@@ -72,6 +72,13 @@
     "hint": "Access is restored for {{timeout}} minutes after fetching a subscription, then returns to silent mode",
     "updated": "Silent mode settings updated"
   },
+  "encryption": {
+    "title": "Require Encrypted Communication",
+    "description": "When enabled, all agents must use encrypted communication. Unencrypted connections will be rejected.",
+    "enableLabel": "Require Encryption",
+    "warning": "Ensure all agents are updated and configured with the public key, or they will be unable to connect",
+    "updated": "Encryption settings updated"
+  },
   "sync": {
     "title": "External Subscription Sync",
     "description": "Configure external subscription sync behavior",

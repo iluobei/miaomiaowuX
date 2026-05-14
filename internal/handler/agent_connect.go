@@ -162,8 +162,17 @@ func (h *XrayServerHandler) RemoteHeartbeat(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	// 从标头获取令牌
-	token := r.Header.Get("MM-Remote-Token")
+	// 加密中间件处理
+	crypto, cryptoErr := handleHTTPCrypto(r, w, h.crypto)
+	if crypto == nil {
+		return
+	}
+	_ = cryptoErr
+
+	token := crypto.Token
+	if token == "" {
+		token = r.Header.Get("MM-Remote-Token")
+	}
 	if token == "" {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusUnauthorized)
@@ -177,10 +186,7 @@ func (h *XrayServerHandler) RemoteHeartbeat(w http.ResponseWriter, r *http.Reque
 
 	// 解析请求体
 	var req RemoteHeartbeatRequest
-	if r.Body != nil {
-		defer r.Body.Close()
-		json.NewDecoder(r.Body).Decode(&req) // 忽略错误，使用零值以实现向后兼容性
-	}
+	json.Unmarshal(crypto.Body, &req)
 
 	// 获取客户端IP
 	clientIP := r.RemoteAddr
@@ -283,8 +289,8 @@ func (h *XrayServerHandler) RemoteHeartbeat(w http.ResponseWriter, r *http.Reque
 		resp.TokenExpiresAt = result.TokenExpiresAt.Unix()
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(resp)
+	respData, _ := json.Marshal(resp)
+	writeHTTPCryptoResponse(w, crypto.Session, respData)
 }
 
 // RefreshRemoteTokenResponse 是令牌刷新端点的响应
@@ -369,6 +375,13 @@ func (h *XrayServerHandler) RefreshRemoteToken(w http.ResponseWriter, r *http.Re
 	})
 }
 
+func (h *XrayServerHandler) masterPublicKeyBase64() string {
+	if h.crypto != nil && h.crypto.Identity != nil {
+		return h.crypto.Identity.PublicKeyBase64()
+	}
+	return ""
+}
+
 // 返回远程服务器的安装脚本
 func (h *XrayServerHandler) GetRemoteInstallScript(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "GET" {
@@ -404,6 +417,7 @@ SERVER="` + r.Host + `"
 AUTO_STEAL_SELF="` + map[bool]string{true: "1", false: "0"}[stealSelf] + `"
 FRONT_SERVICE="` + frontService + `"
 XRAY_MODE="` + xrayMode + `"
+MASTER_PUBLIC_KEY="` + h.masterPublicKeyBase64() + `"
 
 # Detect protocol (default to http if accessed locally)
 if [[ "$SERVER" == *":"* ]]; then
@@ -447,6 +461,7 @@ master_url: ${MASTER_URL}
 token: ${TOKEN}
 connection_mode: websocket
 xray_mode: ${XRAY_MODE}
+master_public_key: ${MASTER_PUBLIC_KEY}
 EOF
 
 echo "Configuration saved to /etc/mmw-agent/config.yaml"

@@ -13,7 +13,11 @@ import (
 	"strings"
 	"time"
 
+	"encoding/base64"
+	"sync"
+
 	"miaomiaowux/internal/event"
+	"miaomiaowux/internal/securechan"
 	"miaomiaowux/internal/storage"
 	"miaomiaowux/internal/version"
 	"miaomiaowux/templates"
@@ -21,10 +25,12 @@ import (
 
 // RemoteManageHandler 处理需要转发到子服务器的管理请求
 type RemoteManageHandler struct {
-	repo        *storage.TrafficRepository
-	wsHandler   *RemoteWSHandler
-	httpClient  *http.Client
-	certHandler *CertificateHandler
+	repo         *storage.TrafficRepository
+	wsHandler    *RemoteWSHandler
+	httpClient   *http.Client
+	certHandler  *CertificateHandler
+	crypto       *CryptoConfig
+	pullSessions sync.Map // serverID (int64) → *securechan.Session
 }
 
 // 创建一个新的远程管理处理程序
@@ -41,6 +47,10 @@ func NewRemoteManageHandler(repo *storage.TrafficRepository, wsHandler *RemoteWS
 // 设置安装后自动部署的证书处理程序。
 func (h *RemoteManageHandler) SetCertificateHandler(ch *CertificateHandler) {
 	h.certHandler = ch
+}
+
+func (h *RemoteManageHandler) SetCrypto(cc *CryptoConfig) {
+	h.crypto = cc
 }
 
 // 处理通过 WebSocket 从代理收到的扫描结果。
@@ -575,7 +585,6 @@ func (h *RemoteManageHandler) ForwardToServer(ctx context.Context, serverID int6
 }
 
 func (h *RemoteManageHandler) forwardToRemoteServer(ctx context.Context, serverID int64, method, path string, body []byte) ([]byte, error) {
-	// 获取服务器信息
 	server, err := h.repo.GetRemoteServer(ctx, serverID)
 	if err != nil {
 		return nil, fmt.Errorf("server not found: %v", err)
@@ -589,17 +598,13 @@ func (h *RemoteManageHandler) forwardToRemoteServer(ctx context.Context, serverI
 		return nil, fmt.Errorf("server IP address unknown")
 	}
 
-	// 提取纯 IP 地址（如果存在，则删除端口）
 	ip := server.IPAddress
 	if idx := strings.LastIndex(ip, ":"); idx != -1 {
-		// 检查是否是带有括号 [::1]:port 的 IPv6
 		if !strings.Contains(ip, "[") {
 			ip = ip[:idx]
 		}
 	}
 
-	// 构建子服务器的 URL
-	// 使用代理报告的 ListenPort，回退到 23889（代理默认值）
 	port := "23889"
 	if server.ListenPort > 0 {
 		port = fmt.Sprintf("%d", server.ListenPort)
@@ -608,7 +613,28 @@ func (h *RemoteManageHandler) forwardToRemoteServer(ctx context.Context, serverI
 
 	log.Printf("[Remote Manage] Forwarding %s %s to server %s (%s)", method, path, server.Name, childURL)
 
+	if h.crypto == nil || h.crypto.Identity == nil {
+		return h.doPlainPullRequest(ctx, method, childURL, server.Token, body)
+	}
+
+	sessionVal, ok := h.pullSessions.Load(serverID)
+	if !ok {
+		return h.doPullKeyExchange(ctx, serverID, method, childURL, server.Token, body)
+	}
+
+	session := sessionVal.(*securechan.Session)
+	respBody, err := h.doEncryptedPullRequest(ctx, method, childURL, server.Token, body, session)
+	if err != nil && strings.Contains(err.Error(), "412") {
+		h.pullSessions.Delete(serverID)
+		log.Printf("[Remote Manage] Pull session expired for server %d, re-negotiating", serverID)
+		return h.doPullKeyExchange(ctx, serverID, method, childURL, server.Token, body)
+	}
+	return respBody, err
+}
+
+func (h *RemoteManageHandler) doPlainPullRequest(ctx context.Context, method, childURL, token string, body []byte) ([]byte, error) {
 	var req *http.Request
+	var err error
 	if body != nil {
 		req, err = http.NewRequestWithContext(ctx, method, childURL, bytes.NewReader(body))
 	} else {
@@ -617,9 +643,8 @@ func (h *RemoteManageHandler) forwardToRemoteServer(ctx context.Context, serverI
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %v", err)
 	}
-
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", "Bearer "+server.Token)
+	req.Header.Set("Authorization", "Bearer "+token)
 	req.Header.Set("User-Agent", version.AgentUserAgent)
 
 	resp, err := h.httpClient.Do(req)
@@ -634,7 +659,6 @@ func (h *RemoteManageHandler) forwardToRemoteServer(ctx context.Context, serverI
 	}
 
 	if resp.StatusCode >= 400 {
-		// 尝试提取错误消息
 		var errResp map[string]interface{}
 		if json.Unmarshal(respBody, &errResp) == nil {
 			if msg, ok := errResp["error"].(string); ok {
@@ -644,6 +668,117 @@ func (h *RemoteManageHandler) forwardToRemoteServer(ctx context.Context, serverI
 		return nil, fmt.Errorf("remote server returned status %d: %s", resp.StatusCode, string(respBody))
 	}
 
+	return respBody, nil
+}
+
+func (h *RemoteManageHandler) doPullKeyExchange(ctx context.Context, serverID int64, method, childURL, token string, body []byte) ([]byte, error) {
+	masterPriv, masterPub, err := securechan.GenerateEphemeral()
+	if err != nil {
+		return h.doPlainPullRequest(ctx, method, childURL, token, body)
+	}
+
+	sig := securechan.Sign(h.crypto.Identity.PrivateKey, masterPub)
+	kxHeader := base64.StdEncoding.EncodeToString(masterPub) + "|" + base64.StdEncoding.EncodeToString(sig)
+
+	var req *http.Request
+	if body != nil {
+		req, err = http.NewRequestWithContext(ctx, method, childURL, bytes.NewReader(body))
+	} else {
+		req, err = http.NewRequestWithContext(ctx, method, childURL, nil)
+	}
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %v", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+token)
+	req.Header.Set("User-Agent", version.AgentUserAgent)
+	req.Header.Set("X-Key-Exchange", kxHeader)
+
+	resp, err := h.httpClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("request failed: %v", err)
+	}
+	defer resp.Body.Close()
+
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read response: %v", err)
+	}
+
+	if resp.StatusCode >= 400 {
+		var errResp map[string]interface{}
+		if json.Unmarshal(respBody, &errResp) == nil {
+			if msg, ok := errResp["error"].(string); ok {
+				return nil, fmt.Errorf("%s", msg)
+			}
+		}
+		return nil, fmt.Errorf("remote server returned status %d: %s", resp.StatusCode, string(respBody))
+	}
+
+	if kxResp := resp.Header.Get("X-Key-Exchange"); kxResp != "" {
+		agentEphPub, err := base64.StdEncoding.DecodeString(kxResp)
+		if err == nil && len(agentEphPub) == 32 {
+			sharedSecret, err := securechan.ComputeSharedSecret(masterPriv, agentEphPub)
+			if err == nil {
+				session, err := securechan.DeriveSession(sharedSecret, agentEphPub, masterPub, true)
+				if err == nil {
+					h.pullSessions.Store(serverID, session)
+					log.Printf("[Remote Manage] Pull key exchange completed for server %d", serverID)
+				}
+			}
+		}
+	}
+
+	return respBody, nil
+}
+
+func (h *RemoteManageHandler) doEncryptedPullRequest(ctx context.Context, method, childURL, token string, body []byte, session *securechan.Session) ([]byte, error) {
+	var reqBody []byte
+	if body != nil {
+		encrypted, err := session.Encrypt(body)
+		if err != nil {
+			return nil, fmt.Errorf("encrypt: %w", err)
+		}
+		reqBody = encrypted
+	}
+
+	var req *http.Request
+	var err error
+	if reqBody != nil {
+		req, err = http.NewRequestWithContext(ctx, method, childURL, bytes.NewReader(reqBody))
+	} else {
+		req, err = http.NewRequestWithContext(ctx, method, childURL, nil)
+	}
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %v", err)
+	}
+	req.Header.Set("Content-Type", "application/octet-stream")
+	req.Header.Set("Authorization", "Bearer "+token)
+	req.Header.Set("User-Agent", version.AgentUserAgent)
+	req.Header.Set("X-Encrypted", "1")
+
+	resp, err := h.httpClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("request failed: %v", err)
+	}
+	defer resp.Body.Close()
+
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read response: %v", err)
+	}
+
+	if resp.StatusCode >= 400 {
+		return nil, fmt.Errorf("remote server returned status %d", resp.StatusCode)
+	}
+
+	if resp.Header.Get("X-Encrypted") == "1" {
+		decrypted, err := session.Decrypt(respBody)
+		if err != nil {
+			return nil, fmt.Errorf("decrypt response: %w", err)
+		}
+		return decrypted, nil
+	}
 	return respBody, nil
 }
 

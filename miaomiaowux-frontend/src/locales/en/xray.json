@@ -475,6 +475,8 @@
     "online": "Online",
     "pending": "Pending",
     "offline": "Offline",
+    "encrypted": "Encrypted",
+    "unencrypted": "Unencrypted",
     "degraded": "Degraded",
     "realtimeSpeed": "Real-time Speed",
     "upload": "Upload",

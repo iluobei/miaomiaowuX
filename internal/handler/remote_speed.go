@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
-	"strings"
 
 	"miaomiaowux/internal/agentlog"
 	"miaomiaowux/internal/storage"
@@ -13,13 +12,15 @@ import (
 
 // RemoteSpeedHandler 通过 HTTP 处理来自远程服务器的速度报告
 type RemoteSpeedHandler struct {
-	repo *storage.TrafficRepository
+	repo   *storage.TrafficRepository
+	crypto *CryptoConfig
 }
 
 // 创建一个新的远程速度处理程序
-func NewRemoteSpeedHandler(repo *storage.TrafficRepository) *RemoteSpeedHandler {
+func NewRemoteSpeedHandler(repo *storage.TrafficRepository, crypto *CryptoConfig) *RemoteSpeedHandler {
 	return &RemoteSpeedHandler{
-		repo: repo,
+		repo:   repo,
+		crypto: crypto,
 	}
 }
 
@@ -46,16 +47,13 @@ func (h *RemoteSpeedHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	ctx := r.Context()
 
-	// 从标头获取令牌
-	token := r.Header.Get("X-Remote-Token")
-	if token == "" {
-		// 尝试授权标头
-		auth := r.Header.Get("Authorization")
-		if strings.HasPrefix(auth, "Bearer ") {
-			token = strings.TrimPrefix(auth, "Bearer ")
-		}
+	crypto, err := handleHTTPCrypto(r, w, h.crypto)
+	if crypto == nil {
+		return
 	}
+	_ = err
 
+	token := crypto.Token
 	if token == "" {
 		h.writeJSON(w, http.StatusUnauthorized, map[string]interface{}{
 			"success": false,
@@ -64,7 +62,6 @@ func (h *RemoteSpeedHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// 验证令牌并获取远程服务器
 	remoteServer, err := h.repo.GetRemoteServerByToken(ctx, token)
 	if err != nil {
 		h.writeJSON(w, http.StatusUnauthorized, map[string]interface{}{
@@ -74,9 +71,8 @@ func (h *RemoteSpeedHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// 解析请求体
 	var req RemoteSpeedRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.Unmarshal(crypto.Body, &req); err != nil {
 		h.writeJSON(w, http.StatusBadRequest, map[string]interface{}{
 			"success": false,
 			"error":   "Invalid request body",
@@ -84,7 +80,6 @@ func (h *RemoteSpeedHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// 数据库更新速度
 	if err := h.repo.UpdateRemoteServerSpeed(ctx, remoteServer.ID, req.UploadSpeed, req.DownloadSpeed); err != nil {
 		log.Printf("[Remote Speed] Failed to update speed from %s: %v", remoteServer.Name, err)
 		h.writeJSON(w, http.StatusInternalServerError, map[string]interface{}{
@@ -97,10 +92,11 @@ func (h *RemoteSpeedHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	agentlog.Printf("[Remote Speed] Updated speed from %s: ↑%d B/s ↓%d B/s",
 		remoteServer.Name, req.UploadSpeed, req.DownloadSpeed)
 
-	h.writeJSON(w, http.StatusOK, map[string]interface{}{
+	respData, _ := json.Marshal(map[string]interface{}{
 		"success": true,
 		"message": "Speed data received",
 	})
+	writeHTTPCryptoResponse(w, crypto.Session, respData)
 }
 
 func (h *RemoteSpeedHandler) writeJSON(w http.ResponseWriter, status int, data interface{}) {
