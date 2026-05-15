@@ -120,6 +120,10 @@ func (h *CertificateHandler) DeployMasterCert(w http.ResponseWriter, r *http.Req
 	_ = h.repo.SetSystemSetting(ctx, "master_cert_pending", "")
 	log.Printf("[DeployMasterCert] 主控证书部署成功，master_url 已更新为 %s", newMasterURL)
 
+	if h.onMasterURLChanged != nil {
+		go h.onMasterURLChanged(context.Background(), newMasterURL)
+	}
+
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]any{
 		"success":        true,
@@ -267,6 +271,10 @@ func (h *CertificateHandler) EnableHTTPS(w http.ResponseWriter, r *http.Request)
 	newMasterURL := "https://" + domain
 	_ = h.repo.SetSystemSetting(ctx, "master_url", newMasterURL)
 	log.Printf("[EnableHTTPS] HTTPS 已启用，master_url=%s, port443_in_use=%v", newMasterURL, isPort443InUse())
+
+	if h.onMasterURLChanged != nil {
+		go h.onMasterURLChanged(context.Background(), newMasterURL)
+	}
 
 	respondJSON(w, http.StatusOK, map[string]any{
 		"success":        true,

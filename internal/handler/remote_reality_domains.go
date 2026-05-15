@@ -10,6 +10,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 
 	"miaomiaowux/templates"
 )
@@ -387,7 +388,10 @@ func (h *RemoteManageHandler) HandleDeployStealSelfConfig(w http.ResponseWriter,
 		return
 	}
 
-	if err := h.DeployStealSelfConfig(r.Context(), id); err != nil {
+	// 使用独立 context：steal-self 部署会清理 nginx 443 端口，可能导致反代连接中断、请求 context 被取消
+	deployCtx, deployCancel := context.WithTimeout(context.WithoutCancel(r.Context()), 60*time.Second)
+	defer deployCancel()
+	if err := h.DeployStealSelfConfig(deployCtx, id); err != nil {
 		remoteWriteError(w, http.StatusInternalServerError, err.Error())
 		return
 	}

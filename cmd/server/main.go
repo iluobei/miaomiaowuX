@@ -626,6 +626,7 @@ func main() {
 
 	// 证书管理 API（仅限管理员）
 	certHandler := handler.NewCertificateHandler(repo, remoteWSHandler)
+	certHandler.SetOnMasterURLChanged(remoteManageHandler.BroadcastMasterURLUpdate)
 	remoteManageHandler.SetCertificateHandler(certHandler)
 	remoteWSHandler.SetScanResultHandler(remoteManageHandler.HandleScanResult)
 	remoteWSHandler.SetStealSelfDeployer(remoteManageHandler.DeployStealSelfConfig)

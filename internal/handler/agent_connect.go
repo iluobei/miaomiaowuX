@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"strings"
 	"time"
 
@@ -375,6 +376,13 @@ func (h *XrayServerHandler) RefreshRemoteToken(w http.ResponseWriter, r *http.Re
 	})
 }
 
+func (h *XrayServerHandler) getMasterPort() string {
+	if port := os.Getenv("PORT"); port != "" {
+		return port
+	}
+	return "12889"
+}
+
 func (h *XrayServerHandler) masterPublicKeyBase64() string {
 	if h.crypto != nil && h.crypto.Identity != nil {
 		return h.crypto.Identity.PublicKeyBase64()
@@ -418,6 +426,7 @@ AUTO_STEAL_SELF="` + map[bool]string{true: "1", false: "0"}[stealSelf] + `"
 FRONT_SERVICE="` + frontService + `"
 XRAY_MODE="` + xrayMode + `"
 MASTER_PUBLIC_KEY="` + h.masterPublicKeyBase64() + `"
+MASTER_PORT="` + h.getMasterPort() + `"
 
 # Detect protocol (default to http if accessed locally)
 if [[ "$SERVER" == *":"* ]]; then
@@ -433,6 +442,12 @@ if [ -n "$MMWX_PROTOCOL" ]; then
 fi
 
 MASTER_URL="${PROTOCOL}://${SERVER}"
+
+# 同机部署检测：如果本机能访问主控的 HTTP 端口，直接用 127.0.0.1 通信
+if curl -sf "http://127.0.0.1:${MASTER_PORT}/api/setup/status" >/dev/null 2>&1; then
+    MASTER_URL="http://127.0.0.1:${MASTER_PORT}"
+    echo "Detected same-machine deployment, using ${MASTER_URL}"
+fi
 
 echo "=========================================="
 echo "  MMWX Remote Server Installation"

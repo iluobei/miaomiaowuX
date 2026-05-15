@@ -238,8 +238,8 @@ type SubscribeFile struct {
 type UserSettings struct {
 	Username             string
 	ForceSyncExternal    bool
-	MatchRule            string     // “节点名称”或“服务器端口”
-	SyncScope            string     // “saved_only”或“all” - 同步外部订阅的范围
+	MatchRule            string     // "节点名称"或"服务器端口"
+	SyncScope            string     // "saved_only"或"all" - 同步外部订阅的范围
 	KeepNodeName         bool       // 同步时保留原始节点名称
 	CacheExpireMinutes   int        // 缓存过期时间（分钟）
 	SyncTraffic          bool       // 同步外部订阅的流量信息
@@ -305,8 +305,8 @@ type ExternalSubscription struct {
 type CustomRule struct {
 	ID        int64
 	Name      string
-	Type      string // “dns”、“规则”、“规则提供者”
-	Mode      string // “替换”、“前置”
+	Type      string // "dns"、"规则"、"规则提供者"
+	Mode      string // "替换"、"前置"
 	Content   string
 	Enabled   bool
 	CreatedAt time.Time
@@ -331,8 +331,8 @@ type CustomRuleApplication struct {
 	ID              int64
 	SubscribeFileID int64
 	CustomRuleID    int64
-	RuleType        string // “dns”、“规则”、“规则提供者”
-	RuleMode        string // “替换”、“前置”
+	RuleType        string // "dns"、"规则"、"规则提供者"
+	RuleMode        string // "替换"、"前置"
 	AppliedContent  string // 已应用的 JSON 序列化内容
 	ContentHash     string // 内容的 SHA256 哈希值用于快速比较
 	AppliedAt       time.Time
@@ -1105,7 +1105,7 @@ CREATE INDEX IF NOT EXISTS idx_custom_rules_enabled ON custom_rules(enabled);
 		return fmt.Errorf("migrate custom_rules: %w", err)
 	}
 
-	// 迁移现有的 custom_rules 表以支持“追加”模式
+	// 迁移现有的 custom_rules 表以支持"追加"模式
 	if err := r.migrateCustomRulesAppendMode(); err != nil {
 		return fmt.Errorf("migrate custom_rules append mode: %w", err)
 	}
@@ -1624,7 +1624,7 @@ CREATE TABLE IF NOT EXISTS certificates (
     expiry_date TIMESTAMP,
     issue_date TIMESTAMP,
     auto_renew INTEGER NOT NULL DEFAULT 1,
-    challenge_mode TEXT NOT NULL DEFAULT 'standalone' CHECK (challenge_mode IN ('standalone', 'webroot', 'dns')),
+    challenge_mode TEXT NOT NULL DEFAULT 'standalone' CHECK (challenge_mode IN ('standalone', 'webroot', 'dns', 'manual')),
     webroot_path TEXT,
     remote_server_id INTEGER NOT NULL DEFAULT 0,
     message TEXT,
@@ -1657,10 +1657,10 @@ CREATE INDEX IF NOT EXISTS idx_certificates_expiry_date ON certificates(expiry_d
 		r.db.Exec(fmt.Sprintf("ALTER TABLE certificates ADD COLUMN %s %s", col.name, col.def))
 	}
 
-	// 迁移：如果 CHECK 约束已过时，则重建表（challenge_mode 中缺少“dns”）
+	// 迁移：如果 CHECK 约束已过时，则重建表（challenge_mode 中缺少 dns 或 manual）
 	var checkSQL string
 	row := r.db.QueryRow(`SELECT sql FROM sqlite_master WHERE type='table' AND name='certificates'`)
-	if row.Scan(&checkSQL) == nil && !strings.Contains(checkSQL, "'dns'") {
+	if row.Scan(&checkSQL) == nil && (!strings.Contains(checkSQL, "'dns'") || !strings.Contains(checkSQL, "'manual'")) {
 		r.db.Exec(`ALTER TABLE certificates RENAME TO _certificates_old`)
 		r.db.Exec(certificatesSchema)
 		r.db.Exec(`INSERT INTO certificates SELECT * FROM _certificates_old`)
@@ -2118,7 +2118,7 @@ func (r *TrafficRepository) ensureUserSettingsColumn(name, definition string) er
 }
 
 func (r *TrafficRepository) migrateCustomRulesAppendMode() error {
-	// 通过尝试插入虚拟行来检查表是否已经支持“追加”模式
+	// 通过尝试插入虚拟行来检查表是否已经支持"追加"模式
 	// 如果失败，我们需要重新创建表
 	tx, err := r.db.Begin()
 	if err != nil {
@@ -2799,7 +2799,7 @@ func (r *TrafficRepository) GetAllPackageShortCodes(ctx context.Context) (map[st
 }
 
 // ResetAllSubscriptionShortURLs 重置所有 subscribe_files 的文件短代码。
-// 当用户单击设置中的“重置短链接”按钮时会调用此函数。
+// 当用户单击设置中的"重置短链接"按钮时会调用此函数。
 func (r *TrafficRepository) ResetAllSubscriptionShortURLs(ctx context.Context) error {
 	if r == nil || r.db == nil {
 		return errors.New("traffic repository not initialized")

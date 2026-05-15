@@ -36,9 +36,14 @@ func certDeployPaths(domain, dir string) (certPath, keyPath string) {
 }
 
 type CertificateHandler struct {
-	repo       *storage.TrafficRepository
-	wsHandler  *RemoteWSHandler
-	acmeClient *acme.Client
+	repo                *storage.TrafficRepository
+	wsHandler           *RemoteWSHandler
+	acmeClient          *acme.Client
+	onMasterURLChanged  func(ctx context.Context, newURL string)
+}
+
+func (h *CertificateHandler) SetOnMasterURLChanged(fn func(ctx context.Context, newURL string)) {
+	h.onMasterURLChanged = fn
 }
 
 // 创建一个新的CertificateHandler。

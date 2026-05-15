@@ -268,6 +268,7 @@ func (c *Client) setupDNSChallenge(client *lego.Client, req CertRequest) error {
 	if err := client.Challenge.SetDNS01Provider(provider,
 		dns01.AddRecursiveNameservers([]string{"8.8.8.8:53", "1.1.1.1:53"}),
 		dns01.DisableAuthoritativeNssPropagationRequirement(),
+		dns01.RecursiveNSsPropagationRequirement(),
 	); err != nil {
 		return fmt.Errorf("set DNS-01 provider: %w", err)
 	}

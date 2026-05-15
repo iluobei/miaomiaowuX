@@ -235,10 +235,18 @@ func (h *RemoteWSHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Printf("[Remote WS] New connection from %s", r.RemoteAddr)
+	clientIP := r.RemoteAddr
+	if realIP := r.Header.Get("X-Real-IP"); realIP != "" {
+		clientIP = realIP
+	} else if forwarded := r.Header.Get("X-Forwarded-For"); forwarded != "" {
+		if parts := strings.SplitN(forwarded, ",", 2); len(parts) > 0 {
+			clientIP = strings.TrimSpace(parts[0])
+		}
+	}
+	log.Printf("[Remote WS] New connection from %s", clientIP)
 
 	// 在 goroutine 中处理连接
-	go h.handleConnection(conn, r.RemoteAddr)
+	go h.handleConnection(conn, clientIP)
 }
 
 // 处理单个 WebSocket 连接

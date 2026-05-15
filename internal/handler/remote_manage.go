@@ -584,6 +584,33 @@ func (h *RemoteManageHandler) ForwardToServer(ctx context.Context, serverID int6
 	return h.forwardToRemoteServer(ctx, serverID, method, path, body)
 }
 
+// BroadcastMasterURLUpdate 向所有已连接的非本机 agent 推送新的 master_url。
+func (h *RemoteManageHandler) BroadcastMasterURLUpdate(ctx context.Context, newMasterURL string) {
+	servers, err := h.repo.ListRemoteServers(ctx)
+	if err != nil {
+		log.Printf("[BroadcastMasterURL] Failed to list servers: %v", err)
+		return
+	}
+
+	payload, _ := json.Marshal(map[string]string{"master_url": newMasterURL})
+
+	for _, s := range servers {
+		if s.Status != "connected" {
+			continue
+		}
+		// 跳过本机 agent（偷自己场景，master_url 为 127.0.0.1）
+		if s.IPAddress == "127.0.0.1" || s.IPAddress == "::1" {
+			continue
+		}
+		resp, err := h.forwardToRemoteServer(ctx, s.ID, http.MethodPost, "/api/child/agent/update-master-url", payload)
+		if err != nil {
+			log.Printf("[BroadcastMasterURL] Server %d (%s): failed: %v", s.ID, s.Name, err)
+			continue
+		}
+		log.Printf("[BroadcastMasterURL] Server %d (%s): %s", s.ID, s.Name, string(resp))
+	}
+}
+
 func (h *RemoteManageHandler) forwardToRemoteServer(ctx context.Context, serverID int64, method, path string, body []byte) ([]byte, error) {
 	server, err := h.repo.GetRemoteServer(ctx, serverID)
 	if err != nil {
@@ -911,6 +938,17 @@ func (h *RemoteManageHandler) HandleInbounds(w http.ResponseWriter, r *http.Requ
 		}
 	}
 
+	// 删除 reality 入站前，先保存其 serverNames 以便后续恢复路由
+	var preDeleteRealityDomains []string
+	if r.Method == http.MethodPost && inboundReq != nil {
+		action, _ := inboundReq["action"].(string)
+		if strings.ToLower(action) == "remove" {
+			if tag, _ := inboundReq["tag"].(string); tag != "" {
+				preDeleteRealityDomains = h.getRealityServerNames(r.Context(), id, tag)
+			}
+		}
+	}
+
 	result, err := h.forwardToRemoteServer(r.Context(), id, r.Method, "/api/child/inbounds", body)
 	if err != nil {
 		remoteWriteError(w, http.StatusBadGateway, err.Error())
@@ -952,6 +990,8 @@ func (h *RemoteManageHandler) HandleInbounds(w http.ResponseWriter, r *http.Requ
 							Inbound:  inboundAny,
 							NodeName: customNodeName,
 						})
+
+						h.cleanupTunnelRouteForReality(r.Context(), id, inbound)
 					}
 				} else if actionLower == "remove" {
 					// 删除入站：发布事件
@@ -961,6 +1001,10 @@ func (h *RemoteManageHandler) HandleInbounds(w http.ResponseWriter, r *http.Requ
 							ServerID: id,
 							Tag:      tag,
 						})
+					}
+					// 恢复被 reality 接管的域名到 tunnel-in→nginx 路由
+					if len(preDeleteRealityDomains) > 0 {
+						go h.restoreTunnelRouteForReality(r.Context(), id, preDeleteRealityDomains)
 					}
 				}
 			}
@@ -2499,6 +2543,185 @@ func (h *RemoteManageHandler) addWebsiteTunnelConfig(config map[string]any, doma
 	}
 	rules = append([]any{newRule}, rules...)
 	routing["rules"] = rules
+}
+
+func (h *RemoteManageHandler) removeDomainsFromTunnelNginxRoute(config map[string]any, domainsToRemove []string) bool {
+	routing, _ := config["routing"].(map[string]any)
+	if routing == nil {
+		return false
+	}
+	rules, _ := routing["rules"].([]any)
+
+	removeSet := make(map[string]struct{})
+	for _, d := range domainsToRemove {
+		removeSet[strings.ToLower(d)] = struct{}{}
+	}
+
+	for i, rule := range rules {
+		r, _ := rule.(map[string]any)
+		if r == nil {
+			continue
+		}
+		outTag, _ := r["outboundTag"].(string)
+		if outTag != "nginx" {
+			continue
+		}
+		inTags, _ := r["inboundTag"].([]any)
+		hasTunnelIn := false
+		for _, t := range inTags {
+			if s, _ := t.(string); s == "tunnel-in" {
+				hasTunnelIn = true
+				break
+			}
+		}
+		if !hasTunnelIn {
+			continue
+		}
+
+		domains, _ := r["domain"].([]any)
+		var remaining []any
+		for _, d := range domains {
+			if s, _ := d.(string); s != "" {
+				if _, found := removeSet[strings.ToLower(s)]; !found {
+					remaining = append(remaining, d)
+				}
+			}
+		}
+
+		if len(remaining) == 0 {
+			routing["rules"] = append(rules[:i], rules[i+1:]...)
+		} else {
+			r["domain"] = remaining
+		}
+		return true
+	}
+	return false
+}
+
+func (h *RemoteManageHandler) cleanupTunnelRouteForReality(ctx context.Context, serverID int64, inbound map[string]interface{}) {
+	streamSettings, _ := inbound["streamSettings"].(map[string]interface{})
+	if streamSettings == nil {
+		return
+	}
+	security, _ := streamSettings["security"].(string)
+	if security != "reality" {
+		return
+	}
+	realitySettings, _ := streamSettings["realitySettings"].(map[string]interface{})
+	if realitySettings == nil {
+		return
+	}
+	serverNames, _ := realitySettings["serverNames"].([]interface{})
+	if len(serverNames) == 0 {
+		return
+	}
+
+	var domains []string
+	for _, sn := range serverNames {
+		if s, _ := sn.(string); s != "" {
+			domains = append(domains, s)
+		}
+	}
+	if len(domains) == 0 {
+		return
+	}
+
+	xrayResp, err := h.forwardToRemoteServer(ctx, serverID, http.MethodGet, "/api/child/xray/config", nil)
+	if err != nil {
+		return
+	}
+	var configResp struct {
+		Config string `json:"config"`
+	}
+	if err := json.Unmarshal(xrayResp, &configResp); err != nil {
+		return
+	}
+	var xrayConfig map[string]any
+	if err := json.Unmarshal([]byte(configResp.Config), &xrayConfig); err != nil {
+		return
+	}
+
+	if !h.removeDomainsFromTunnelNginxRoute(xrayConfig, domains) {
+		return
+	}
+
+	updatedConfig, _ := json.MarshalIndent(xrayConfig, "", "    ")
+	configPayload, _ := json.Marshal(map[string]string{"config": string(updatedConfig)})
+	if _, err := h.forwardToRemoteServer(ctx, serverID, http.MethodPost, "/api/child/xray/config", configPayload); err != nil {
+		log.Printf("[HandleInbounds] Failed to update xray config after removing reality domains: %v", err)
+		return
+	}
+	log.Printf("[HandleInbounds] Removed reality serverNames %v from tunnel-in→nginx route on server %d", domains, serverID)
+}
+
+// getRealityServerNames 获取指定 inbound 的 reality serverNames（删除前调用）。
+func (h *RemoteManageHandler) getRealityServerNames(ctx context.Context, serverID int64, tag string) []string {
+	resp, err := h.forwardToRemoteServer(ctx, serverID, http.MethodGet, "/api/child/inbounds", nil)
+	if err != nil {
+		return nil
+	}
+	var inboundsResp struct {
+		Inbounds []map[string]interface{} `json:"inbounds"`
+	}
+	if json.Unmarshal(resp, &inboundsResp) != nil {
+		return nil
+	}
+	for _, inb := range inboundsResp.Inbounds {
+		inbTag, _ := inb["tag"].(string)
+		if inbTag != tag {
+			continue
+		}
+		ss, _ := inb["streamSettings"].(map[string]interface{})
+		if ss == nil {
+			return nil
+		}
+		if sec, _ := ss["security"].(string); sec != "reality" {
+			return nil
+		}
+		rs, _ := ss["realitySettings"].(map[string]interface{})
+		if rs == nil {
+			return nil
+		}
+		sns, _ := rs["serverNames"].([]interface{})
+		var domains []string
+		for _, sn := range sns {
+			if s, _ := sn.(string); s != "" {
+				domains = append(domains, s)
+			}
+		}
+		return domains
+	}
+	return nil
+}
+
+// restoreTunnelRouteForReality 删除 reality 入站后，将其 serverNames 恢复到 tunnel-in→nginx 路由。
+func (h *RemoteManageHandler) restoreTunnelRouteForReality(ctx context.Context, serverID int64, domains []string) {
+	xrayResp, err := h.forwardToRemoteServer(ctx, serverID, http.MethodGet, "/api/child/xray/config", nil)
+	if err != nil {
+		return
+	}
+	var configResp struct {
+		Config string `json:"config"`
+	}
+	if json.Unmarshal(xrayResp, &configResp) != nil {
+		return
+	}
+	var xrayConfig map[string]any
+	if json.Unmarshal([]byte(configResp.Config), &xrayConfig) != nil {
+		return
+	}
+
+	for _, domain := range domains {
+		h.addWebsiteTunnelConfig(xrayConfig, domain)
+	}
+
+	updatedConfig, _ := json.MarshalIndent(xrayConfig, "", "    ")
+	configPayload, _ := json.Marshal(map[string]string{"config": string(updatedConfig)})
+	if _, err := h.forwardToRemoteServer(ctx, serverID, http.MethodPost, "/api/child/xray/config", configPayload); err != nil {
+		log.Printf("[HandleInbounds] Failed to restore domains %v to tunnel route: %v", domains, err)
+		return
+	}
+	log.Printf("[HandleInbounds] Restored reality serverNames %v to tunnel-in→nginx route on server %d", domains, serverID)
 }
 
 func (h *RemoteManageHandler) addWebsiteFallbackConfig(config map[string]any, domain string) {

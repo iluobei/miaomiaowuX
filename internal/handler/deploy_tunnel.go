@@ -44,6 +44,11 @@ func (h *RemoteManageHandler) deployTunnelConfig(ctx context.Context, server *st
 	domainConf = strings.ReplaceAll(domainConf, "{static_root_path}", staticRoot)
 	domainConf = strings.ReplaceAll(domainConf, "{proxy_pass_server}", server.SiteValue)
 
+	clearPayload, _ := json.Marshal(map[string]int{"port": 443})
+	if _, err := h.forwardToRemoteServer(ctx, server.ID, http.MethodPost, "/api/child/nginx/clear-stream-port", clearPayload); err != nil {
+		log.Printf("[DeployTunnel] clear stream port 443 on server %d: %v (non-fatal)", server.ID, err)
+	}
+
 	sslPayload, _ := json.Marshal(map[string]any{
 		"domain":        domain,
 		"nginx_config":  string(nginxConf),
@@ -64,8 +69,15 @@ func (h *RemoteManageHandler) deployTunnelConfig(ctx context.Context, server *st
 	}
 	configJSON := strings.ReplaceAll(string(configTpl), "{proxy_domain}", proxyDomain)
 
+	var xrayConfig map[string]any
+	if err := json.Unmarshal([]byte(configJSON), &xrayConfig); err != nil {
+		return fmt.Errorf("解析 Xray 模板配置失败: %w", err)
+	}
+	h.addWebsiteTunnelConfig(xrayConfig, domain)
+	updatedConfig, _ := json.MarshalIndent(xrayConfig, "", "    ")
+
 	configPayload, _ := json.Marshal(map[string]string{
-		"config": configJSON,
+		"config": string(updatedConfig),
 	})
 	if _, err := h.forwardToRemoteServer(ctx, server.ID, http.MethodPost, "/api/child/xray/config", configPayload); err != nil {
 		return fmt.Errorf("下发 Xray 配置失败: %w", err)
