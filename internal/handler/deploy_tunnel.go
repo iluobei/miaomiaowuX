@@ -73,7 +73,17 @@ func (h *RemoteManageHandler) deployTunnelConfig(ctx context.Context, server *st
 	if err := json.Unmarshal([]byte(configJSON), &xrayConfig); err != nil {
 		return fmt.Errorf("解析 Xray 模板配置失败: %w", err)
 	}
-	h.addWebsiteTunnelConfig(xrayConfig, domain)
+
+	// 同机部署时，主控域名路由到 nginx，否则主控 HTTPS 不可达
+	if server.IPAddress == "127.0.0.1" {
+		if masterDomain := getDomainFromMasterURL(h.repo, ctx); masterDomain != "" && masterDomain != domain {
+			h.addWebsiteTunnelConfig(xrayConfig, masterDomain)
+		}
+	} else {
+		// 非主控部署直接使用服务器添加时的domain
+		h.addWebsiteTunnelConfig(xrayConfig, domain)
+	}
+
 	updatedConfig, _ := json.MarshalIndent(xrayConfig, "", "    ")
 
 	configPayload, _ := json.Marshal(map[string]string{

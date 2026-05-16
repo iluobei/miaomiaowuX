@@ -53,15 +53,16 @@ func NewPackageCreateHandler(repo *storage.TrafficRepository) *PackageCreateHand
 }
 
 type createPackageRequest struct {
-	Name           string  `json:"name"`
-	Description    string  `json:"description"`
-	TrafficLimitGB float64 `json:"traffic_limit_gb"`
-	CycleDays      int     `json:"cycle_days"`
-	IsReset        bool    `json:"is_reset"`
-	ResetDay       int     `json:"reset_day"`
-	Nodes          []int64 `json:"nodes"`
-	SpeedLimitMbps float64 `json:"speed_limit_mbps"`
-	DeviceLimit    int     `json:"device_limit"`
+	Name           string                     `json:"name"`
+	Description    string                     `json:"description"`
+	TrafficLimitGB float64                    `json:"traffic_limit_gb"`
+	CycleDays      int                        `json:"cycle_days"`
+	IsReset        bool                       `json:"is_reset"`
+	ResetDay       int                        `json:"reset_day"`
+	Nodes          []int64                    `json:"nodes"`
+	SpeedLimitMbps float64                    `json:"speed_limit_mbps"`
+	DeviceLimit    int                        `json:"device_limit"`
+	AutoSpeedRules []storage.AutoSpeedLimitRule `json:"auto_speed_rules"`
 }
 
 func (h *PackageCreateHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -114,6 +115,7 @@ func (h *PackageCreateHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 		Nodes:             nodes,
 		SpeedLimitMbps:    req.SpeedLimitMbps,
 		DeviceLimit:       req.DeviceLimit,
+		AutoSpeedRules:    req.AutoSpeedRules,
 	}
 
 	id, err := h.repo.CreatePackage(r.Context(), pkg)
@@ -145,16 +147,17 @@ func NewPackageUpdateHandler(repo *storage.TrafficRepository, pusher *LimiterCon
 }
 
 type updatePackageRequest struct {
-	ID             int64   `json:"id"`
-	Name           string  `json:"name"`
-	Description    string  `json:"description"`
-	TrafficLimitGB float64 `json:"traffic_limit_gb"`
-	CycleDays      int     `json:"cycle_days"`
-	IsReset        bool    `json:"is_reset"`
-	ResetDay       int     `json:"reset_day"`
-	Nodes          []int64 `json:"nodes"`
-	SpeedLimitMbps float64 `json:"speed_limit_mbps"`
-	DeviceLimit    int     `json:"device_limit"`
+	ID             int64                       `json:"id"`
+	Name           string                      `json:"name"`
+	Description    string                      `json:"description"`
+	TrafficLimitGB float64                     `json:"traffic_limit_gb"`
+	CycleDays      int                         `json:"cycle_days"`
+	IsReset        bool                        `json:"is_reset"`
+	ResetDay       int                         `json:"reset_day"`
+	Nodes          []int64                     `json:"nodes"`
+	SpeedLimitMbps float64                     `json:"speed_limit_mbps"`
+	DeviceLimit    int                         `json:"device_limit"`
+	AutoSpeedRules []storage.AutoSpeedLimitRule `json:"auto_speed_rules"`
 }
 
 func (h *PackageUpdateHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -213,6 +216,7 @@ func (h *PackageUpdateHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 		Nodes:             nodes,
 		SpeedLimitMbps:    req.SpeedLimitMbps,
 		DeviceLimit:       req.DeviceLimit,
+		AutoSpeedRules:    req.AutoSpeedRules,
 	}
 
 	if err := h.repo.UpdatePackage(r.Context(), pkg); err != nil {

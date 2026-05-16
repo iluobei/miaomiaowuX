@@ -126,5 +126,9 @@
             },
             "tag": "nginx"
         }
-    ]
+    ],
+    "metrics": {
+        "tag": "Metrics",
+        "listen": "127.0.0.1:38889"
+    }
 } 
