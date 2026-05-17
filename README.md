@@ -158,6 +158,8 @@ connection_mode: "auto"   # auto | websocket | http | pull
 <details>
 <summary>更新日志</summary>
 
+### v0.0.5 (2026-05-18)
+- 🛠️ fix:主控开启小黄云获取agent IP错误
 ### v0.0.4 (2026-05-17)
 - 🌈 PRO功能展示优化
 - 🌈 优化发布脚本
