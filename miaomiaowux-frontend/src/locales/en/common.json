@@ -179,6 +179,7 @@
   },
   "license": {
     "proFeatureTooltip": "This feature requires a Pro license. Please upgrade in license settings.",
+    "proFeatureActive": "Pro feature active",
     "serverLimitReached": "Server limit reached ({{current}}/{{max}})",
     "nodeLimitReached": "Node limit reached ({{current}}/{{max}})",
     "userLimitReached": "User limit reached ({{current}}/{{max}})"

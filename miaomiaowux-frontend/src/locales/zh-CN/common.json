@@ -179,6 +179,7 @@
   },
   "license": {
     "proFeatureTooltip": "此功能需要 Pro 许可证，请前往许可证设置升级",
+    "proFeatureActive": "Pro 功能已激活",
     "serverLimitReached": "服务器已达上限 ({{current}}/{{max}})",
     "nodeLimitReached": "节点已达上限 ({{current}}/{{max}})",
     "userLimitReached": "用户已达上限 ({{current}}/{{max}})"
