@@ -239,7 +239,9 @@ func (h *RemoteWSHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	clientIP := r.RemoteAddr
-	if realIP := r.Header.Get("X-Real-IP"); realIP != "" {
+	if cfIP := r.Header.Get("CF-Connecting-IP"); cfIP != "" {
+		clientIP = cfIP
+	} else if realIP := r.Header.Get("X-Real-IP"); realIP != "" {
 		clientIP = realIP
 	} else if forwarded := r.Header.Get("X-Forwarded-For"); forwarded != "" {
 		if parts := strings.SplitN(forwarded, ",", 2); len(parts) > 0 {
