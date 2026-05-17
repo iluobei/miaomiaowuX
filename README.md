@@ -158,6 +158,16 @@ connection_mode: "auto"   # auto | websocket | http | pull
 <details>
 <summary>更新日志</summary>
 
+### v0.0.4-beta (2026-05-17)
+- 🛠️ fix:cloudflare证书不再本地验证dns
+- 🛠️ fix:自动限速无法恢复
+- 🌈 增加自动限速与解除限速
+- 🛠️ fix:主控与偷自己逻辑优化
+- 🌈 增加主控与agent交互加密
+- 🌈 增加证书申请日志显示
+- 🛠️ fix:修复大量bug
+- 🌈 同步mmw功能
+- 🌈 支持内联xray与外置xray切换
 ### v0.0.3-beta (2026-05-14)
 - 🌈 支持套餐限速与用户限速
 - 🌈 支持套餐限速与用户限速
