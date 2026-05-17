@@ -143,7 +143,10 @@ func (h *RemoteManageHandler) HandleServiceControl(w http.ResponseWriter, r *htt
 		Action  string `json:"action"`
 	}
 	if json.Unmarshal(body, &req) == nil && req.Service == "xray" && (req.Action == "start" || req.Action == "restart") {
-		if err := h.restartXrayWithRecovery(r.Context(), id, "ServiceControl"); err != nil {
+		// 使用独立 context，避免同机 tunnel 模式下请求断开导致 context canceled
+		ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+		defer cancel()
+		if err := h.restartXrayWithRecovery(ctx, id, "ServiceControl"); err != nil {
 			remoteWriteError(w, http.StatusBadGateway, err.Error())
 			return
 		}
