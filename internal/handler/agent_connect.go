@@ -564,27 +564,26 @@ echo "To view logs:"
 echo "  journalctl -u mmw-agent -f"
 echo ""
 
+# Auto-install Xray (unless embedded mode)
+if [ "$XRAY_MODE" != "embedded" ]; then
+    XRAY_INSTALLED=0
+    if command -v xray >/dev/null 2>&1 || [ -x /usr/local/bin/xray ] || [ -x /usr/bin/xray ] || [ -x /opt/xray/xray ]; then
+        XRAY_INSTALLED=1
+    fi
+
+    if [ "$XRAY_INSTALLED" = "1" ]; then
+        echo "[Auto] Xray already installed, skip."
+    else
+        echo "[Auto] Installing Xray..."
+        bash -c "$(curl -L https://github.com/XTLS/Xray-install/raw/main/install-release.sh)" @ install
+    fi
+fi
+
 if [ "$AUTO_STEAL_SELF" = "1" ]; then
     echo "=========================================="
-    echo "  Auto Install: Xray + Nginx"
+    echo "  Auto Install: Nginx"
     echo "=========================================="
     echo ""
-
-    if [ "$XRAY_MODE" = "embedded" ]; then
-        echo "[Auto] Embedded Xray mode, skip external Xray installation."
-    else
-        XRAY_INSTALLED=0
-        if command -v xray >/dev/null 2>&1 || [ -x /usr/local/bin/xray ] || [ -x /usr/bin/xray ] || [ -x /opt/xray/xray ]; then
-            XRAY_INSTALLED=1
-        fi
-
-        if [ "$XRAY_INSTALLED" = "1" ]; then
-            echo "[Auto] Xray already installed, skip."
-        else
-            echo "[Auto 1/2] Installing Xray..."
-            bash -c "$(curl -L https://github.com/XTLS/Xray-install/raw/main/install-release.sh)" @ install
-        fi
-    fi
 
     NGINX_INSTALLED=0
     if command -v nginx >/dev/null 2>&1 || [ -x /usr/local/nginx/sbin/nginx ]; then
@@ -594,7 +593,7 @@ if [ "$AUTO_STEAL_SELF" = "1" ]; then
     if [ "$NGINX_INSTALLED" = "1" ]; then
         echo "[Auto] Nginx already installed, skip."
     else
-        echo "[Auto 2/2] Installing Nginx..."
+        echo "[Auto] Installing Nginx..."
         curl -fsSL https://raw.githubusercontent.com/iluobei/miaomiaowuX/main/install-nginx.sh | bash
     fi
     echo ""

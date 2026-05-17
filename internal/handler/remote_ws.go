@@ -91,6 +91,7 @@ type WSHeartbeatPayload struct {
 	XrayBootTime   *time.Time `json:"xray_boot_time,omitempty"`
 	ListenPort     int        `json:"listen_port,omitempty"`
 	LocalTimestamp int64      `json:"local_time,omitempty"`
+	PublicIPv4     string     `json:"public_ipv4,omitempty"`
 }
 
 // WSSpeedPayload 表示实时速度数据负载
@@ -628,6 +629,9 @@ func (h *RemoteWSHandler) handleHeartbeat(wsConn *RemoteWSConnection, payload js
 		Token:      wsConn.Token,
 		IPAddress:  ip,
 		ListenPort: hbPayload.ListenPort,
+	}
+	if hbPayload.PublicIPv4 != "" {
+		update.IPAddress = hbPayload.PublicIPv4
 	}
 	if hbPayload.BootTime != nil {
 		update.BootTime = hbPayload.BootTime

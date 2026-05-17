@@ -144,6 +144,7 @@
     "subFetchFailed": "获取订阅失败",
     "serverRestoredAddress": "已恢复原始服务器地址",
     "noAvailableServer": "没有可用的服务器",
+    "xrayNotReady": "该服务器 Xray 未就绪，请先安装并启动 Xray",
     "enterTag": "请填写标签",
     "selectServer": "请选择至少一台服务器",
     "serverInboundFailed": "服务器 {{name}} 入站创建失败: {{error}}",
@@ -283,7 +284,8 @@
     },
     "serverSelect": {
       "title": "选择服务器",
-      "description": "请选择一台服务器后继续创建节点"
+      "description": "请选择一台服务器后继续创建节点",
+      "xrayNotReady": "Xray 未就绪"
     },
     "quickCreate": {
       "addNodeTitle": "添加节点",

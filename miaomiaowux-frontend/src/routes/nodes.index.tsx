@@ -577,7 +577,7 @@ function NodesPage() {
     queryKey: ['remote-servers'],
     queryFn: async () => {
       const response = await api.get('/api/admin/remote-servers')
-      return response.data as { success: boolean; servers: Array<{ id: number; name: string; status: string; ip_address?: string; pull_address?: string; domain?: string }> }
+      return response.data as { success: boolean; servers: Array<{ id: number; name: string; status: string; ip_address?: string; pull_address?: string; domain?: string; xray_running?: boolean }> }
     },
     staleTime: 30_000,
   })
@@ -587,6 +587,14 @@ function NodesPage() {
   const handleQuickCreateSubmit = async (serverIds: number[], inbound: any, tag: string, nodeName?: string) => {
     if (serverIds.length === 0) {
       toast.error(t('toast.selectServer'))
+      return
+    }
+    const notReadyServer = serverIds.find(id => {
+      const s = (remoteServersData?.servers || []).find(srv => srv.id === id)
+      return s && !s.xray_running
+    })
+    if (notReadyServer !== undefined) {
+      toast.error(t('toast.xrayNotReady'))
       return
     }
     const trimmedTag = tag?.trim() || inbound.tag || ''
@@ -4582,9 +4590,11 @@ anytls://password@example.com:443/?sni=example.com&fp=chrome&alpn=h2#AnyTLSèŠ‚ç‚
                 type='button'
                 variant={quickCreateServerId === server.id ? 'default' : 'outline'}
                 className='w-full justify-start'
+                disabled={!server.xray_running}
                 onClick={() => setQuickCreateServerId(server.id)}
               >
                 {server.name}
+                {!server.xray_running && <span className='ml-auto text-xs text-destructive'>{t('dialog.serverSelect.xrayNotReady')}</span>}
               </Button>
             ))}
           </div>

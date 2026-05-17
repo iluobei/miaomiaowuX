@@ -144,6 +144,7 @@
     "subFetchFailed": "Failed to fetch subscription",
     "serverRestoredAddress": "Original server address restored",
     "noAvailableServer": "No available servers",
+    "xrayNotReady": "Xray is not ready on this server. Please install and start Xray first.",
     "enterTag": "Please enter a tag",
     "selectServer": "Please select at least one server",
     "serverInboundFailed": "Server {{name}} inbound creation failed: {{error}}",
@@ -283,7 +284,8 @@
     },
     "serverSelect": {
       "title": "Select Server",
-      "description": "Select a server to continue creating node"
+      "description": "Select a server to continue creating node",
+      "xrayNotReady": "Xray not ready"
     },
     "quickCreate": {
       "addNodeTitle": "Add Node",

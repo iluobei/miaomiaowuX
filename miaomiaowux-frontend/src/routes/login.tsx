@@ -1,5 +1,5 @@
 // @ts-nocheck
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useForm } from 'react-hook-form'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -385,6 +385,14 @@ function InitialSetupView() {
       setDomainVerifyResult(null)
     },
   })
+
+  useEffect(() => {
+    const hostname = window.location.hostname
+    if (hostname && hostname !== 'localhost' && !/^\d+\.\d+\.\d+\.\d+$/.test(hostname) && !hostname.includes(':')) {
+      setDomain(hostname)
+      verifyDomain.mutate(hostname)
+    }
+  }, [])
 
   const setup = useMutation({
     mutationFn: async (values: SetupFormValues) => {

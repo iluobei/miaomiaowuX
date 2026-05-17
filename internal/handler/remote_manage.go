@@ -367,6 +367,9 @@ func (h *RemoteManageHandler) forwardStreamToRemote(w http.ResponseWriter, r *ht
 	if idx := strings.LastIndex(ip, ":"); idx != -1 && !strings.Contains(ip, "[") {
 		ip = ip[:idx]
 	}
+	if strings.Contains(ip, ":") {
+		ip = "[" + ip + "]"
+	}
 	port := "23889"
 	if server.ListenPort > 0 {
 		port = fmt.Sprintf("%d", server.ListenPort)
@@ -630,6 +633,9 @@ func (h *RemoteManageHandler) forwardToRemoteServer(ctx context.Context, serverI
 		if !strings.Contains(ip, "[") {
 			ip = ip[:idx]
 		}
+	}
+	if strings.Contains(ip, ":") {
+		ip = "[" + ip + "]"
 	}
 
 	port := "23889"
