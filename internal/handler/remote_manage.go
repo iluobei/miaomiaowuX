@@ -1052,7 +1052,7 @@ func (h *RemoteManageHandler) HandleInbounds(w http.ResponseWriter, r *http.Requ
 					}
 					// 恢复被 reality 接管的域名到 tunnel-in→nginx 路由
 					if len(preDeleteRealityDomains) > 0 {
-						go h.restoreTunnelRouteForReality(r.Context(), id, preDeleteRealityDomains)
+						go h.restoreTunnelRouteForReality(context.Background(), id, preDeleteRealityDomains)
 					}
 				}
 			}
