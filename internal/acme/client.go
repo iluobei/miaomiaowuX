@@ -90,7 +90,7 @@ func WithWebrootDir(dir string) ClientOption {
 // 创建一个新的 ACME 客户端。
 func NewClient(opts ...ClientOption) *Client {
 	c := &Client{
-		certDir:  "/etc/mmwx/certs",
+		certDir:  "data/certs",
 		staging:  false,
 		httpPort: ":80",
 	}
