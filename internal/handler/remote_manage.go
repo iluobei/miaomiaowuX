@@ -438,6 +438,9 @@ func (h *RemoteManageHandler) HandleXrayInstallStream(w http.ResponseWriter, r *
 		return
 	}
 	h.forwardStreamToRemote(w, r, id, "/api/child/xray/install-stream")
+
+	// 安装完成后自动扫描更新 xray 状态
+	go h.refreshXrayStatus(id)
 }
 
 func (h *RemoteManageHandler) HandleXrayRemoveStream(w http.ResponseWriter, r *http.Request) {
@@ -451,6 +454,41 @@ func (h *RemoteManageHandler) HandleXrayRemoveStream(w http.ResponseWriter, r *h
 		return
 	}
 	h.forwardStreamToRemote(w, r, id, "/api/child/xray/remove-stream")
+
+	// 卸载完成后更新 xray 状态
+	go h.refreshXrayStatus(id)
+}
+
+func (h *RemoteManageHandler) refreshXrayStatus(serverID int64) {
+	time.Sleep(2 * time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+
+	result, err := h.forwardToRemoteServer(ctx, serverID, "GET", "/api/child/services/status", nil)
+	if err != nil {
+		log.Printf("[Remote Manage] refreshXrayStatus failed for server %d: %v", serverID, err)
+		return
+	}
+
+	var status struct {
+		Xray *struct {
+			Running bool   `json:"running"`
+			Version string `json:"version"`
+		} `json:"xray"`
+	}
+	if err := json.Unmarshal(result, &status); err != nil || status.Xray == nil {
+		return
+	}
+
+	version := ""
+	if status.Xray.Version != "" {
+		version = status.Xray.Version
+	}
+	if err := h.repo.UpdateRemoteServerXrayStatus(ctx, serverID, status.Xray.Running, version); err != nil {
+		log.Printf("[Remote Manage] refreshXrayStatus: failed to update DB for server %d: %v", serverID, err)
+	} else {
+		log.Printf("[Remote Manage] refreshXrayStatus: server %d xray_running=%v", serverID, status.Xray.Running)
+	}
 }
 
 func (h *RemoteManageHandler) HandleNginxInstallStream(w http.ResponseWriter, r *http.Request) {

@@ -105,8 +105,8 @@ func (h *XrayKeyGeneratorHandler) GenerateX25519(w http.ResponseWriter, r *http.
 	}
 
 	response := GenerateX25519Response{
-		PrivateKey: base64.RawStdEncoding.EncodeToString(privBytes),
-		PublicKey:  base64.RawStdEncoding.EncodeToString(pubBytes),
+		PrivateKey: base64.RawURLEncoding.EncodeToString(privBytes),
+		PublicKey:  base64.RawURLEncoding.EncodeToString(pubBytes),
 	}
 
 	w.Header().Set("Content-Type", "application/json")
