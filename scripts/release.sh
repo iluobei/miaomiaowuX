@@ -17,7 +17,7 @@ if [ -z "$PREV_TAG" ]; then
 fi
 
 # 收集自上个 tag 以来的 commit messages（排除版本号 commit 和 merge commit）
-COMMITS=$(git log "${PREV_TAG}..HEAD" --pretty=format:"- %s" --no-merges | grep -v "^- v[0-9]" || true)
+COMMITS=$(git log "${PREV_TAG}..HEAD" --pretty=format:"- %s" --no-merges | grep -v "^- v[0-9]" | sort -u || true)
 if [ -z "$COMMITS" ]; then
   echo "[SKIP] 没有新的 commit，跳过发布"
   exit 0
