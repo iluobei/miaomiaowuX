@@ -976,12 +976,15 @@ func (h *RemoteManageHandler) HandleInbounds(w http.ResponseWriter, r *http.Requ
 		if err := json.Unmarshal(result, &resp); err == nil {
 			if success, ok := resp["success"].(bool); ok && success {
 				if actionLower == "" || actionLower == "add" {
-					// 添加入站：发布事件
+					// 添加入站：先处理 reality 相关配置（更新 tunnel-in port + 清理域名路由）
 					if inbound, ok := inboundReq["inbound"].(map[string]interface{}); ok {
 						tag, _ := inbound["tag"].(string)
 						protocol, _ := inbound["protocol"].(string)
 						port, _ := inbound["port"].(float64)
 						customNodeName, _ := inboundReq["node_name"].(string)
+
+						h.cleanupTunnelRouteForReality(r.Context(), id, inbound)
+
 						// 转换为 map[string]any
 						inboundAny := make(map[string]any)
 						for k, v := range inbound {
@@ -996,8 +999,6 @@ func (h *RemoteManageHandler) HandleInbounds(w http.ResponseWriter, r *http.Requ
 							Inbound:  inboundAny,
 							NodeName: customNodeName,
 						})
-
-						h.cleanupTunnelRouteForReality(r.Context(), id, inbound)
 					}
 				} else if actionLower == "remove" {
 					// 删除入站：发布事件
@@ -2632,6 +2633,12 @@ func (h *RemoteManageHandler) cleanupTunnelRouteForReality(ctx context.Context, 
 		return
 	}
 
+	inboundPort := 0
+	if p, ok := inbound["port"].(float64); ok {
+		inboundPort = int(p)
+	}
+	inboundTag, _ := inbound["tag"].(string)
+
 	xrayResp, err := h.forwardToRemoteServer(ctx, serverID, http.MethodGet, "/api/child/xray/config", nil)
 	if err != nil {
 		return
@@ -2647,17 +2654,78 @@ func (h *RemoteManageHandler) cleanupTunnelRouteForReality(ctx context.Context, 
 		return
 	}
 
-	if !h.removeDomainsFromTunnelNginxRoute(xrayConfig, domains) {
+	configChanged := false
+
+	// 如果是第一个 reality 入站，更新 tunnel-in 的 settings.port
+	if inboundPort > 0 && h.isFirstRealityInbound(xrayConfig, inboundTag) {
+		if h.updateTunnelInPortInConfig(xrayConfig, inboundPort) {
+			configChanged = true
+			log.Printf("[HandleInbounds] Updated tunnel-in settings.port to %d for first reality inbound on server %d", inboundPort, serverID)
+		}
+	}
+
+	// 从 tunnel-in→nginx 路由中移除 reality serverNames
+	if h.removeDomainsFromTunnelNginxRoute(xrayConfig, domains) {
+		configChanged = true
+	}
+
+	if !configChanged {
 		return
 	}
 
 	updatedConfig, _ := json.MarshalIndent(xrayConfig, "", "    ")
 	configPayload, _ := json.Marshal(map[string]string{"config": string(updatedConfig)})
 	if _, err := h.forwardToRemoteServer(ctx, serverID, http.MethodPost, "/api/child/xray/config", configPayload); err != nil {
-		log.Printf("[HandleInbounds] Failed to update xray config after removing reality domains: %v", err)
+		log.Printf("[HandleInbounds] Failed to update xray config for reality cleanup: %v", err)
 		return
 	}
-	log.Printf("[HandleInbounds] Removed reality serverNames %v from tunnel-in→nginx route on server %d", domains, serverID)
+	log.Printf("[HandleInbounds] Reality cleanup done on server %d: domains=%v", serverID, domains)
+}
+
+// isFirstRealityInbound 检查当前配置中是否已有其他 reality 入站（排除 currentTag）
+func (h *RemoteManageHandler) isFirstRealityInbound(xrayConfig map[string]any, currentTag string) bool {
+	inbounds, _ := xrayConfig["inbounds"].([]any)
+	for _, ib := range inbounds {
+		ibMap, _ := ib.(map[string]any)
+		if ibMap == nil {
+			continue
+		}
+		tag, _ := ibMap["tag"].(string)
+		if tag == currentTag || tag == "" {
+			continue
+		}
+		ss, _ := ibMap["streamSettings"].(map[string]any)
+		if ss == nil {
+			continue
+		}
+		if sec, _ := ss["security"].(string); sec == "reality" {
+			return false
+		}
+	}
+	return true
+}
+
+// updateTunnelInPortInConfig 修改 xray 配置中 tunnel-in 的 settings.port
+func (h *RemoteManageHandler) updateTunnelInPortInConfig(xrayConfig map[string]any, port int) bool {
+	inbounds, _ := xrayConfig["inbounds"].([]any)
+	for _, ib := range inbounds {
+		ibMap, _ := ib.(map[string]any)
+		if ibMap == nil {
+			continue
+		}
+		tag, _ := ibMap["tag"].(string)
+		if tag != "tunnel-in" {
+			continue
+		}
+		settings, _ := ibMap["settings"].(map[string]any)
+		if settings == nil {
+			settings = map[string]any{}
+			ibMap["settings"] = settings
+		}
+		settings["port"] = port
+		return true
+	}
+	return false
 }
 
 // getRealityServerNames 获取指定 inbound 的 reality serverNames（删除前调用）。
