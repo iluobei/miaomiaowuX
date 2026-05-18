@@ -158,6 +158,11 @@ connection_mode: "auto"   # auto | websocket | http | pull
 <details>
 <summary>更新日志</summary>
 
+### v0.0.8 (2026-05-18)
+- 🛠️ fix:交换密钥失败导致session断开
+- 🛠️ fix:服务器卡片界面显示问题
+- 🛠️ fix:用户管理绑定套餐看不见套餐
+- 🛠️ fix:节点管理ip域名恢复错误
 ### v0.0.7 (2026-05-18)
 - 🌈 增加与agent交互的错误提示
 - 🌈 增加主控与agent交互协议展示
