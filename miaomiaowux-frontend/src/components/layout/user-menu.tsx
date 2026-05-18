@@ -376,7 +376,17 @@ export function UserMenu() {
                   <>
                     <div className='flex items-center justify-between'>
                       <span className='text-sm text-muted-foreground'>{t('userMenu.licensePlan')}</span>
-                      <span className='text-sm font-medium'>{licenseData.plan.display_name}</span>
+                      <span className='text-sm font-medium flex items-center gap-1.5'>
+                        {licenseData.plan.display_name}
+                        {licenseData.valid && licenseData.plan.name !== 'TRIAL' && (
+                          <span className='inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-gradient-to-r from-amber-400 to-yellow-300 text-amber-900 border border-amber-300/60 shadow-sm shadow-amber-200/50'>
+                            <svg className='h-2.5 w-2.5' viewBox='0 0 24 24' fill='currentColor'>
+                              <path d='M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z' />
+                            </svg>
+                            Pro
+                          </span>
+                        )}
+                      </span>
                     </div>
                     {licenseData.plan.description && (
                       <div className='flex items-center justify-between'>
