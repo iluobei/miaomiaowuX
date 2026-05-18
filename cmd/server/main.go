@@ -653,6 +653,7 @@ func main() {
 	certHandler := handler.NewCertificateHandler(repo, remoteWSHandler)
 	certHandler.SetOnMasterURLChanged(remoteManageHandler.BroadcastMasterURLUpdate)
 	remoteManageHandler.SetCertificateHandler(certHandler)
+	remoteManageHandler.SetStealSelfDeployer(remoteManageHandler.DeployStealSelfConfig)
 	remoteWSHandler.SetScanResultHandler(remoteManageHandler.HandleScanResult)
 	remoteWSHandler.SetStealSelfDeployer(remoteManageHandler.DeployStealSelfConfig)
 	mux.Handle("/api/admin/certificates", auth.RequireAdmin(tokenStore, userRepo, http.HandlerFunc(certHandler.ListCertificates)))

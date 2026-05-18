@@ -25,12 +25,13 @@ import (
 
 // RemoteManageHandler 处理需要转发到子服务器的管理请求
 type RemoteManageHandler struct {
-	repo         *storage.TrafficRepository
-	wsHandler    *RemoteWSHandler
-	httpClient   *http.Client
-	certHandler  *CertificateHandler
-	crypto       *CryptoConfig
-	pullSessions sync.Map // serverID (int64) → *securechan.Session
+	repo              *storage.TrafficRepository
+	wsHandler         *RemoteWSHandler
+	httpClient        *http.Client
+	certHandler       *CertificateHandler
+	crypto            *CryptoConfig
+	pullSessions      sync.Map // serverID (int64) → *securechan.Session
+	stealSelfDeployer func(ctx context.Context, serverID int64) error
 }
 
 // 创建一个新的远程管理处理程序
@@ -53,6 +54,35 @@ func (h *RemoteManageHandler) SetCrypto(cc *CryptoConfig) {
 	h.crypto = cc
 }
 
+func (h *RemoteManageHandler) SetStealSelfDeployer(deployer func(ctx context.Context, serverID int64) error) {
+	h.stealSelfDeployer = deployer
+}
+
+func (h *RemoteManageHandler) deployDefaultConfig(serverID int64) {
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	configTpl, err := templates.ReadFile("default/config.json")
+	if err != nil {
+		log.Printf("[Remote Manage] Failed to read default/config.json template: %v", err)
+		return
+	}
+
+	configPayload, _ := json.Marshal(map[string]string{
+		"config": string(configTpl),
+	})
+	if _, err := h.forwardToRemoteServer(ctx, serverID, http.MethodPost, "/api/child/xray/config", configPayload); err != nil {
+		log.Printf("[Remote Manage] Failed to deploy default config to server %d: %v", serverID, err)
+		return
+	}
+
+	if err := h.restartXrayWithRecovery(ctx, serverID, "AutoDeployDefault"); err != nil {
+		log.Printf("[Remote Manage] %v", err)
+		return
+	}
+	log.Printf("[Remote Manage] Auto-deployed default config to server %d", serverID)
+}
+
 // 处理通过 WebSocket 从代理收到的扫描结果。
 func (h *RemoteManageHandler) HandleScanResult(serverID int64, payload WSScanResultPayload) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -67,6 +97,24 @@ func (h *RemoteManageHandler) HandleScanResult(serverID int64, payload WSScanRes
 		result := h.syncInboundsToNodesInternal(ctx, serverID)
 		log.Printf("[Remote Manage] Auto-sync from scan_result for server %d: synced=%d, skipped=%d",
 			serverID, result.SyncedCount, result.SkippedCount)
+	} else {
+		// xray 未运行，自动下发配置
+		server, err := h.repo.GetRemoteServer(ctx, serverID)
+		if err == nil && server != nil {
+			if server.Use443 && server.Domain != "" && h.stealSelfDeployer != nil {
+				go func() {
+					deployCtx, deployCancel := context.WithTimeout(context.Background(), 60*time.Second)
+					defer deployCancel()
+					if err := h.stealSelfDeployer(deployCtx, serverID); err != nil {
+						log.Printf("[Remote Manage] Auto-deploy steal-self config failed for server %d: %v", serverID, err)
+					} else {
+						log.Printf("[Remote Manage] Auto-deployed steal-self config for server %d", serverID)
+					}
+				}()
+			} else {
+				go h.deployDefaultConfig(serverID)
+			}
+		}
 	}
 }
 

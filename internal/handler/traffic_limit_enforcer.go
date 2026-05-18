@@ -18,6 +18,9 @@ func NewTrafficLimitEnforcer(repo *storage.TrafficRepository, remoteManage *Remo
 }
 
 func (e *TrafficLimitEnforcer) Start(ctx context.Context, interval time.Duration) {
+	if interval <= 0 {
+		interval = 5 * time.Minute
+	}
 	log.Printf("[TrafficLimitEnforcer] Starting with interval: %v", interval)
 	e.CheckAll(ctx)
 

@@ -652,7 +652,8 @@
     "xrayModeExternal": "外部 Xray",
     "xrayModeEmbedded": "内嵌 Xray",
     "xrayModeExternalDesc": "使用独立安装的 Xray 进程，Agent 通过 gRPC 与其通信",
-    "xrayModeEmbeddedDesc": "Agent 内嵌 Xray-core，支持自动限速和设备数限制"
+    "xrayModeEmbeddedDesc": "Agent 内嵌 Xray-core，支持自动限速和设备数限制",
+    "xrayModeEmbeddedProHint": "Pro 支持限速与限制连接数"
   },
   "presets": {
     "defaultLabel": "默认"

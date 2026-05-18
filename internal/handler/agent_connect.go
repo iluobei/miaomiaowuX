@@ -476,6 +476,7 @@ master_url: ${MASTER_URL}
 token: ${TOKEN}
 connection_mode: websocket
 xray_mode: ${XRAY_MODE}
+steal_mode: $([ "$AUTO_STEAL_SELF" = "1" ] && echo "tunnel" || echo "")
 master_public_key: ${MASTER_PUBLIC_KEY}
 EOF
 

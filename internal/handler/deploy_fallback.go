@@ -90,5 +90,11 @@ func (h *RemoteManageHandler) deployFallbackConfig(ctx context.Context, server *
 	}
 
 	log.Printf("[DeployFallback] Completed fallback config deployment for server %d (%s), domain=%s", server.ID, server.Name, domain)
+
+	// 通知 agent 更新本地 steal_mode
+	if h.wsHandler != nil {
+		_ = h.wsHandler.SendConfigUpdate(server.ID, map[string]string{"steal_mode": "fallback"})
+	}
+
 	return nil
 }

@@ -656,7 +656,7 @@ function XrayServersPage() {
         <ViewToggle view={viewMode} onViewChange={setViewMode} />
         <Dialog open={isAddDialogOpen} onOpenChange={(open) => { setIsAddDialogOpen(open); if (!open) resetAddDialog() }}>
           <DialogTrigger asChild><Button disabled={serversAtLimit} title={serversAtLimit ? t('license.serverLimitReached', { current: licenseUsage?.usage?.servers?.current, max: licenseUsage?.usage?.servers?.max, ns: 'common' }) : undefined}><Plus className="mr-2 h-4 w-4" />{t('servers.addServer')}</Button></DialogTrigger>
-          <DialogContent className="w-[90vw] md:w-[60vw] max-w-none max-h-[85vh] overflow-y-auto">
+          <DialogContent className="w-[95vw] md:w-[75vw] lg:w-[60vw] max-w-4xl max-h-[85vh] overflow-y-auto overflow-x-hidden">
             <DialogHeader>
               <DialogTitle>{t('servers.addRemoteServer')}</DialogTitle>
               <DialogDescription>{t('servers.addRemoteServerDesc')}</DialogDescription>
@@ -681,30 +681,39 @@ function XrayServersPage() {
                 <Label>{t('servers.xrayMode')}</Label>
                 <RadioGroup value={createXrayMode} onValueChange={(value) => setCreateXrayMode(value as 'external' | 'embedded')} className="flex gap-4">
                   <div className="flex items-center gap-2"><RadioGroupItem value="external" id="create-xray-mode-external" disabled={!!generatedToken} /><Label htmlFor="create-xray-mode-external" className="text-sm cursor-pointer">{t('servers.xrayModeExternal')}</Label></div>
-                  <div className="flex items-center gap-2"><RadioGroupItem value="embedded" id="create-xray-mode-embedded" disabled={!!generatedToken} /><Label htmlFor="create-xray-mode-embedded" className="text-sm cursor-pointer">{t('servers.xrayModeEmbedded')}</Label></div>
+                  <div className="flex items-center gap-2">
+                    <RadioGroupItem value="embedded" id="create-xray-mode-embedded" disabled={!!generatedToken} />
+                    <Label htmlFor="create-xray-mode-embedded" className="text-sm cursor-pointer">{t('servers.xrayModeEmbedded')}</Label>
+                    <TooltipProvider><Tooltip><TooltipTrigger asChild>
+                      <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-bold cursor-default select-none shadow-sm border bg-gradient-to-r from-amber-400 to-yellow-300 text-amber-900 border-amber-300/60 shadow-amber-200/50">
+                        <svg className="h-2.5 w-2.5" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z" /></svg>
+                        Pro
+                      </span>
+                    </TooltipTrigger><TooltipContent>{t('servers.xrayModeEmbeddedProHint')}</TooltipContent></Tooltip></TooltipProvider>
+                  </div>
                 </RadioGroup>
                 <p className="text-xs text-muted-foreground">{createXrayMode === 'external' ? t('servers.xrayModeExternalDesc') : t('servers.xrayModeEmbeddedDesc')}</p>
               </div>
               <div className="grid gap-3 p-4 border rounded-lg">
                 <div className="flex items-center justify-between"><Label htmlFor="create-steal-self" className="cursor-pointer">{t('servers.stealSelf')}</Label><Switch id="create-steal-self" checked={createStealSelf} onCheckedChange={(checked) => { setCreateStealSelf(checked); if (checked) { setCreateUse443(true); if (pullAddress.trim()) checkSameIP(pullAddress) } else { setCreateUse443(false); setCreateDomain('') } }} disabled={!!generatedToken} /></div>
-                <div className="grid gap-2">
-                  <Label>{t('servers.frontSelect')}</Label>
-                  <RadioGroup value={createFrontService} onValueChange={(value) => setCreateFrontService(value as 'xray' | 'nginx')} className="flex gap-4">
-                    <div className="flex items-center gap-2"><RadioGroupItem value="xray" id="create-front-xray" disabled={!!generatedToken || !createStealSelf} /><Label htmlFor="create-front-xray" className="text-sm cursor-pointer">xray</Label></div>
-                    <div className="flex items-center gap-2 opacity-60"><RadioGroupItem value="nginx" id="create-front-nginx" disabled /><Label htmlFor="create-front-nginx" className="text-sm cursor-not-allowed">{t('servers.frontSelectNginxUnavailable')}</Label></div>
-                  </RadioGroup>
-                  <p className="text-xs text-muted-foreground">{t('servers.stealSelfDesc')}</p>
-                </div>
-                <div className="grid gap-2">
-                  <Label>{t('servers.deployMode')}</Label>
-                  <RadioGroup value={createStealMode} onValueChange={(value) => setCreateStealMode(value as 'tunnel' | 'fallback')} className="flex gap-4">
-                    <div className="flex items-center gap-2"><RadioGroupItem value="tunnel" id="steal-mode-tunnel" disabled={!!generatedToken || !createStealSelf} /><Label htmlFor="steal-mode-tunnel" className="text-sm cursor-pointer">{t('servers.tunnelMode')}</Label></div>
-                    <div className="flex items-center gap-2"><RadioGroupItem value="fallback" id="steal-mode-fallback" disabled={!!generatedToken || !createStealSelf} /><Label htmlFor="steal-mode-fallback" className="text-sm cursor-pointer">{t('servers.fallbackMode')}</Label></div>
-                  </RadioGroup>
-                  <p className="text-xs text-muted-foreground">{createStealMode === 'tunnel' ? t('servers.tunnelModeDesc') : t('servers.fallbackModeDesc')}</p>
-                </div>
                 {createStealSelf && (
                   <>
+                    <div className="grid gap-2">
+                      <Label>{t('servers.frontSelect')}</Label>
+                      <RadioGroup value={createFrontService} onValueChange={(value) => setCreateFrontService(value as 'xray' | 'nginx')} className="flex gap-4">
+                        <div className="flex items-center gap-2"><RadioGroupItem value="xray" id="create-front-xray" disabled={!!generatedToken} /><Label htmlFor="create-front-xray" className="text-sm cursor-pointer">xray</Label></div>
+                        <div className="flex items-center gap-2 opacity-60"><RadioGroupItem value="nginx" id="create-front-nginx" disabled /><Label htmlFor="create-front-nginx" className="text-sm cursor-not-allowed">{t('servers.frontSelectNginxUnavailable')}</Label></div>
+                      </RadioGroup>
+                      <p className="text-xs text-muted-foreground">{t('servers.stealSelfDesc')}</p>
+                    </div>
+                    <div className="grid gap-2">
+                      <Label>{t('servers.deployMode')}</Label>
+                      <RadioGroup value={createStealMode} onValueChange={(value) => setCreateStealMode(value as 'tunnel' | 'fallback')} className="flex gap-4">
+                        <div className="flex items-center gap-2"><RadioGroupItem value="tunnel" id="steal-mode-tunnel" disabled={!!generatedToken} /><Label htmlFor="steal-mode-tunnel" className="text-sm cursor-pointer">{t('servers.tunnelMode')}</Label></div>
+                        <div className="flex items-center gap-2"><RadioGroupItem value="fallback" id="steal-mode-fallback" disabled={!!generatedToken} /><Label htmlFor="steal-mode-fallback" className="text-sm cursor-pointer">{t('servers.fallbackMode')}</Label></div>
+                      </RadioGroup>
+                      <p className="text-xs text-muted-foreground">{createStealMode === 'tunnel' ? t('servers.tunnelModeDesc') : t('servers.fallbackModeDesc')}</p>
+                    </div>
                     <div className="flex items-center justify-between"><Label htmlFor="create-use-443" className="cursor-pointer">{t('servers.use443')}</Label><Switch id="create-use-443" checked={createUse443} onCheckedChange={(checked) => { setCreateUse443(checked); if (!checked) setCreateDomain('') }} disabled={!!generatedToken || createStealSelf} /></div>
                     {createUse443 && (
                       <div className="grid gap-2">
@@ -732,12 +741,7 @@ function XrayServersPage() {
                 )}
               </div>
               {generatedToken && (
-                <>
-                  <div className="grid gap-2"><Label>{t('servers.masterToken')}</Label><div className="flex gap-2"><Input value={generatedToken} readOnly className="font-mono text-sm" /><Button variant="outline" size="icon" onClick={() => copyToClipboard(generatedToken, t('servers.masterToken'))}><Copy className="h-4 w-4" /></Button></div></div>
-                  <div className="grid gap-2"><Label>{t('servers.childToken')}</Label><div className="flex gap-2"><Input value={pullToken} readOnly className="font-mono text-sm" /><Button variant="outline" size="icon" onClick={() => copyToClipboard(pullToken, t('servers.childToken'))}><Copy className="h-4 w-4" /></Button></div></div>
-                  <div className="grid gap-2"><Label htmlFor="install-command">{t('servers.installCommand')}</Label><div className="flex gap-2"><Textarea id="install-command" value={installCommand} readOnly className="font-mono text-xs h-[80px] resize-none" /><Button variant="outline" size="icon" className="shrink-0" onClick={() => copyToClipboard(installCommand, t('servers.installCommand'))}><Copy className="h-4 w-4" /></Button></div></div>
-                  <p className="text-xs text-muted-foreground">{t('servers.tokenDesc')}</p>
-                </>
+                <div className="grid gap-2"><Label htmlFor="install-command">{t('servers.installCommand')}</Label><div className="flex gap-2 min-w-0"><Textarea id="install-command" value={installCommand} readOnly className="font-mono text-xs h-[80px] resize-none min-w-0" /><Button variant="outline" size="icon" className="shrink-0" onClick={() => copyToClipboard(installCommand, t('servers.installCommand'))}><Copy className="h-4 w-4" /></Button></div><p className="text-xs text-muted-foreground">{t('servers.tokenDesc')}</p></div>
               )}
             </div>
             <DialogFooter><Button variant="outline" onClick={() => { setIsAddDialogOpen(false); resetAddDialog() }}>{generatedToken ? t('servers.complete') : tc('actions.cancel')}</Button></DialogFooter>
@@ -1152,11 +1156,20 @@ function XrayServersPage() {
               <Label>{t('servers.xrayMode')}</Label>
               <RadioGroup value={remoteFormData.xray_mode} onValueChange={(value) => setRemoteFormData({ ...remoteFormData, xray_mode: value })} className="flex gap-4">
                 <div className="flex items-center gap-2"><RadioGroupItem value="external" id="edit-xray-mode-external" /><Label htmlFor="edit-xray-mode-external" className="text-sm cursor-pointer">{t('servers.xrayModeExternal')}</Label></div>
-                <div className="flex items-center gap-2"><RadioGroupItem value="embedded" id="edit-xray-mode-embedded" /><Label htmlFor="edit-xray-mode-embedded" className="text-sm cursor-pointer">{t('servers.xrayModeEmbedded')}</Label></div>
+                <div className="flex items-center gap-2">
+                  <RadioGroupItem value="embedded" id="edit-xray-mode-embedded" />
+                  <Label htmlFor="edit-xray-mode-embedded" className="text-sm cursor-pointer">{t('servers.xrayModeEmbedded')}</Label>
+                  <TooltipProvider><Tooltip><TooltipTrigger asChild>
+                    <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-bold cursor-default select-none shadow-sm border bg-gradient-to-r from-amber-400 to-yellow-300 text-amber-900 border-amber-300/60 shadow-amber-200/50">
+                      <svg className="h-2.5 w-2.5" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z" /></svg>
+                      Pro
+                    </span>
+                  </TooltipTrigger><TooltipContent>{t('servers.xrayModeEmbeddedProHint')}</TooltipContent></Tooltip></TooltipProvider>
+                </div>
               </RadioGroup>
               <p className="text-xs text-muted-foreground">{remoteFormData.xray_mode === 'external' ? t('servers.xrayModeExternalDesc') : t('servers.xrayModeEmbeddedDesc')}</p>
             </div>
-            {editingRemoteServer?.status === 'connected' && (
+            {editingRemoteServer?.status === 'connected' && editingRemoteServer?.steal_mode && (
               <div className="grid gap-2">
                 <Label>{t('servers.deployMode')}</Label>
                 <RadioGroup value={remoteFormData.steal_mode} onValueChange={(value) => setRemoteFormData({ ...remoteFormData, steal_mode: value })} className="flex gap-4">

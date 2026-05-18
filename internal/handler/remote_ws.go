@@ -44,6 +44,7 @@ const (
 	WSMsgTypeLicenseStatus       = "license_status"        // Master -> Agent：许可证状态下发
 	WSMsgTypeKeyExchange         = "key_exchange"           // Agent -> Master：密钥交换请求
 	WSMsgTypeKeyExchangeResp     = "key_exchange_resp"      // Master -> Agent：密钥交换响应
+	WSMsgTypeConfigUpdate        = "config_update"          // Master -> Agent：更新 agent 配置
 )
 
 // WSMessage 表示 WebSocket 消息
@@ -773,6 +774,25 @@ func (h *RemoteWSHandler) SendLimiterConfig(serverID int64, configs []WSLimiterC
 		}
 	}
 	return nil
+}
+
+func (h *RemoteWSHandler) SendConfigUpdate(serverID int64, updates map[string]string) error {
+	wsConn, ok := h.GetConnectionByServerID(serverID)
+	if !ok {
+		return nil
+	}
+
+	wsConn.mu.Lock()
+	defer wsConn.mu.Unlock()
+
+	payload, err := json.Marshal(updates)
+	if err != nil {
+		return err
+	}
+	return h.sendEncryptedMessage(wsConn, WSMessage{
+		Type:    WSMsgTypeConfigUpdate,
+		Payload: payload,
+	})
 }
 
 // SendLicenseStatus 向指定连接推送许可证状态
