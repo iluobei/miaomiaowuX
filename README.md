@@ -158,6 +158,13 @@ connection_mode: "auto"   # auto | websocket | http | pull
 <details>
 <summary>更新日志</summary>
 
+### v0.0.7 (2026-05-18)
+- 🌈 增加与agent交互的错误提示
+- 🌈 增加主控与agent交互协议展示
+- 🛠️ fix:优化内嵌xray菜单展示
+- 🛠️ fix:优化许可证展示
+- 🛠️ fix:优化顶部菜单展示
+- 🛠️ fix:添加服务器窗口异常撑大
 ### v0.0.6 (2026-05-18)
 - 🛠️ fix:docker镜像打包系统版本不对
 - 🛠️ fix:reality节点创建多了出站
