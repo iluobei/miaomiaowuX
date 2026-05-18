@@ -11,6 +11,8 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"syscall"
+	"time"
 
 	"miaomiaowux/internal/storage"
 	"miaomiaowux/templates"
@@ -281,4 +283,12 @@ func (h *CertificateHandler) EnableHTTPS(w http.ResponseWriter, r *http.Request)
 		"message":        fmt.Sprintf("已为 %s 开启 HTTPS 访问", domain),
 		"new_master_url": newMasterURL,
 	})
+
+	// 延迟重启服务，使其重新绑定到 127.0.0.1（响应已发送）
+	go func() {
+		time.Sleep(2 * time.Second)
+		log.Printf("[EnableHTTPS] Restarting service to bind 127.0.0.1 only")
+		p, _ := os.FindProcess(os.Getpid())
+		_ = p.Signal(syscall.SIGTERM)
+	}()
 }

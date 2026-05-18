@@ -1585,13 +1585,7 @@ function NodesPage() {
       })
       if (!inboundRes.data.success) throw new Error(inboundRes.data.message || t('toast.inboundCreateFailed'))
 
-      // 2. 创建 freedom 出站
-      await api.post(`/api/admin/remote/outbounds?server_id=${serverId}`, {
-        action: 'add',
-        outbound: { protocol: 'freedom', tag: 'direct', settings: {} },
-      })
-
-      // 3. 等待 NodeSyncListener 创建节点
+      // 2. 等待 NodeSyncListener 创建节点
       await new Promise(r => setTimeout(r, 800))
       await queryClient.invalidateQueries({ queryKey: ['nodes'] })
       const freshNodes = await queryClient.fetchQuery<{ nodes: ParsedNode[] }>({ queryKey: ['nodes'] })

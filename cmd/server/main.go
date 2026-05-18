@@ -80,14 +80,14 @@ func main() {
 		log.Printf("Loaded configuration from %s", *configPath)
 	}
 
-	addr := getAddr(config)
-
 	repo, err := storage.NewTrafficRepository(filepath.Join("data", "mmwx.db"))
 	if err != nil {
 		logger.Error("流量数据库初始化失败", "error", err)
 		os.Exit(1)
 	}
 	defer repo.Close()
+
+	addr := getAddr(config, repo)
 
 	masterIdentity, err := securechan.LoadOrGenerate(filepath.Join("data", "mmwx_master.key"))
 	if err != nil {
@@ -795,14 +795,18 @@ func main() {
 	waitForShutdown(srv, stopCollector)
 }
 
-func getAddr(config *ServerConfig) string {
-	// 优先级：配置文件 > 环境变量 > 默认值
+func getAddr(config *ServerConfig, repo *storage.TrafficRepository) string {
+	port := "12889"
 	if config != nil && config.Port != "" {
-		return "0.0.0.0:" + config.Port
+		port = config.Port
+	} else if envPort := os.Getenv("PORT"); envPort != "" {
+		port = envPort
 	}
-	port := os.Getenv("PORT")
-	if port == "" {
-		port = "12889"
+
+	// HTTPS 已启用时仅监听本机，外部流量由 nginx 代理
+	if masterURL, _ := repo.GetSystemSetting(context.Background(), "master_url"); strings.HasPrefix(masterURL, "https://") {
+		log.Printf("[Main] HTTPS enabled, binding to 127.0.0.1:%s", port)
+		return "127.0.0.1:" + port
 	}
 	return "0.0.0.0:" + port
 }
