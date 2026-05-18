@@ -746,7 +746,7 @@ func (h *RemoteManageHandler) forwardToRemoteServer(ctx context.Context, serverI
 
 	session := sessionVal.(*securechan.Session)
 	respBody, err := h.doEncryptedPullRequest(ctx, method, childURL, server.Token, body, session)
-	if err != nil && strings.Contains(err.Error(), "412") {
+	if err != nil && (strings.Contains(err.Error(), "412") || strings.Contains(err.Error(), "re-negotiate")) {
 		h.pullSessions.Delete(serverID)
 		log.Printf("[Remote Manage] Pull session expired for server %d, re-negotiating", serverID)
 		return h.doPullKeyExchange(ctx, serverID, method, childURL, server.Token, body)
