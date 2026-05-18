@@ -343,7 +343,7 @@ func main() {
 	xrayServerHandler.SetWSHandler(remoteWSHandler)
 
 	// 依赖 limiterPusher 的端点
-	mux.Handle("/api/admin/packages/update", auth.RequireAdmin(tokenStore, userRepo, handler.NewPackageUpdateHandler(repo, limiterPusher)))
+	mux.Handle("/api/admin/packages/update", auth.RequireAdmin(tokenStore, userRepo, handler.NewPackageUpdateHandler(repo, remoteManageHandler, limiterPusher)))
 	mux.Handle("/api/admin/packages/assign", auth.RequireAdmin(tokenStore, userRepo, handler.NewPackageAssignHandler(repo, remoteManageHandler, limiterPusher)))
 	mux.Handle("/api/admin/packages/unassign", auth.RequireAdmin(tokenStore, userRepo, handler.NewPackageUnassignHandler(repo, remoteManageHandler, limiterPusher)))
 	mux.Handle("/api/admin/users/limits", auth.RequireAdmin(tokenStore, userRepo, handler.NewUserLimitsHandler(repo, limiterPusher)))

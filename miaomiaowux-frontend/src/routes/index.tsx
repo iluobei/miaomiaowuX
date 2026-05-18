@@ -206,8 +206,8 @@ function UserDashboard() {
       const response = await api.get('/api/traffic/summary')
       return response.data
     },
-    staleTime: 5 * 60 * 1000,
-    refetchInterval: 5 * 60 * 1000,
+    staleTime: 5_000,
+    refetchInterval: 5_000,
     enabled: Boolean(auth.accessToken),
   })
 
@@ -489,8 +489,8 @@ function AdminDashboard() {
       const response = await api.get('/api/traffic/summary')
       return response.data
     },
-    staleTime: 5 * 60 * 1000,
-    refetchInterval: 5 * 60 * 1000,
+    staleTime: 5_000,
+    refetchInterval: 5_000,
     enabled: Boolean(auth.accessToken),
   })
 
@@ -514,8 +514,8 @@ function AdminDashboard() {
         servers: Array<{ server_id: number; server_name: string; inbounds: any[]; users: any[] }>
       }
     },
-    staleTime: 30_000,
-    refetchInterval: 60_000,
+    staleTime: 10_000,
+    refetchInterval: 5_000,
     enabled: Boolean(auth.accessToken),
   })
 
@@ -1036,5 +1036,5 @@ function formatBytes(bytes: number): string {
 
 function estimateSpeed(current: number, last: number): number {
   const delta = current - last
-  return delta > 0 ? delta / 60 : 0
+  return delta > 0 ? delta / 5 : 0
 }

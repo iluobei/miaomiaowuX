@@ -6199,6 +6199,11 @@ func (r *TrafficRepository) DeleteUserInboundConfigs(ctx context.Context, userna
 	return err
 }
 
+func (r *TrafficRepository) DeleteUserInboundConfig(ctx context.Context, username string, serverID int64, inboundTag string) error {
+	_, err := r.db.ExecContext(ctx, `DELETE FROM user_inbound_configs WHERE username = ? AND server_id = ? AND inbound_tag = ?`, username, serverID, inboundTag)
+	return err
+}
+
 func (r *TrafficRepository) GetUserInboundConfig(ctx context.Context, username string, serverID int64, inboundTag string) (*UserInboundConfig, error) {
 	var c UserInboundConfig
 	err := r.db.QueryRowContext(ctx,

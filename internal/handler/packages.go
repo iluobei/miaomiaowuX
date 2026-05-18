@@ -142,12 +142,13 @@ func (h *PackageCreateHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 
 // PackageUpdateHandler 处理更新现有包模板
 type PackageUpdateHandler struct {
-	repo    *storage.TrafficRepository
-	pusher  *LimiterConfigPusher
+	repo         *storage.TrafficRepository
+	remoteManage *RemoteManageHandler
+	pusher       *LimiterConfigPusher
 }
 
-func NewPackageUpdateHandler(repo *storage.TrafficRepository, pusher *LimiterConfigPusher) *PackageUpdateHandler {
-	return &PackageUpdateHandler{repo: repo, pusher: pusher}
+func NewPackageUpdateHandler(repo *storage.TrafficRepository, remoteManage *RemoteManageHandler, pusher *LimiterConfigPusher) *PackageUpdateHandler {
+	return &PackageUpdateHandler{repo: repo, remoteManage: remoteManage, pusher: pusher}
 }
 
 type updatePackageRequest struct {
@@ -208,6 +209,12 @@ func (h *PackageUpdateHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 		nodes = []int64{}
 	}
 
+	// 获取旧套餐的节点列表，用于后续计算差异
+	var oldNodes []int64
+	if oldPkg, err := h.repo.GetPackage(r.Context(), req.ID); err == nil {
+		oldNodes = oldPkg.Nodes
+	}
+
 	pkg := storage.Package{
 		ID:                req.ID,
 		Name:              req.Name,
@@ -236,10 +243,108 @@ func (h *PackageUpdateHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 		go h.pusher.PushToAllServersForPackage(context.Background(), req.ID)
 	}
 
+	// 异步同步 xray 用户凭据：对比新旧节点差异，为绑定此套餐的用户添加/移除入站配置
+	go h.syncInboundUsersAfterNodeChange(context.Background(), req.ID, oldNodes, nodes)
+
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]interface{}{
 		"message": "Package updated successfully",
 	})
+}
+
+func (h *PackageUpdateHandler) syncInboundUsersAfterNodeChange(ctx context.Context, packageID int64, oldNodes, newNodes []int64) {
+	oldSet := make(map[int64]bool, len(oldNodes))
+	for _, id := range oldNodes {
+		oldSet[id] = true
+	}
+	newSet := make(map[int64]bool, len(newNodes))
+	for _, id := range newNodes {
+		newSet[id] = true
+	}
+
+	var addedNodes, removedNodes []int64
+	for _, id := range newNodes {
+		if !oldSet[id] {
+			addedNodes = append(addedNodes, id)
+		}
+	}
+	for _, id := range oldNodes {
+		if !newSet[id] {
+			removedNodes = append(removedNodes, id)
+		}
+	}
+
+	if len(addedNodes) == 0 && len(removedNodes) == 0 {
+		return
+	}
+
+	users, err := h.repo.ListUsersWithPackage(ctx)
+	if err != nil {
+		log.Printf("[PackageUpdate] Failed to list users with package: %v", err)
+		return
+	}
+
+	var targetUsers []storage.User
+	for _, u := range users {
+		if u.PackageID == packageID {
+			targetUsers = append(targetUsers, u)
+		}
+	}
+	if len(targetUsers) == 0 {
+		return
+	}
+
+	log.Printf("[PackageUpdate] Syncing inbound users for package %d: %d added nodes, %d removed nodes, %d users",
+		packageID, len(addedNodes), len(removedNodes), len(targetUsers))
+
+	for _, user := range targetUsers {
+		for _, nodeID := range addedNodes {
+			node, err := h.repo.GetNodeByID(ctx, nodeID)
+			if err != nil {
+				log.Printf("[PackageUpdate] Failed to get node %d: %v", nodeID, err)
+				continue
+			}
+			if node.InboundTag == "" || node.OriginalServer == "" {
+				continue
+			}
+			server, err := h.repo.GetRemoteServerByName(ctx, node.OriginalServer)
+			if err != nil {
+				log.Printf("[PackageUpdate] Failed to find server %s: %v", node.OriginalServer, err)
+				continue
+			}
+			if err := addUserToInbound(ctx, h.remoteManage, h.repo, user, server.ID, node.InboundTag); err != nil {
+				log.Printf("[PackageUpdate] Failed to add user %s to inbound %s on server %d: %v",
+					user.Username, node.InboundTag, server.ID, err)
+			}
+		}
+
+		for _, nodeID := range removedNodes {
+			node, err := h.repo.GetNodeByID(ctx, nodeID)
+			if err != nil {
+				continue
+			}
+			if node.InboundTag == "" || node.OriginalServer == "" {
+				continue
+			}
+			server, err := h.repo.GetRemoteServerByName(ctx, node.OriginalServer)
+			if err != nil {
+				continue
+			}
+			cfg, err := h.repo.GetUserInboundConfig(ctx, user.Username, server.ID, node.InboundTag)
+			if err != nil {
+				continue
+			}
+			if err := removeUserFromInbound(ctx, h.remoteManage, *cfg); err != nil {
+				log.Printf("[PackageUpdate] Failed to remove user %s from inbound %s on server %d: %v",
+					user.Username, cfg.InboundTag, cfg.ServerID, err)
+			}
+			_ = h.repo.DeleteUserInboundConfig(ctx, user.Username, server.ID, node.InboundTag)
+		}
+
+		if h.pusher != nil {
+			h.pusher.PushToAllServersForUser(ctx, user.Username)
+		}
+	}
 }
 
 // PackageDeleteHandler 处理删除包模板
@@ -662,6 +767,23 @@ func addUserToInbound(ctx context.Context, rm *RemoteManageHandler, repo *storag
 		credential, credJSON, err = generateCredential(protocol, user)
 		if err != nil {
 			return fmt.Errorf("generate credential: %w", err)
+		}
+	}
+
+	// 从现有 client 继承 flow 字段（VLESS Reality 需要）
+	if strings.EqualFold(protocol, "vless") {
+		if _, hasFlow := credential["flow"]; !hasFlow {
+			if clients, ok := settings["clients"].([]interface{}); ok && len(clients) > 0 {
+				if first, ok := clients[0].(map[string]interface{}); ok {
+					if flow, ok := first["flow"].(string); ok && flow != "" {
+						credential["flow"] = flow
+						credJSON = ""
+						if b, err := json.Marshal(credential); err == nil {
+							credJSON = string(b)
+						}
+					}
+				}
+			}
 		}
 	}
 
