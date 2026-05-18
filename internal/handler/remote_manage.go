@@ -2714,6 +2714,9 @@ func (h *RemoteManageHandler) cleanupTunnelRouteForReality(ctx context.Context, 
 		log.Printf("[HandleInbounds] Failed to update xray config for reality cleanup: %v", err)
 		return
 	}
+	if err := h.restartXrayWithRecovery(ctx, serverID, "RealityRouteUpdate"); err != nil {
+		log.Printf("[HandleInbounds] %v", err)
+	}
 	log.Printf("[HandleInbounds] Reality cleanup done on server %d: domains=%v", serverID, domains)
 }
 
@@ -2829,6 +2832,9 @@ func (h *RemoteManageHandler) restoreTunnelRouteForReality(ctx context.Context, 
 	if _, err := h.forwardToRemoteServer(ctx, serverID, http.MethodPost, "/api/child/xray/config", configPayload); err != nil {
 		log.Printf("[HandleInbounds] Failed to restore domains %v to tunnel route: %v", domains, err)
 		return
+	}
+	if err := h.restartXrayWithRecovery(ctx, serverID, "RealityRouteRestore"); err != nil {
+		log.Printf("[HandleInbounds] %v", err)
 	}
 	log.Printf("[HandleInbounds] Restored reality serverNames %v to tunnel-in→nginx route on server %d", domains, serverID)
 }
