@@ -1,0 +1,61 @@
+services:
+  miaomiaowu:
+    image: ${MMWX_IMAGE:-ghcr.io/iluobei/miaomiaowux:latest}
+    container_name: miaomiaowux
+    restart: unless-stopped
+    # host 模式:妙妙屋X 要管 ACME 80/443、嵌入式 nginx/xray 多端口、agent 反向连接,
+    # bridge 模式得为每个端口 -p 映射,新增端口又得改 compose;host 直接共享宿主网络栈最省心。
+    network_mode: host
+    environment:
+      - PORT=${PORT:-12889}
+      - LOG_LEVEL=info
+      # 公网访问设置误配导致无法进入面板时，在 .env 中临时设置为 1 并重启容器。
+      - MMWX_FORCE_PUBLIC_ACCESS=${MMWX_FORCE_PUBLIC_ACCESS:-}
+      # SQLite 在线 checkpoint：默认每分钟检查，WAL 达 16 MiB 后仅做 PASSIVE 写回。
+      - MMWX_WAL_CHECKPOINT_INTERVAL=${MMWX_WAL_CHECKPOINT_INTERVAL:-1m}
+      - MMWX_WAL_CHECKPOINT_MIN_BYTES=${MMWX_WAL_CHECKPOINT_MIN_BYTES:-16777216}
+      - MMWX_DATABASE_DRIVER=${MMWX_DATABASE_DRIVER:-}
+      - MMWX_DATABASE_HOST=${MMWX_DATABASE_HOST:-}
+      - MMWX_DATABASE_PORT=${MMWX_DATABASE_PORT:-}
+      - MMWX_DATABASE_NAME=${MMWX_DATABASE_NAME:-}
+      - MMWX_DATABASE_USER=${MMWX_DATABASE_USER:-}
+      - MMWX_DATABASE_PASSWORD=${MMWX_DATABASE_PASSWORD:-}
+      - MMWX_DATABASE_SSLMODE=${MMWX_DATABASE_SSLMODE:-}
+
+    volumes:
+      - ./data:/app/data
+      # subscribes 必须挂出来:Dockerfile 里 VOLUME 声明了 /app/subscribes,不做 bind mount
+      # 就会落到**匿名卷**上 —— 容器重建时换一个新匿名卷,用户的订阅文件全部丢失。
+      - ./subscribes:/app/subscribes
+      - ./rule_templates:/app/rule_templates
+      # 让容器继承宿主时区,否则进程按 UTC 运行,「每日流量通知」等按本地时间的功能会差 8 小时
+      - /etc/localtime:/etc/localtime:ro
+
+    healthcheck:
+      test: ["CMD-SHELL", "(test ! -x /usr/local/bin/mmwx-guardd-master || test -S /run/mmwx-guard/guard.sock) && wget --no-verbose --tries=1 --spider http://localhost:$${PORT:-12889}/"]
+      interval: 30s
+      timeout: 3s
+      start_period: 5s
+      retries: 3
+
+  # PostgreSQL 供首次初始化或“系统设置 → 数据库”在线迁移使用。
+  # 主控使用 host 网络，因此应填写 127.0.0.1:5432，而不是服务名 postgres。
+  postgres:
+    image: postgres:18-alpine
+    container_name: miaomiaowux-postgres
+    restart: unless-stopped
+    profiles: ["postgres"]
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-mmwx}
+      POSTGRES_USER: ${POSTGRES_USER:-mmwx}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change-me-before-start}
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      # PostgreSQL 18+ 的官方镜像要求挂载父目录，PGDATA 位于 18/docker。
+      - ./postgres-data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
