@@ -1,0 +1,430 @@
+[
+  {
+    "name": "ads",
+    "label": "广告拦截",
+    "emoji": "🛑",
+    "site_rules": [
+      {
+        "key": "category-ads-all"
+      }
+    ]
+  },
+  {
+    "name": "ai",
+    "label": "AI 服务",
+    "emoji": "🤖",
+    "presets": [
+      "balanced",
+      "comprehensive"
+    ],
+    "site_rules": [
+      {
+        "key": "category-ai-!cn"
+      },
+      {
+        "key": "openai"
+      }
+    ]
+  },
+  {
+    "name": "bilibili",
+    "label": "哔哩哔哩",
+    "emoji": "📺",
+    "site_rules": [
+      {
+        "key": "bilibili"
+      },
+      {
+        "key": "biliintl"
+      }
+    ]
+  },
+  {
+    "name": "youtube",
+    "label": "油管视频",
+    "emoji": "📹",
+    "presets": [
+      "balanced",
+      "comprehensive"
+    ],
+    "site_rules": [
+      {
+        "key": "youtube"
+      }
+    ]
+  },
+  {
+    "name": "google",
+    "label": "谷歌服务",
+    "emoji": "🔍",
+    "presets": [
+      "balanced",
+      "comprehensive"
+    ],
+    "site_rules": [
+      {
+        "key": "google"
+      }
+    ],
+    "ip_rules": [
+      {
+        "key": "google-ip",
+        "url": "https://gh-proxy.com/https://github.com/MetaCubeX/meta-rules-dat/raw/refs/heads/meta/geo/geoip/google.mrs"
+      }
+    ]
+  },
+  {
+    "name": "private",
+    "label": "私有网络",
+    "emoji": "🏠",
+    "presets": [
+      "minimal",
+      "balanced",
+      "comprehensive"
+    ],
+    "ip_rules": [
+      {
+        "key": "private"
+      }
+    ]
+  },
+  {
+    "name": "domestic",
+    "label": "国内服务",
+    "emoji": "🔒",
+    "presets": [
+      "minimal",
+      "balanced",
+      "comprehensive"
+    ],
+    "site_rules": [
+      {
+        "key": "geolocation-cn"
+      },
+      {
+        "key": "cn-domains",
+        "url": "https://gh-proxy.com/https://github.com/MetaCubeX/meta-rules-dat/raw/refs/heads/meta/geo/geosite/cn.mrs"
+      }
+    ],
+    "ip_rules": [
+      {
+        "key": "cn"
+      }
+    ]
+  },
+  {
+    "name": "telegram",
+    "label": "电报消息",
+    "emoji": "📲",
+    "presets": [
+      "balanced",
+      "comprehensive"
+    ],
+    "site_rules": [
+      {
+        "key": "telegram"
+      }
+    ],
+    "ip_rules": [
+      {
+        "key": "telegram-ip",
+        "url": "https://gh-proxy.com/https://github.com/MetaCubeX/meta-rules-dat/raw/refs/heads/meta/geo/geoip/telegram.mrs",
+        "path": "./ruleset/telegram.mrs"
+      }
+    ]
+  },
+  {
+    "name": "github",
+    "label": "Github",
+    "emoji": "🐱",
+    "presets": [
+      "balanced",
+      "comprehensive"
+    ],
+    "site_rules": [
+      {
+        "key": "github"
+      },
+      {
+        "key": "gitlab"
+      }
+    ]
+  },
+  {
+    "name": "microsoft",
+    "label": "微软服务",
+    "emoji": "Ⓜ️",
+    "site_rules": [
+      {
+        "key": "microsoft"
+      }
+    ]
+  },
+  {
+    "name": "apple",
+    "label": "苹果服务",
+    "emoji": "🍏",
+    "site_rules": [
+      {
+        "key": "apple"
+      },
+      {
+        "key": "applemusic"
+      }
+    ]
+  },
+  {
+    "name": "social",
+    "label": "社交媒体",
+    "emoji": "🌐",
+    "site_rules": [
+      {
+        "key": "facebook"
+      },
+      {
+        "key": "instagram"
+      },
+      {
+        "key": "twitter"
+      },
+      {
+        "key": "tiktok"
+      },
+      {
+        "key": "linkedin"
+      }
+    ]
+  },
+  {
+    "name": "streaming",
+    "label": "流媒体",
+    "emoji": "🎬",
+    "site_rules": [
+      {
+        "key": "netflix"
+      },
+      {
+        "key": "hulu"
+      },
+      {
+        "key": "disney"
+      },
+      {
+        "key": "hbo"
+      },
+      {
+        "key": "amazon"
+      },
+      {
+        "key": "bahamut"
+      }
+    ]
+  },
+  {
+    "name": "gaming",
+    "label": "游戏平台",
+    "emoji": "🎮",
+    "site_rules": [
+      {
+        "key": "steam"
+      },
+      {
+        "key": "epicgames"
+      },
+      {
+        "key": "ea"
+      },
+      {
+        "key": "ubisoft"
+      },
+      {
+        "key": "blizzard"
+      }
+    ]
+  },
+  {
+    "name": "education",
+    "label": "教育资源",
+    "emoji": "📚",
+    "site_rules": [
+      {
+        "key": "coursera"
+      },
+      {
+        "key": "edx"
+      },
+      {
+        "key": "udemy"
+      },
+      {
+        "key": "khanacademy"
+      },
+      {
+        "key": "category-scholar-!cn"
+      }
+    ]
+  },
+  {
+    "name": "finance",
+    "label": "金融服务",
+    "emoji": "💰",
+    "site_rules": [
+      {
+        "key": "paypal"
+      },
+      {
+        "key": "visa"
+      },
+      {
+        "key": "mastercard"
+      },
+      {
+        "key": "stripe"
+      },
+      {
+        "key": "wise"
+      }
+    ]
+  },
+  {
+    "name": "cloud",
+    "label": "云服务",
+    "emoji": "☁️",
+    "site_rules": [
+      {
+        "key": "aws"
+      },
+      {
+        "key": "azure"
+      },
+      {
+        "key": "digitalocean"
+      },
+      {
+        "key": "heroku"
+      },
+      {
+        "key": "dropbox"
+      },
+      {
+        "key": "cloudflare"
+      },
+      {
+        "key": "onedrive"
+      }
+    ]
+  },
+  {
+    "name": "tiktok",
+    "label": "Tiktok",
+    "emoji": "🎶",
+    "site_rules": [
+      {
+        "key": "tiktok"
+      }
+    ]
+  },
+  {
+    "name": "spotify",
+    "label": "Spotify",
+    "emoji": "🎵",
+    "site_rules": [
+      {
+        "key": "spotify"
+      }
+    ]
+  },
+  {
+    "name": "pixiv",
+    "label": "Pixiv",
+    "emoji": "🎨",
+    "site_rules": [
+      {
+        "key": "pixiv"
+      }
+    ]
+  },
+  {
+    "name": "abema",
+    "label": "Abema",
+    "emoji": "📡",
+    "site_rules": [
+      {
+        "key": "abema"
+      }
+    ]
+  },
+  {
+    "name": "proxy",
+    "label": "代理服务",
+    "emoji": "🔀",
+    "presets": [],
+    "site_rules": [
+      {
+        "key": "proxy"
+      }
+    ]
+  },
+  {
+    "name": "proxymedia",
+    "label": "代理媒体",
+    "emoji": "🎭",
+    "presets": [],
+    "site_rules": [
+      {
+        "key": "proxymedia"
+      }
+    ]
+  },
+  {
+    "name": "ehentai",
+    "label": "E-Hentai",
+    "emoji": "🔞",
+    "presets": [],
+    "site_rules": [
+      {
+        "key": "ehentai"
+      }
+    ]
+  },
+  {
+    "name": "overseas",
+    "label": "非中国",
+    "emoji": "🌍",
+    "presets": [],
+    "site_rules": [
+      {
+        "key": "pttracker",
+        "format": "yaml",
+        "url": "https://gh-proxy.com/https://github.com/MetaCubeX/meta-rules-dat/raw/refs/heads/meta/geo/geosite/geolocation-!cn.mrs",
+        "path": "./ruleset/pttracker.mrs"
+      }
+    ]
+  },
+  {
+    "name": "pttracker",
+    "label": "PT Tracker",
+    "emoji": "🔗",
+    "presets": [],
+    "site_rules": [
+      {
+        "key": "pttracker",
+        "format": "yaml",
+        "url": "https://gh-proxy.com/https://raw.githubusercontent.com/iluobei/clash-pt-rules/refs/heads/main/pttracker.yaml"
+      }
+    ]
+  },
+  {
+    "name": "ptdomain",
+    "label": "PT 站点",
+    "emoji": "🎞️",
+    "presets": [],
+    "site_rules": [
+      {
+        "key": "ptdomain",
+        "format": "yaml",
+        "url": "https://gh-proxy.com/https://raw.githubusercontent.com/iluobei/clash-pt-rules/refs/heads/main/ptdomain.yaml"
+      }
+    ]
+  }
+]
