@@ -110,7 +110,13 @@ read_choice() {
         echo_error "  1) 先下载再执行(推荐,交互菜单可用):"
         echo_error "     curl -fsSL https://raw.githubusercontent.com/${GITHUB_REPO}/main/install.sh -o install.sh && sudo bash install.sh"
         echo_error "  2) 用环境变量跳过菜单(无需交互):"
-        echo_error "     curl -fsSL https://raw.githubusercontent.com/${GITHUB_REPO}/main/install.sh | sudo INSTALL_METHOD=docker DATABASE_MODE=sqlite bash"
+        # 两个坑,#712 都踩到了:
+        #   a) 变量名必须是脚本真正读的那两个(MMWX_ 前缀,见文件开头) ——
+        #      INSTALL_METHOD / DATABASE_MODE 是内部变量名,写进提示里用户照抄也跳不过菜单;
+        #   b) 必须 `sudo env VAR=...`,不能 `sudo VAR=... bash` —— sudo 默认清空环境,
+        #      后者语法上还会被当成要执行名为 "VAR=..." 的命令。
+        #   这条提示是给「已经卡住的人」看的,写错等于把唯一的出路也堵死。
+        echo_error "     curl -fsSL https://raw.githubusercontent.com/${GITHUB_REPO}/main/install.sh | sudo env MMWX_INSTALL_METHOD=docker MMWX_DATABASE_DRIVER=sqlite bash"
         exit 1
     fi
     CHOICE_RESULT="${value:-$default}"
