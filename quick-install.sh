@@ -3,7 +3,7 @@
 
 set -e
 
-VERSION="v0.4.8-beta.18"
+VERSION="v0.5.5-beta.1"
 GITHUB_REPO="Jimleerx/miaomiaowu"
 VERSION_FILE=".version"
 PORT_FILE=".port"
@@ -203,8 +203,14 @@ uninstall() {
         echo ""
     fi
 
-    # 询问是否保留配置和数据
-    KEEP_DATA=false
+    # 询问是否保留配置和数据。
+    #
+    # 默认**保留** —— 数据删了不可恢复,而残留数据随时能再删。
+    # 从前这里无条件 KEEP_DATA=false,把外部传入的环境变量冲掉了:
+    # 下面非交互分支注释写着「检查环境变量」,但它读到的永远是刚被覆盖的 false,
+    # 于是管道式卸载(curl ... | bash -s uninstall,管道 = 非交互)会静默删光数据。
+    # install.sh 已经修过同一处,这个姊妹脚本当时漏了。
+    KEEP_DATA="${MMWX_KEEP_DATA:-${KEEP_DATA:-true}}"
     if [ -t 0 ]; then
         # 交互式环境
         echo "是否保留配置和数据？"
@@ -218,10 +224,8 @@ uninstall() {
             KEEP_DATA=true
         fi
     else
-        # 非交互式环境，检查环境变量
-        if [ "$KEEP_DATA" != "false" ]; then
-            KEEP_DATA=true
-        fi
+        # 非交互式:沿用上面从 MMWX_KEEP_DATA / KEEP_DATA 解析出的值(默认 true)。
+        # 要在非交互下彻底删除,显式传 MMWX_KEEP_DATA=false。
         if [ "$KEEP_DATA" = "true" ]; then
             echo "保留数据模式"
         else

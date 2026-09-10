@@ -22,7 +22,12 @@ GUARD_STATE_DIR="/var/lib/mmwx-guard-master"
 GUARD_SOCKET="/run/mmwx-guard/guard.sock"
 GUARD_MANIFEST_DIR="/usr/local/share/mmwx-guard"
 GUARD_MANIFEST_PATH="$GUARD_MANIFEST_DIR/master.manifest"
-GUARD_REQUIRED=1
+# Action Guard 默认不装(与二进制 guardclient.Enforced() 一致):仅 MMWX_ACTION_GUARD=required
+# 时才下载/安装 guard-master 守护进程、建 mmwx-guard-master.service、注入 MMWX_GUARD_SOCKET。
+case "$(printf '%s' "${MMWX_ACTION_GUARD:-}" | tr 'A-Z' 'a-z')" in
+    required|1|true|enforce|on) GUARD_REQUIRED=1 ;;
+    *) GUARD_REQUIRED=0 ;;
+esac
 DATA_DIR="/etc/mmwx"
 CONFIG_DIR="/etc/mmwx"
 SERVICE_MANAGER=""
@@ -77,12 +82,38 @@ download_asset() {
     return 1
 }
 
+# 结果写进全局 CHOICE_RESULT,而不是靠 $(...) 取回 —— 命令替换会吃掉提示文字,
+# 里面的 exit 也只退出子 shell,超时时就没法真正中止安装。
 read_choice() {
-    local prompt="$1" default="$2" value=""
-    if [ -r /dev/tty ]; then
-        read -r -p "$prompt" value </dev/tty || true
+    local prompt="$1" default="$2" value="" status=0
+    CHOICE_RESULT="$default"
+    # 完全无 tty(CI / 纯管道):静默用默认值,保持原行为。
+    # 用「真的打开一次」判断,而不是 [ -r /dev/tty ] —— 后者只看权限位,无控制终端时
+    # 它仍然为真,随后 read 会喷一句 "/dev/tty: Device not configured" 到 stderr。
+    { : < /dev/tty; } 2>/dev/null || return 0
+
+    # -t 超时是必需的:`curl … | sudo bash` 配 sudo-rs(Ubuntu 24.04+ 起的默认 sudo)时,
+    # sudo-rs 会把脚本放进它自建的 pty 里跑,于是 /dev/tty 存在且可读、菜单也打得出来,
+    # 但用户的按键根本不会转发进来 —— read 永久阻塞,现象就是「输入没反应、装不下去」
+    # (#626,报告者在 Ubuntu ARM + sudo-rs 0.2.13 上实测)。
+    read -r -t 60 -p "$prompt" value </dev/tty || status=$?
+
+    # bash 4+ 的 read 超时返回 >128,EOF 返回 1 —— 两者要分开:EOF 是用户按了 Ctrl-D,
+    # 用默认值继续没问题;超时才是「输入根本进不来」。目标环境(Ubuntu,bash 5.x)符合
+    # 这个约定。万一在只有 bash 3.2 的老系统上跑,超时也会返回 1、被当成 EOF 走默认值 ——
+    # 那是可接受的降级:上面的 -t 60 已经保证不会像以前那样永久卡死。
+    if [ "$status" -gt 128 ]; then
+        echo
+        echo_error "等待输入超时:/dev/tty 可读,但收不到键盘输入。"
+        echo_error "这通常是「curl … | sudo bash」遇上 sudo-rs(Ubuntu 24.04+ 默认):"
+        echo_error "脚本被放进 sudo 自建的 pty,按键不会转发进来。改用下面任一方式:"
+        echo_error "  1) 先下载再执行(推荐,交互菜单可用):"
+        echo_error "     curl -fsSL https://raw.githubusercontent.com/${GITHUB_REPO}/main/install.sh -o install.sh && sudo bash install.sh"
+        echo_error "  2) 用环境变量跳过菜单(无需交互):"
+        echo_error "     curl -fsSL https://raw.githubusercontent.com/${GITHUB_REPO}/main/install.sh | sudo INSTALL_METHOD=docker DATABASE_MODE=sqlite bash"
+        exit 1
     fi
-    echo "${value:-$default}"
+    CHOICE_RESULT="${value:-$default}"
 }
 
 choose_install_options() {
@@ -92,7 +123,8 @@ choose_install_options() {
         echo "请选择安装方式:"
         echo "  1) 本机安装（二进制 + 系统服务）"
         echo "  2) Docker Compose 安装"
-        case "$(read_choice '请选择 (1/2，默认 1): ' 1)" in
+        read_choice '请选择 (1/2，默认 1): ' 1
+        case "$CHOICE_RESULT" in
             2|docker) INSTALL_METHOD="docker" ;;
             *) INSTALL_METHOD="native" ;;
         esac
@@ -101,7 +133,8 @@ choose_install_options() {
         echo "请选择数据库:"
         echo "  1) SQLite（轻量，无需额外安装）"
         echo "  2) PostgreSQL 18（推荐多服务器/高并发）"
-        case "$(read_choice '请选择 (1/2，默认 1): ' 1)" in
+        read_choice '请选择 (1/2，默认 1): ' 1
+        case "$CHOICE_RESULT" in
             2|postgres|postgresql|pgsql) DATABASE_MODE="postgres" ;;
             *) DATABASE_MODE="sqlite" ;;
         esac
@@ -466,6 +499,9 @@ download_binary() {
 }
 
 download_guard_artifacts() {
+    # 默认不强制 Guard 时整段跳过(install_guard_artifacts/create_action_guard_service 已各自早返回),
+    # 三处调用(install/update/reinstall)因此在默认模式下变 no-op,不下载/不验签 guard。
+    [ "$GUARD_REQUIRED" = "1" ] || { echo_info "Action Guard 未强制启用，跳过授权守护进程安装"; return 0; }
     echo_info "下载并验证 MMWX 授权守护进程..."
     prepare_staging
 
@@ -920,8 +956,15 @@ uninstall_service() {
     echo_info "✓ 服务已停止"
     echo ""
 
-    # 询问是否保留配置和数据
-    KEEP_DATA=false
+    # 询问是否保留配置和数据。
+    #
+    # 默认**保留** —— 数据删了不可恢复,而残留数据随时能再删。
+    # 从前这里无条件 KEEP_DATA=false,把外部传入的环境变量冲掉了:
+    # 下面非交互分支注释写着「检查环境变量」,但它读到的永远是刚被覆盖的 false,
+    # 于是 README 里那条 `curl -sL ... | sudo bash -s uninstall`(管道 = 非交互)
+    # 会静默 rm -rf 掉 SQLite / 订阅 / 证书 / database.json,且无二次确认。
+    # 交互式默认是「保留」,非交互反而「全删」,两者也不该相反。
+    KEEP_DATA="${MMWX_KEEP_DATA:-${KEEP_DATA:-true}}"
     if [ -t 0 ]; then
         # 交互式环境
         echo "是否保留配置和数据？"
@@ -935,10 +978,8 @@ uninstall_service() {
             KEEP_DATA=true
         fi
     else
-        # 非交互式环境，检查环境变量
-        if [ "$KEEP_DATA" != "false" ]; then
-            KEEP_DATA=true
-        fi
+        # 非交互式:沿用上面从 MMWX_KEEP_DATA / KEEP_DATA 解析出的值(默认 true)。
+        # 要在非交互下彻底删除,显式传 MMWX_KEEP_DATA=false。
         if [ "$KEEP_DATA" = "true" ]; then
             echo_info "保留数据模式"
         else
