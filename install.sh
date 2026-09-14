@@ -122,6 +122,49 @@ read_choice() {
     CHOICE_RESULT="${value:-$default}"
 }
 
+# detect_existing_database 找出这台机器上已经配好的数据库,找到就写进 DATABASE_MODE。
+# 目的是让重装/升级不必再回答一遍数据库问题 —— 用户已经配过了,再问一次除了
+# 增加手填,还可能因为选错把面板指到另一个库上。
+# 探测顺序按可信度:显式配置文件 > compose 的 .env > 正在跑的容器。
+DETECTED_DB_FROM=""
+detect_existing_database() {
+    DETECTED_DB_FROM=""
+    local f
+
+    # 1) 原生部署的 database.json(仓库里的权威配置)
+    for f in "$DATA_DIR/data/database.json" "$DOCKER_INSTALL_DIR/data/database.json"; do
+        [ -f "$f" ] || continue
+        case "$(tr -d ' \t\n' < "$f")" in
+            *'"driver":"postgres"'*) DATABASE_MODE="postgres" ;;
+            *'"driver":"sqlite"'*)   DATABASE_MODE="sqlite" ;;
+            *) continue ;;
+        esac
+        DETECTED_DB_FROM="$f"
+        return 0
+    done
+
+    # 2) docker compose 的 .env
+    f="$DOCKER_INSTALL_DIR/.env"
+    if [ -f "$f" ]; then
+        local drv
+        drv="$(sed -n 's/^MMWX_DATABASE_DRIVER=//p' "$f" | tail -n 1 | tr -d '\r')"
+        case "$drv" in
+            postgres|postgresql|pgsql) DATABASE_MODE="postgres"; DETECTED_DB_FROM="$f"; return 0 ;;
+            sqlite)                    DATABASE_MODE="sqlite";   DETECTED_DB_FROM="$f"; return 0 ;;
+        esac
+    fi
+
+    # 3) 容器还在跑,说明上一次装的就是 PG(.env 被删了也认得出来)
+    if command -v docker >/dev/null 2>&1 &&
+       docker ps --format '{{.Names}}' 2>/dev/null | grep -qx 'miaomiaowux-postgres'; then
+        DATABASE_MODE="postgres"
+        DETECTED_DB_FROM="运行中的 miaomiaowux-postgres 容器"
+        return 0
+    fi
+
+    return 0
+}
+
 choose_install_options() {
     case "$INSTALL_METHOD" in local|direct|baremetal) INSTALL_METHOD="native" ;; compose) INSTALL_METHOD="docker" ;; esac
     case "$DATABASE_MODE" in postgresql|pgsql) DATABASE_MODE="postgres" ;; esac
@@ -134,6 +177,14 @@ choose_install_options() {
             2|docker) INSTALL_METHOD="docker" ;;
             *) INSTALL_METHOD="native" ;;
         esac
+    fi
+    if [ -z "$DATABASE_MODE" ]; then
+        # 这台机器上已经有配好的数据库就直接沿用,不再问 —— 重装/升级时再问一遍
+        # 既多余又危险(选错会指向另一个库)。只有真的什么都没有才走菜单。
+        detect_existing_database
+        if [ -n "$DATABASE_MODE" ]; then
+            echo_info "检测到已有数据库配置（$DETECTED_DB_FROM），沿用: $DATABASE_MODE"
+        fi
     fi
     if [ -z "$DATABASE_MODE" ]; then
         echo "请选择数据库:"
@@ -280,6 +331,19 @@ check_root() {
 
 # 检查系统架构
 check_architecture() {
+    # 先看操作系统再看架构:下面只映射 mmwx-linux-*,而 macOS 的 uname -m 同样是 arm64/x86_64,
+    # 没有这道门卫就会「静默选中 Linux 产物」→ 后面真的去执行它 → exec format error,
+    # 用户完全看不懂。主控目前只提供 Linux 原生安装。
+    OS_NAME=$(uname -s)
+    if [ "$OS_NAME" != "Linux" ]; then
+        echo_error "主控暂不支持在 ${OS_NAME} 上原生安装(本脚本只提供 Linux 二进制与 systemd/OpenRC 服务)"
+        echo_info "在 macOS 上想跑主控,请改用 Docker:主控自身不采集本机指标,跑在容器里完全没问题。"
+        echo_info "  参考仓库根目录的 docker-compose.yml(macOS 上需自行把 network_mode: host 改成端口映射)"
+        echo_warn "注意:这一点和 Agent 完全不同 —— Agent 的监控数据全部采自它所在的机器,"
+        echo_warn "      装进 Docker 只能看到容器里那台虚拟机,要监控 Mac 本体必须在 Mac 上直接装 Agent。"
+        exit 1
+    fi
+
     ARCH=$(uname -m)
     echo_info "检测到系统架构: $ARCH"
 
@@ -315,7 +379,11 @@ install_dependencies() {
     elif command -v yum >/dev/null 2>&1; then
         yum install -y wget curl jq ca-certificates >/dev/null
     else
-        echo_error "不支持的包管理器，请先安装 wget、curl、jq 和 CA 证书"
+        # 走到这里通常是两种情况:一是非 Linux(macOS 的 brew 不在上面的列表里,
+        # 而主控本就不支持 macOS 原生安装,见 check_architecture);二是极简发行版。
+        echo_error "未识别到受支持的包管理器(apk / apt-get / dnf / yum),当前系统: $(uname -s) $(uname -m)"
+        echo_info "如果这是 Linux,请先手动安装 wget、curl、jq 和 CA 证书后重试"
+        echo_info "如果这是 macOS,主控请改用 Docker 部署(本脚本只支持 Linux 原生安装)"
         exit 1
     fi
 }
