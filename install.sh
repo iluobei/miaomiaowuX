@@ -84,6 +84,30 @@ download_asset() {
 
 # 结果写进全局 CHOICE_RESULT,而不是靠 $(...) 取回 —— 命令替换会吃掉提示文字,
 # 里面的 exit 也只退出子 shell,超时时就没法真正中止安装。
+# input_unreachable_hint 菜单收不到键盘时的出路。两个调用点共用:一个是提前判定出的
+# 「管道 + sudo」,另一个是 read 真的超时。
+input_unreachable_hint() {
+    local raw="https://raw.githubusercontent.com/${GITHUB_REPO}/main/install.sh"
+    echo_error "改用下面任一方式:"
+    # 已经是 root 还套 sudo 是最常见的写法,去掉它最省事,所以排第一。
+    if [ "${SUDO_USER:-}" = "root" ]; then
+        echo_error "  1) 你本来就是 root,sudo 是多余的,去掉即可:"
+        echo_error "     curl -fsSL $raw | bash"
+    fi
+    echo_error "  2) 仍然只要一行,把脚本当参数传(stdin 留在终端上,菜单可用):"
+    echo_error "     sudo bash -c \"\$(curl -fsSL $raw)\""
+    echo_error "  3) 先下载再执行:"
+    echo_error "     curl -fsSL $raw -o install.sh && sudo bash install.sh"
+    echo_error "  4) 用环境变量跳过菜单(无需交互):"
+    # 两个坑,#712 都踩到了:
+    #   a) 变量名必须是脚本真正读的那两个(MMWX_ 前缀,见文件开头) ——
+    #      INSTALL_METHOD / DATABASE_MODE 是内部变量名,写进提示里用户照抄也跳不过菜单;
+    #   b) 必须 `sudo env VAR=...`,不能 `sudo VAR=... bash` —— sudo 默认清空环境,
+    #      后者语法上还会被当成要执行名为 "VAR=..." 的命令。
+    #   这条提示是给「已经卡住的人」看的,写错等于把唯一的出路也堵死。
+    echo_error "     curl -fsSL $raw | sudo env MMWX_INSTALL_METHOD=docker MMWX_DATABASE_DRIVER=sqlite bash"
+}
+
 read_choice() {
     local prompt="$1" default="$2" value="" status=0
     CHOICE_RESULT="$default"
@@ -91,6 +115,28 @@ read_choice() {
     # 用「真的打开一次」判断,而不是 [ -r /dev/tty ] —— 后者只看权限位,无控制终端时
     # 它仍然为真,随后 read 会喷一句 "/dev/tty: Device not configured" 到 stderr。
     { : < /dev/tty; } 2>/dev/null || return 0
+
+    # 「管道 + sudo」是死局,不必等 60 秒才发现。实测四种写法只有这一种收不到键盘:
+    #   curl … | sudo bash        stdin=管道  SUDO_USER=有  ← 坏
+    #   sudo bash -c "$(curl …)"  stdin=tty   SUDO_USER=有  ✓
+    #   curl … | bash             stdin=管道  SUDO_USER=无  ✓
+    #   sudo bash install.sh      stdin=tty   SUDO_USER=有  ✓
+    #
+    # 原因:sudo 自 1.9.14 起默认 use_pty(Debian 13、Ubuntu 24.04 都开着),脚本被放进
+    # sudo 自建的 pty 里跑,/dev/tty 指的就是那个 pty —— 它可读、菜单也打得出来,所以
+    # 上面那道守卫会放行;但 sudo 自己的 stdin 已经被管道占住,它根本不去读用户的键盘,
+    # pty 里永远不会有按键进来。这与 sudo-rs 无关(#626 当初的判断写窄了),经典 sudo
+    # 一样中招 —— 在 Debian 13 + sudo 1.9.16 上实测复现。
+    #
+    # 放在守卫之后:真正无 tty 的环境(CI / 纯管道)上面已经 return 0 用默认值了,
+    # 不该被这里拦下。设了 MMWX_INSTALL_METHOD + MMWX_DATABASE_DRIVER 的自动化
+    # 根本不会走到 read_choice,所以无人值守的管道安装不受影响。
+    if [ ! -t 0 ] && [ -n "${SUDO_USER:-}" ]; then
+        echo
+        echo_error "「curl … | sudo bash」的菜单收不到键盘输入:sudo 的 use_pty 把脚本关进了自建 pty。"
+        input_unreachable_hint
+        exit 1
+    fi
 
     # -t 超时是必需的:`curl … | sudo bash` 配 sudo-rs(Ubuntu 24.04+ 起的默认 sudo)时,
     # sudo-rs 会把脚本放进它自建的 pty 里跑,于是 /dev/tty 存在且可读、菜单也打得出来,
@@ -105,18 +151,7 @@ read_choice() {
     if [ "$status" -gt 128 ]; then
         echo
         echo_error "等待输入超时:/dev/tty 可读,但收不到键盘输入。"
-        echo_error "这通常是「curl … | sudo bash」遇上 sudo-rs(Ubuntu 24.04+ 默认):"
-        echo_error "脚本被放进 sudo 自建的 pty,按键不会转发进来。改用下面任一方式:"
-        echo_error "  1) 先下载再执行(推荐,交互菜单可用):"
-        echo_error "     curl -fsSL https://raw.githubusercontent.com/${GITHUB_REPO}/main/install.sh -o install.sh && sudo bash install.sh"
-        echo_error "  2) 用环境变量跳过菜单(无需交互):"
-        # 两个坑,#712 都踩到了:
-        #   a) 变量名必须是脚本真正读的那两个(MMWX_ 前缀,见文件开头) ——
-        #      INSTALL_METHOD / DATABASE_MODE 是内部变量名,写进提示里用户照抄也跳不过菜单;
-        #   b) 必须 `sudo env VAR=...`,不能 `sudo VAR=... bash` —— sudo 默认清空环境,
-        #      后者语法上还会被当成要执行名为 "VAR=..." 的命令。
-        #   这条提示是给「已经卡住的人」看的,写错等于把唯一的出路也堵死。
-        echo_error "     curl -fsSL https://raw.githubusercontent.com/${GITHUB_REPO}/main/install.sh | sudo env MMWX_INSTALL_METHOD=docker MMWX_DATABASE_DRIVER=sqlite bash"
+        input_unreachable_hint
         exit 1
     fi
     CHOICE_RESULT="${value:-$default}"

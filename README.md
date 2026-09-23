@@ -35,8 +35,13 @@ Clash(Meta) / Surge / Loon / Quantumult X / Shadowrocket / SingBox / Stash / Sur
 ### 方式 1：一键安装（推荐）
 
 ```bash
-curl -sL https://raw.githubusercontent.com/iluobei/miaomiaowuX/main/install.sh | sudo bash
+sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/iluobei/miaomiaowuX/main/install.sh)"
 ```
+
+> 别写成 `curl … | sudo bash`：sudo 自 1.9.14 起默认 `use_pty`（Debian 13、Ubuntu 24.04 都开着），
+> 管道占住了 sudo 的 stdin，它不会再去读键盘——下面的选择菜单打得出来，却收不到你的输入。
+> 上面这条把脚本当参数传，stdin 留在终端上，菜单照常可用。已经是 root 的话，
+> 去掉 sudo 直接 `curl -fsSL … | bash` 也行。
 
 脚本会依次让你选择：
 
