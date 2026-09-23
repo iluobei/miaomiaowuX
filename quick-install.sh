@@ -26,6 +26,44 @@ esac
 
 DOWNLOAD_URL="https://github.com/${GITHUB_REPO}/releases/download/${VERSION}/${BINARY_NAME}"
 
+# ask_port 问端口。优先走 /dev/tty,这样 `curl … | bash` 也能问 —— 那种写法下 stdin 是
+# 管道、[ -t 0 ] 为假,但键盘其实还接着,以前一律闷头用默认值,用户没有机会改端口。
+#
+# 问不到就用默认值继续,绝不中断。收不到输入只有两种情况:
+#   1) 真的没有终端(CI / 纯管道):/dev/tty 打不开;
+#   2) `curl … | sudo bash`:sudo 自 1.9.14 起默认 use_pty(Debian 13、Ubuntu 24.04
+#      都开着),脚本被关进它自建的 pty,/dev/tty 可读、提示也打得出来,但 sudo 自己的
+#      stdin 已被管道占住,不会去读键盘,按键永远进不来。判据是「stdin 是管道」+
+#      「在 sudo 下」,实测四种调用方式只有这一种组合收不到按键。
+#
+# 与 install.sh 的 read_choice 不同,这里问不到不 exit:那边要选本机/Docker、
+# SQLite/PostgreSQL,选错后果完全不同,问不到就该停;这里只是个有合理默认的端口,
+# 为它中断一次安装不值得,保持原来「用默认值继续」的行为。
+# 这个脚本自己的分发地址。注意不能用 GITHUB_REPO 拼 —— 那个指的是二进制所在的仓
+# (Jimleerx/miaomiaowu),脚本本身是从 iluobei/miaomiaowuX 发出去的。
+SCRIPT_URL="https://raw.githubusercontent.com/iluobei/miaomiaowuX/main/quick-install.sh"
+PORT_RESULT=""
+ask_port() {
+    local default="$1" value=""
+    PORT_RESULT="$default"
+    { : < /dev/tty; } 2>/dev/null || { echo "使用端口: $PORT_RESULT"; return 0; }
+    if [ ! -t 0 ] && [ -n "${SUDO_USER:-}" ]; then
+        echo "检测到 curl … | sudo bash:sudo 的 use_pty 让提示收不到键盘输入,跳过询问。"
+        echo "想自己指定端口,改用下面任一方式:"
+        echo "  sudo bash -c \"\$(curl -fsSL $SCRIPT_URL)\""
+        echo "  curl -fsSL $SCRIPT_URL | sudo env PORT=8080 bash"
+        echo "使用端口: $PORT_RESULT"
+        return 0
+    fi
+    # -t 是兜底:万一判据漏了某种环境,也不会像原来的 read 那样无限等下去。
+    read -r -t 60 -p "请输入端口号(默认 $default,直接回车使用默认值): " value </dev/tty || {
+        echo
+        echo "未读到输入,使用端口: $PORT_RESULT"
+        return 0
+    }
+    PORT_RESULT="${value:-$default}"
+}
+
 # 安装函数
 install() {
     echo "正在下载并安装妙妙屋X $VERSION ($ARCH)..."
@@ -44,19 +82,8 @@ install() {
 
     # 询问端口号（支持非交互式环境）
     echo ""
-    if [ -t 0 ]; then
-        # 交互式环境
-        read -p "请输入端口号（默认 8080，直接回车使用默认值）: " PORT_INPUT
-        if [ -z "$PORT_INPUT" ]; then
-            PORT=8080
-        else
-            PORT=$PORT_INPUT
-        fi
-    else
-        # 非交互式环境，使用环境变量或默认值
-        PORT=${PORT:-8080}
-        echo "使用端口: $PORT"
-    fi
+    ask_port "${PORT:-8080}"
+    PORT="$PORT_RESULT"
 
     # 保存端口配置
     echo "$PORT" > "$PORT_FILE"
@@ -129,28 +156,8 @@ update() {
         SAVED_PORT=$(cat "$PORT_FILE")
     fi
 
-    if [ -t 0 ]; then
-        # 交互式环境
-        if [ -n "$SAVED_PORT" ]; then
-            read -p "请输入端口号（默认 $SAVED_PORT，直接回车使用默认值）: " PORT_INPUT
-            if [ -z "$PORT_INPUT" ]; then
-                PORT=$SAVED_PORT
-            else
-                PORT=$PORT_INPUT
-            fi
-        else
-            read -p "请输入端口号（默认 8080，直接回车使用默认值）: " PORT_INPUT
-            if [ -z "$PORT_INPUT" ]; then
-                PORT=8080
-            else
-                PORT=$PORT_INPUT
-            fi
-        fi
-    else
-        # 非交互式环境，使用环境变量或默认值
-        PORT=${PORT:-${SAVED_PORT:-8080}}
-        echo "使用端口: $PORT"
-    fi
+    ask_port "${PORT:-${SAVED_PORT:-8080}}"
+    PORT="$PORT_RESULT"
 
     # 保存端口配置
     echo "$PORT" > "$PORT_FILE"
