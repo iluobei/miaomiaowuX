@@ -39,6 +39,41 @@ DOWNLOAD_URL="https://github.com/${GITHUB_REPO}/releases/download/${VERSION}/${B
 # 与 install.sh 的 read_choice 不同,这里问不到不 exit:那边要选本机/Docker、
 # SQLite/PostgreSQL,选错后果完全不同,问不到就该停;这里只是个有合理默认的端口,
 # 为它中断一次安装不值得,保持原来「用默认值继续」的行为。
+# outer_tty 在「管道 + sudo」下找出真正连着键盘的那个终端,找不到回空串。
+#
+# sudo(use_pty)把脚本关进自建 pty,我们的 /dev/tty 指的就是它,里面永远不会有按键;
+# 但 sudo 的输出照样转发到外层终端 —— 说明外层那个 tty 还在,只是脚本手上没有任何
+# fd 指向它。沿进程链往上找第一个与自身不同的 tty 就是它:父进程那个 sudo 已经在
+# 内层 pty 上了,再上一层才是外层终端。打开它直接读,按键就拿得到。
+#
+# 用 /proc 而不是 ps:ps 来自 procps,极简发行版未必装,而这段要在
+# install_dependencies 之前就能用。只有 Linux 有 /proc,而原生安装本来就只支持
+# Linux(见 check_architecture)。
+#
+# 读别人的终端在这里是安全的:管道里的 sudo 与外层 shell 同属一个前台进程组,
+# 读它不会触发 SIGTTIN;外层 shell 此刻正等着这条管道结束,也不会来抢输入。
+outer_tty() {
+    local self up ppid dev
+    self="$(readlink /proc/$$/fd/2 2>/dev/null)"   # fd2 在内层 pty 上,代表"自身这个终端"
+    up="$PPID"
+    for _ in 1 2 3 4 5 6 7 8; do
+        [ -n "$up" ] && [ -d "/proc/$up" ] || return 0
+        dev="$(readlink /proc/$up/fd/0 2>/dev/null)"
+        case "$dev" in
+            /dev/pts/*|/dev/tty[0-9]*|/dev/ttyS*)
+                if [ "$dev" != "$self" ] && [ -c "$dev" ] && [ -r "$dev" ]; then
+                    printf '%s' "$dev"
+                    return 0
+                fi
+                ;;
+        esac
+        ppid="$(awk '/^PPid:/{print $2}' "/proc/$up/status" 2>/dev/null)"
+        [ "$ppid" = "$up" ] && return 0
+        up="$ppid"
+    done
+    return 0
+}
+
 # 这个脚本自己的分发地址。注意不能用 GITHUB_REPO 拼 —— 那个指的是二进制所在的仓
 # (Jimleerx/miaomiaowu),脚本本身是从 iluobei/miaomiaowuX 发出去的。
 SCRIPT_URL="https://raw.githubusercontent.com/iluobei/miaomiaowuX/main/quick-install.sh"
@@ -47,16 +82,19 @@ ask_port() {
     local default="$1" value=""
     PORT_RESULT="$default"
     { : < /dev/tty; } 2>/dev/null || { echo "使用端口: $PORT_RESULT"; return 0; }
+    local source_tty="/dev/tty"
+    # curl … | sudo bash:/dev/tty 是 sudo 造的内层 pty,键盘在外层终端上,
+    # 换成外层终端就能照常发问;真找不到就用默认值继续,不中断安装。
     if [ ! -t 0 ] && [ -n "${SUDO_USER:-}" ]; then
-        echo "检测到 curl … | sudo bash:sudo 的 use_pty 让提示收不到键盘输入,跳过询问。"
-        echo "想自己指定端口,改用下面任一方式:"
-        echo "  sudo bash -c \"\$(curl -fsSL $SCRIPT_URL)\""
-        echo "  curl -fsSL $SCRIPT_URL | sudo env PORT=8080 bash"
-        echo "使用端口: $PORT_RESULT"
-        return 0
+        source_tty="$(outer_tty)"
+        if [ -z "$source_tty" ]; then
+            echo "收不到键盘输入(sudo 的 use_pty),使用端口: $PORT_RESULT"
+            echo "想自己指定端口:curl -fsSL $SCRIPT_URL | sudo env PORT=8080 bash"
+            return 0
+        fi
     fi
     # -t 是兜底:万一判据漏了某种环境,也不会像原来的 read 那样无限等下去。
-    read -r -t 60 -p "请输入端口号(默认 $default,直接回车使用默认值): " value </dev/tty || {
+    read -r -t 60 -p "请输入端口号(默认 $default,直接回车使用默认值): " value <"$source_tty" || {
         echo
         echo "未读到输入,使用端口: $PORT_RESULT"
         return 0

@@ -84,6 +84,41 @@ download_asset() {
 
 # 结果写进全局 CHOICE_RESULT,而不是靠 $(...) 取回 —— 命令替换会吃掉提示文字,
 # 里面的 exit 也只退出子 shell,超时时就没法真正中止安装。
+# outer_tty 在「管道 + sudo」下找出真正连着键盘的那个终端,找不到回空串。
+#
+# sudo(use_pty)把脚本关进自建 pty,我们的 /dev/tty 指的就是它,里面永远不会有按键;
+# 但 sudo 的输出照样转发到外层终端 —— 说明外层那个 tty 还在,只是脚本手上没有任何
+# fd 指向它。沿进程链往上找第一个与自身不同的 tty 就是它:父进程那个 sudo 已经在
+# 内层 pty 上了,再上一层才是外层终端。打开它直接读,按键就拿得到。
+#
+# 用 /proc 而不是 ps:ps 来自 procps,极简发行版未必装,而这段要在
+# install_dependencies 之前就能用。只有 Linux 有 /proc,而原生安装本来就只支持
+# Linux(见 check_architecture)。
+#
+# 读别人的终端在这里是安全的:管道里的 sudo 与外层 shell 同属一个前台进程组,
+# 读它不会触发 SIGTTIN;外层 shell 此刻正等着这条管道结束,也不会来抢输入。
+outer_tty() {
+    local self up ppid dev
+    self="$(readlink /proc/$$/fd/2 2>/dev/null)"   # fd2 在内层 pty 上,代表"自身这个终端"
+    up="$PPID"
+    for _ in 1 2 3 4 5 6 7 8; do
+        [ -n "$up" ] && [ -d "/proc/$up" ] || return 0
+        dev="$(readlink /proc/$up/fd/0 2>/dev/null)"
+        case "$dev" in
+            /dev/pts/*|/dev/tty[0-9]*|/dev/ttyS*)
+                if [ "$dev" != "$self" ] && [ -c "$dev" ] && [ -r "$dev" ]; then
+                    printf '%s' "$dev"
+                    return 0
+                fi
+                ;;
+        esac
+        ppid="$(awk '/^PPid:/{print $2}' "/proc/$up/status" 2>/dev/null)"
+        [ "$ppid" = "$up" ] && return 0
+        up="$ppid"
+    done
+    return 0
+}
+
 # input_unreachable_hint 菜单收不到键盘时的出路。两个调用点共用:一个是提前判定出的
 # 「管道 + sudo」,另一个是 read 真的超时。
 input_unreachable_hint() {
@@ -131,18 +166,25 @@ read_choice() {
     # 放在守卫之后:真正无 tty 的环境(CI / 纯管道)上面已经 return 0 用默认值了,
     # 不该被这里拦下。设了 MMWX_INSTALL_METHOD + MMWX_DATABASE_DRIVER 的自动化
     # 根本不会走到 read_choice,所以无人值守的管道安装不受影响。
+    # 键盘在外层终端上,/dev/tty 指的是 sudo 造的内层 pty,从那里永远读不到 ——
+    # 改从外层终端读,这条一键命令就照常可用。只有连外层终端都找不到才报错退出。
+    local source_tty="/dev/tty"
     if [ ! -t 0 ] && [ -n "${SUDO_USER:-}" ]; then
-        echo
-        echo_error "「curl … | sudo bash」的菜单收不到键盘输入:sudo 的 use_pty 把脚本关进了自建 pty。"
-        input_unreachable_hint
-        exit 1
+        source_tty="$(outer_tty)"
+        if [ -z "$source_tty" ]; then
+            echo
+            echo_error "「curl … | sudo bash」的菜单收不到键盘输入:sudo 的 use_pty 把脚本关进了自建 pty,"
+            echo_error "而外层终端也没找到(没有 /proc,或这条管道根本不在终端里跑)。"
+            input_unreachable_hint
+            exit 1
+        fi
     fi
 
     # -t 超时是必需的:`curl … | sudo bash` 配 sudo-rs(Ubuntu 24.04+ 起的默认 sudo)时,
     # sudo-rs 会把脚本放进它自建的 pty 里跑,于是 /dev/tty 存在且可读、菜单也打得出来,
     # 但用户的按键根本不会转发进来 —— read 永久阻塞,现象就是「输入没反应、装不下去」
     # (#626,报告者在 Ubuntu ARM + sudo-rs 0.2.13 上实测)。
-    read -r -t 60 -p "$prompt" value </dev/tty || status=$?
+    read -r -t 60 -p "$prompt" value <"$source_tty" || status=$?
 
     # bash 4+ 的 read 超时返回 >128,EOF 返回 1 —— 两者要分开:EOF 是用户按了 Ctrl-D,
     # 用默认值继续没问题;超时才是「输入根本进不来」。目标环境(Ubuntu,bash 5.x)符合
