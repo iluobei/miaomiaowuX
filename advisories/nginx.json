@@ -1,0 +1,497 @@
+{
+  "updated_at": "2026-10-21",
+  "recommended": "1.31.8",
+  "cves": [
+    {
+      "id": "CVE-2026-15176",
+      "title": "alias 与 rewrite 一起用时缓冲区溢出",
+      "title_en": "Buffer overflow when using alias with rewrite",
+      "severity": "medium",
+      "vulnerable": [
+        "0.1.29-1.31.6"
+      ],
+      "not_vulnerable": [
+        "1.31.7+",
+        "1.30.6+"
+      ],
+      "url": "https://my.f5.com/manage/s/article/K000162416"
+    },
+    {
+      "id": "CVE-2026-93479",
+      "title": "脚本求值(变量表达式、map 正则捕获)缓冲区溢出",
+      "title_en": "Buffer overflow in script evaluation",
+      "severity": "medium",
+      "vulnerable": [
+        "1.31.2-1.31.6",
+        "1.30.0-1.30.5"
+      ],
+      "not_vulnerable": [
+        "1.31.7+",
+        "1.30.6+"
+      ],
+      "url": "https://my.f5.com/manage/s/article/K000162607"
+    },
+    {
+      "id": "CVE-2026-95101",
+      "title": "HTTP/3 请求体注入",
+      "title_en": "Request body injection in HTTP/3",
+      "severity": "medium",
+      "vulnerable": [
+        "1.25.0-1.31.6"
+      ],
+      "not_vulnerable": [
+        "1.31.7+",
+        "1.30.6+"
+      ],
+      "url": "https://my.f5.com/manage/s/article/K000162613"
+    },
+    {
+      "id": "CVE-2026-97629",
+      "title": "使用 TLS 会话票据(session ticket)时会话伪造",
+      "title_en": "Session forgery when using TLS session tickets",
+      "severity": "medium",
+      "vulnerable": [
+        "1.23.2-1.31.6"
+      ],
+      "not_vulnerable": [
+        "1.31.7+",
+        "1.30.6+"
+      ],
+      "url": "https://my.f5.com/manage/s/article/K000162606"
+    },
+    {
+      "id": "CVE-2026-97205",
+      "title": "异步文件 I/O(AIO)释放后使用",
+      "title_en": "Use-after-free when using asynchronous file I/O (AIO)",
+      "severity": "medium",
+      "vulnerable": [
+        "0.8.11-1.31.6"
+      ],
+      "not_vulnerable": [
+        "1.31.7+",
+        "1.30.6+"
+      ],
+      "url": "https://my.f5.com/manage/s/article/K000162608"
+    },
+    {
+      "id": "CVE-2026-90439",
+      "title": "ngx_http_v3_module 缓冲区溢出",
+      "title_en": "Buffer overflow when using ngx_http_v3_module",
+      "severity": "medium",
+      "vulnerable": [
+        "1.29.2-1.31.5"
+      ],
+      "not_vulnerable": [
+        "1.31.6+",
+        "1.30.5+"
+      ],
+      "url": "https://my.f5.com/manage/s/article/K000162604"
+    },
+    {
+      "id": "CVE-2026-42533",
+      "title": "map 配合正则时缓冲区溢出",
+      "title_en": "Buffer overflow when using map and regex",
+      "severity": "major",
+      "vulnerable": [
+        "0.9.6-1.31.2"
+      ],
+      "not_vulnerable": [
+        "1.31.3+",
+        "1.30.4+"
+      ],
+      "url": "https://my.f5.com/manage/s/article/K000162097"
+    },
+    {
+      "id": "CVE-2026-60005",
+      "title": "ngx_http_slice_module 内存泄露",
+      "title_en": "Memory disclosure when using ngx_http_slice_module",
+      "severity": "medium",
+      "vulnerable": [
+        "1.15.8-1.31.2"
+      ],
+      "not_vulnerable": [
+        "1.31.3+",
+        "1.30.4+"
+      ],
+      "url": "https://my.f5.com/manage/s/article/K000162100"
+    },
+    {
+      "id": "CVE-2026-56434",
+      "title": "ngx_http_ssi_module 释放后使用",
+      "title_en": "Use-after-free when using ngx_http_ssi_module",
+      "severity": "medium",
+      "vulnerable": [
+        "0.8.11-1.31.2"
+      ],
+      "not_vulnerable": [
+        "1.31.3+",
+        "1.30.4+"
+      ],
+      "url": "https://my.f5.com/manage/s/article/K000162098"
+    },
+    {
+      "id": "CVE-2026-42530",
+      "title": "HTTP/3 释放后使用",
+      "title_en": "Use-after-free in HTTP/3",
+      "severity": "major",
+      "vulnerable": [
+        "1.31.0-1.31.1"
+      ],
+      "not_vulnerable": [
+        "1.31.2+"
+      ],
+      "url": "https://my.f5.com/manage/s/article/K000161616"
+    },
+    {
+      "id": "CVE-2026-42055",
+      "title": "ngx_http_proxy_v2_module / ngx_http_grpc_module 缓冲区溢出",
+      "title_en": "Buffer overflow in the ngx_http_proxy_v2_module and ngx_http_grpc_module",
+      "severity": "medium",
+      "vulnerable": [
+        "1.13.10-1.31.1"
+      ],
+      "not_vulnerable": [
+        "1.31.2+",
+        "1.30.3+"
+      ],
+      "url": "https://my.f5.com/manage/s/article/K000161584"
+    },
+    {
+      "id": "CVE-2026-48142",
+      "title": "ngx_http_charset_module 越界读",
+      "title_en": "Buffer overread in the ngx_http_charset_module",
+      "severity": "low",
+      "vulnerable": [
+        "0.3.50-1.31.1"
+      ],
+      "not_vulnerable": [
+        "1.31.2+",
+        "1.30.3+"
+      ],
+      "url": "https://my.f5.com/manage/s/article/K000161585"
+    },
+    {
+      "id": "CVE-2026-9256",
+      "title": "ngx_http_rewrite_module 缓冲区溢出",
+      "title_en": "Buffer overflow in the ngx_http_rewrite_module",
+      "severity": "medium",
+      "vulnerable": [
+        "0.1.17-1.31.0"
+      ],
+      "not_vulnerable": [
+        "1.31.1+",
+        "1.30.2+"
+      ],
+      "url": "https://my.f5.com/manage/s/article/K000161377"
+    },
+    {
+      "id": "CVE-2026-42926",
+      "title": "ngx_http_proxy_module 的 HTTP/2 请求注入",
+      "title_en": "HTTP/2 request injection in the ngx_http_proxy_module",
+      "severity": "medium",
+      "vulnerable": [
+        "1.29.4-1.30.0"
+      ],
+      "not_vulnerable": [
+        "1.31.0+",
+        "1.30.1+"
+      ],
+      "url": "https://my.f5.com/manage/s/article/K000161131"
+    },
+    {
+      "id": "CVE-2026-42945",
+      "title": "ngx_http_rewrite_module 缓冲区溢出",
+      "title_en": "Buffer overflow in the ngx_http_rewrite_module",
+      "severity": "medium",
+      "vulnerable": [
+        "0.6.27-1.30.0"
+      ],
+      "not_vulnerable": [
+        "1.31.0+",
+        "1.30.1+"
+      ],
+      "url": "https://my.f5.com/manage/s/article/K000161019"
+    },
+    {
+      "id": "CVE-2026-42946",
+      "title": "ngx_http_scgi_module / ngx_http_uwsgi_module 越界读",
+      "title_en": "Buffer overread in the ngx_http_scgi_module and ngx_http_uwsgi_module",
+      "severity": "medium",
+      "vulnerable": [
+        "0.8.42-1.30.0"
+      ],
+      "not_vulnerable": [
+        "1.31.0+",
+        "1.30.1+"
+      ],
+      "url": "https://my.f5.com/manage/s/article/K000161027"
+    },
+    {
+      "id": "CVE-2026-42934",
+      "title": "ngx_http_charset_module 越界读",
+      "title_en": "Buffer overread in the ngx_http_charset_module",
+      "severity": "low",
+      "vulnerable": [
+        "0.3.50-1.30.0"
+      ],
+      "not_vulnerable": [
+        "1.31.0+",
+        "1.30.1+"
+      ],
+      "url": "https://my.f5.com/manage/s/article/K000161028"
+    },
+    {
+      "id": "CVE-2026-40460",
+      "title": "HTTP/3 地址伪造",
+      "title_en": "HTTP/3 address spoofing",
+      "severity": "medium",
+      "vulnerable": [
+        "1.25.0-1.30.0"
+      ],
+      "not_vulnerable": [
+        "1.31.0+",
+        "1.30.1+"
+      ],
+      "url": "https://my.f5.com/manage/s/article/K000161068"
+    },
+    {
+      "id": "CVE-2026-40701",
+      "title": "OCSP 解析器释放后使用",
+      "title_en": "resolver use-after-free in OCSP",
+      "severity": "medium",
+      "vulnerable": [
+        "1.19.0-1.30.0"
+      ],
+      "not_vulnerable": [
+        "1.31.0+",
+        "1.30.1+"
+      ],
+      "url": "https://my.f5.com/manage/s/article/K000161021"
+    },
+    {
+      "id": "CVE-2026-27654",
+      "title": "ngx_http_dav_module 缓冲区溢出",
+      "title_en": "Buffer overflow in ngx_http_dav_module",
+      "severity": "medium",
+      "vulnerable": [
+        "0.5.13-1.29.6"
+      ],
+      "not_vulnerable": [
+        "1.29.7+",
+        "1.28.3+"
+      ],
+      "url": "https://my.f5.com/manage/s/article/K000160382"
+    },
+    {
+      "id": "CVE-2026-27784",
+      "title": "ngx_http_mp4_module 缓冲区溢出",
+      "title_en": "Buffer overflow in the ngx_http_mp4_module",
+      "severity": "medium",
+      "vulnerable": [
+        "1.1.19-1.29.6"
+      ],
+      "not_vulnerable": [
+        "1.29.7+",
+        "1.28.3+"
+      ],
+      "url": "https://my.f5.com/manage/s/article/K000160364"
+    },
+    {
+      "id": "CVE-2026-32647",
+      "title": "ngx_http_mp4_module 缓冲区溢出",
+      "title_en": "Buffer overflow in the ngx_http_mp4_module",
+      "severity": "medium",
+      "vulnerable": [
+        "1.1.19-1.29.6"
+      ],
+      "not_vulnerable": [
+        "1.29.7+",
+        "1.28.3+"
+      ],
+      "url": "https://my.f5.com/manage/s/article/K000160366"
+    },
+    {
+      "id": "CVE-2026-27651",
+      "title": "使用 CRAM-MD5 或 APOP 时空指针解引用",
+      "title_en": "NULL pointer dereference while using CRAM-MD5 or APOP",
+      "severity": "low",
+      "vulnerable": [
+        "0.5.15-1.29.6"
+      ],
+      "not_vulnerable": [
+        "1.29.7+",
+        "1.28.3+"
+      ],
+      "url": "https://my.f5.com/manage/s/article/K000160383"
+    },
+    {
+      "id": "CVE-2026-28753",
+      "title": "auth_http 与 XCLIENT 注入",
+      "title_en": "Injection in auth_http and XCLIENT",
+      "severity": "medium",
+      "vulnerable": [
+        "0.6.27-1.29.6"
+      ],
+      "not_vulnerable": [
+        "1.29.7+",
+        "1.28.3+"
+      ],
+      "url": "https://my.f5.com/manage/s/article/K000160367"
+    },
+    {
+      "id": "CVE-2026-28755",
+      "title": "stream 模块 OCSP 校验结果被绕过",
+      "title_en": "OCSP result bypass in stream",
+      "severity": "medium",
+      "vulnerable": [
+        "1.27.2-1.29.6"
+      ],
+      "not_vulnerable": [
+        "1.29.7+",
+        "1.28.3+"
+      ],
+      "url": "https://my.f5.com/manage/s/article/K000160368"
+    },
+    {
+      "id": "CVE-2026-1642",
+      "title": "SSL 上游注入",
+      "title_en": "SSL upstream injection",
+      "severity": "medium",
+      "vulnerable": [
+        "1.3.0-1.29.4"
+      ],
+      "not_vulnerable": [
+        "1.29.5+",
+        "1.28.2+"
+      ],
+      "url": "https://my.f5.com/manage/s/article/K000159824"
+    },
+    {
+      "id": "CVE-2025-53859",
+      "title": "ngx_mail_smtp_module 越界读",
+      "title_en": "Buffer overread in the ngx_mail_smtp_module",
+      "severity": "low",
+      "vulnerable": [
+        "0.7.22-1.29.0"
+      ],
+      "not_vulnerable": [
+        "1.29.1+"
+      ],
+      "url": "https://my.f5.com/manage/s/article/K000152786"
+    },
+    {
+      "id": "CVE-2025-23419",
+      "title": "SSL 会话复用漏洞",
+      "title_en": "SSL session reuse vulnerability",
+      "severity": "medium",
+      "vulnerable": [
+        "1.11.4-1.27.3"
+      ],
+      "not_vulnerable": [
+        "1.27.4+",
+        "1.26.3+"
+      ],
+      "url": "https://www.cve.org/CVERecord?id=CVE-2025-23419"
+    },
+    {
+      "id": "CVE-2024-7347",
+      "title": "ngx_http_mp4_module 越界读",
+      "title_en": "Buffer overread in the ngx_http_mp4_module",
+      "severity": "low",
+      "vulnerable": [
+        "1.5.13-1.27.0"
+      ],
+      "not_vulnerable": [
+        "1.27.1+",
+        "1.26.2+"
+      ],
+      "url": "https://www.cve.org/CVERecord?id=CVE-2024-7347"
+    },
+    {
+      "id": "CVE-2024-32760",
+      "title": "HTTP/3 缓冲区覆写",
+      "title_en": "Buffer overwrite in HTTP/3",
+      "severity": "medium",
+      "vulnerable": [
+        "1.25.0-1.25.5",
+        "1.26.0-1.26.0"
+      ],
+      "not_vulnerable": [
+        "1.27.0+",
+        "1.26.1+"
+      ],
+      "url": "https://www.cve.org/CVERecord?id=CVE-2024-32760"
+    },
+    {
+      "id": "CVE-2024-31079",
+      "title": "HTTP/3 栈溢出与释放后使用",
+      "title_en": "Stack overflow and use-after-free in HTTP/3",
+      "severity": "medium",
+      "vulnerable": [
+        "1.25.0-1.25.5",
+        "1.26.0-1.26.0"
+      ],
+      "not_vulnerable": [
+        "1.27.0+",
+        "1.26.1+"
+      ],
+      "url": "https://www.cve.org/CVERecord?id=CVE-2024-31079"
+    },
+    {
+      "id": "CVE-2024-35200",
+      "title": "HTTP/3 空指针解引用",
+      "title_en": "NULL pointer dereference in HTTP/3",
+      "severity": "medium",
+      "vulnerable": [
+        "1.25.0-1.25.5",
+        "1.26.0-1.26.0"
+      ],
+      "not_vulnerable": [
+        "1.27.0+",
+        "1.26.1+"
+      ],
+      "url": "https://www.cve.org/CVERecord?id=CVE-2024-35200"
+    },
+    {
+      "id": "CVE-2024-34161",
+      "title": "HTTP/3 内存泄露",
+      "title_en": "Memory disclosure in HTTP/3",
+      "severity": "medium",
+      "vulnerable": [
+        "1.25.0-1.25.5",
+        "1.26.0-1.26.0"
+      ],
+      "not_vulnerable": [
+        "1.27.0+",
+        "1.26.1+"
+      ],
+      "url": "https://www.cve.org/CVERecord?id=CVE-2024-34161"
+    },
+    {
+      "id": "CVE-2024-24989",
+      "title": "HTTP/3 空指针解引用",
+      "title_en": "NULL pointer dereference in HTTP/3",
+      "severity": "major",
+      "vulnerable": [
+        "1.25.3-1.25.3"
+      ],
+      "not_vulnerable": [
+        "1.25.4+"
+      ],
+      "url": "https://www.cve.org/CVERecord?id=CVE-2024-24989"
+    },
+    {
+      "id": "CVE-2024-24990",
+      "title": "HTTP/3 释放后使用",
+      "title_en": "Use-after-free in HTTP/3",
+      "severity": "major",
+      "vulnerable": [
+        "1.25.0-1.25.3"
+      ],
+      "not_vulnerable": [
+        "1.25.4+"
+      ],
+      "url": "https://www.cve.org/CVERecord?id=CVE-2024-24990"
+    }
+  ]
+}
