@@ -935,7 +935,7 @@ show_status() {
         echo "  停止服务: systemctl stop $SERVICE_NAME"
         echo "  重启服务: systemctl restart $SERVICE_NAME"
         echo "  查看状态: systemctl status $SERVICE_NAME"
-        echo "  查看日志: journalctl -u $SERVICE_NAME -f"
+        echo "  查看日志: tail -f $DATA_DIR/data/logs/mmwx.log"
     elif [ "$SERVICE_MANAGER" = "openrc" ]; then
         echo "  启动服务: rc-service $SERVICE_NAME start"
         echo "  停止服务: rc-service $SERVICE_NAME stop"
