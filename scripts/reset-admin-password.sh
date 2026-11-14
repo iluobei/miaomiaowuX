@@ -12,7 +12,7 @@
 #   数据库选择与主控一致:MMWX_DATABASE_* 环境变量 > data/database.json > 默认 SQLite。
 #
 # 用法:
-#   sudo bash reset-admin-password.sh                        # 交互式,自动探测
+#   sudo bash reset-admin-password.sh                        # 交互式,自动探测;有多个候选库时列出来让你选
 #   sudo bash reset-admin-password.sh --db /path/to/mmwx.db  # 显式指定 SQLite 文件
 #   sudo bash reset-admin-password.sh --data-dir /etc/mmwx/data
 #   sudo bash reset-admin-password.sh --container miaomiaowux
@@ -32,6 +32,7 @@ err()   { echo -e "${RED}[FAIL]${NC} $*" >&2; }
 
 #─── 参数解析 ──────────────────────────────────────────────
 DB_PATH=""
+DB_EXPLICIT=0
 DATA_DIR_ARG=""
 CONTAINER_ARG=""
 TARGET=""
@@ -39,7 +40,7 @@ RESTART=1
 SERVICE_NAME="mmwx"
 while [[ $# -gt 0 ]]; do
     case "$1" in
-        --db)         DB_PATH="$2"; shift 2 ;;
+        --db)         DB_PATH="$2"; DB_EXPLICIT=1; shift 2 ;;
         --data-dir)   DATA_DIR_ARG="$2"; shift 2 ;;
         --container)  CONTAINER_ARG="$2"; shift 2 ;;
         --user)       TARGET="$2"; shift 2 ;;
@@ -206,7 +207,9 @@ print("" if v is None else v)
 PY
     fi
     tr -d '\n' < "$file" | grep -oE "\"$key\"[[:space:]]*:[[:space:]]*(\"([^\"\\\\]|\\\\.)*\"|[0-9]+)" |
-        head -1 | sed -E "s/^\"$key\"[[:space:]]*:[[:space:]]*//; s/^\"//; s/\"\$//"
+        head -1 | sed -E "s/^\"$key\"[[:space:]]*:[[:space:]]*//; s/^\"//; s/\"\$//" || true
+    # ↑ 键不存在时 grep 返回 1,在 set -e + pipefail 下整个脚本会无声退出(PostgreSQL 的
+    #   database.json 本来就没有 path 键,没装 python3 的机器上一跑就停在「部署方式」后面)
 }
 
 DB_DRIVER=""; PG_HOST=""; PG_PORT=""; PG_DB=""; PG_USER=""; PG_PASS=""; PG_SSL=""; SQLITE_CONF_PATH=""
@@ -264,21 +267,10 @@ find_db_via_process() {
     return 1
 }
 
-find_db_via_scan() {
-    local found
-    found=$(find /etc /opt /root /var/lib /srv /home -maxdepth 5 -name 'mmwx.db' -not -path '*/proc/*' 2>/dev/null | head -5 || true)
-    [[ -z "$found" ]] && return 1
-    if [[ $(echo "$found" | wc -l) -eq 1 ]]; then echo "$found"; return 0; fi
-    warn "找到多个候选 db 文件:"
-    local i=1; local arr=()
-    while IFS= read -r line; do
-        arr+=("$line"); echo "  [$i] $line" >&2; ((i++))
-    done <<<"$found"
-    printf "选择 [1-%d]: " "$((i-1))" >&2; read -r idx
-    if [[ "$idx" =~ ^[0-9]+$ ]] && (( idx >= 1 && idx <= ${#arr[@]} )); then
-        echo "${arr[$((idx-1))]}"; return 0
-    fi
-    return 1
+# scan_sqlite_dbs → 本机常见位置下所有 mmwx.db(每行一个,去掉软链重复)。只列不选,选在 4c 统一做。
+scan_sqlite_dbs() {
+    find /etc /opt /root /var/lib /srv /home -maxdepth 5 -name 'mmwx.db' -type f -not -path '*/proc/*' 2>/dev/null |
+        while IFS= read -r f; do readlink -f "$f"; done | awk '!seen[$0]++' | head -10
 }
 
 SERVICE_OWNS_DB=1   # 这份库是不是正在跑的主控在用的(--db 指到别处时不去停服务)
@@ -296,7 +288,7 @@ if [[ "$DB_DRIVER" == "sqlite" ]]; then
             fi
         fi
         if [[ -z "$DB_PATH" || ! -f "$DB_PATH" ]] && [[ "$DEPLOY" == "none" ]]; then
-            DB_PATH=$(find_db_via_process 2>/dev/null || find_db_via_scan 2>/dev/null || true)
+            DB_PATH=$(find_db_via_process 2>/dev/null || true)
         fi
     fi
     if [[ -n "$DB_PATH" && -f "$DB_PATH" && "$SERVICE_OWNS_DB" == 0 && "$DEPLOY" != "none" ]]; then
@@ -307,17 +299,17 @@ if [[ "$DB_DRIVER" == "sqlite" ]]; then
         fi
     fi
     if [[ -z "$DB_PATH" || ! -f "$DB_PATH" ]]; then
-        err "找不到 SQLite 数据库(${DB_PATH:-未探测到})。可手动指定:bash $0 --db /path/to/mmwx.db"
-        exit 1
+        if [[ "$DB_EXPLICIT" == 1 ]]; then
+            err "--db 指定的文件不存在: $DB_PATH"; exit 1
+        fi
+        warn "没找到主控在用的 SQLite 数据库(${DB_PATH:-未探测到}),下面在本机扫一遍"
+        DB_PATH=""
     fi
-    ok "数据库: SQLite ${BOLD}$DB_PATH${NC}"
-    if ! ensure_pkg sqlite3 sqlite3; then exit 1; fi
 else
     if [[ -z "$PG_HOST" || -z "$PG_DB" || -z "$PG_USER" ]]; then
         err "PostgreSQL 配置不完整(host/database/user),来源: ${DB_SOURCE:-无}"
         exit 1
     fi
-    ok "数据库: PostgreSQL ${BOLD}$PG_USER@$PG_HOST:$PG_PORT/$PG_DB${NC}(配置来自 ${DB_SOURCE})"
 fi
 
 #─── 4b. PostgreSQL:选执行方式 ────────────────────────────
@@ -370,6 +362,71 @@ pg_sql() {
 
 # sql_quote:SQLite 字面量转义(单引号加倍)
 sql_quote() { printf "%s" "${1//\'/\'\'}"; }
+
+#─── 4c. 确认 / 选择数据库 ────────────────────────────────
+# 候选:主控在用的那个(上面探测的结果)+ 本机扫到的其他 mmwx.db + 同一台 PostgreSQL 上的其他库
+# (面板恢复备份会新建 mmwx_restore_* 库再切过去)。只有一个候选就直接用;多个就列出来让你选,
+# 回车 = 第 1 个(主控在用的)。--db 显式指定时不再问。
+SVC_DB_DRIVER="$DB_DRIVER"; SVC_DB_PATH="$DB_PATH"; SVC_PG_DB="$PG_DB"
+CAND_KIND=(); CAND_VAL=(); CAND_LABEL=()
+add_cand() { CAND_KIND+=("$1"); CAND_VAL+=("$2"); CAND_LABEL+=("$3"); }
+if [[ "$DB_EXPLICIT" != 1 ]]; then
+    if [[ "$DB_DRIVER" == "postgres" ]]; then
+        add_cand pg "$PG_DB" "PostgreSQL $PG_USER@$PG_HOST:$PG_PORT/${BOLD}$PG_DB${NC} ← 主控在用(${DB_SOURCE:-默认})"
+        if PG_LIST=$(echo "SELECT datname FROM pg_database WHERE NOT datistemplate AND datname <> 'postgres' ORDER BY datname;" | pg_sql 2>/dev/null); then
+            while IFS= read -r d; do
+                [[ -n "$d" && "$d" != "$PG_DB" ]] && add_cand pg "$d" "PostgreSQL $PG_USER@$PG_HOST:$PG_PORT/${BOLD}$d${NC}"
+            done <<<"$PG_LIST"
+        fi
+    elif [[ -n "$DB_PATH" ]]; then
+        add_cand sqlite "$DB_PATH" "SQLite ${BOLD}$DB_PATH${NC} ← 主控在用"
+    fi
+    while IFS= read -r f; do
+        [[ -z "$f" ]] && continue
+        [[ -n "$SVC_DB_PATH" && "$f" == "$(readlink -f "$SVC_DB_PATH")" ]] && continue
+        add_cand sqlite "$f" "SQLite ${BOLD}$f${NC}(修改于 $(date -r "$f" '+%Y-%m-%d %H:%M' 2>/dev/null || echo '?'))"
+    done < <(scan_sqlite_dbs)
+else
+    add_cand sqlite "$DB_PATH" "SQLite ${BOLD}$DB_PATH${NC}(--db 指定)"
+fi
+
+if [[ ${#CAND_VAL[@]} -eq 0 ]]; then
+    err "找不到数据库。可手动指定:bash $0 --db /path/to/mmwx.db 或 --data-dir /path/to/data"
+    exit 1
+fi
+PICK=0
+if [[ ${#CAND_VAL[@]} -gt 1 ]]; then
+    echo >&2
+    echo -e "${BOLD}找到 ${#CAND_VAL[@]} 个数据库:${NC}" >&2
+    for i in "${!CAND_VAL[@]}"; do
+        echo -e "  ${BOLD}[$((i+1))]${NC} ${CAND_LABEL[$i]}" >&2
+    done
+    echo >&2
+    while true; do
+        printf "选择要改的数据库 [1-%d,回车=1]: " "${#CAND_VAL[@]}" >&2; read -r idx
+        [[ -z "$idx" ]] && idx=1
+        if [[ "$idx" =~ ^[0-9]+$ ]] && (( idx >= 1 && idx <= ${#CAND_VAL[@]} )); then
+            PICK=$((idx-1)); break
+        fi
+        warn "输入无效"
+    done
+fi
+if [[ "${CAND_KIND[$PICK]}" == "pg" ]]; then
+    DB_DRIVER="postgres"; PG_DB="${CAND_VAL[$PICK]}"
+    ok "数据库: PostgreSQL ${BOLD}$PG_USER@$PG_HOST:$PG_PORT/$PG_DB${NC}"
+    [[ "$PG_DB" != "$SVC_PG_DB" ]] && warn "这不是主控在用的库,改了之后要切到这个库才能用新密码登录"
+else
+    DB_DRIVER="sqlite"; DB_PATH="${CAND_VAL[$PICK]}"
+    # 不是主控在用的那份就不去停 / 起服务
+    if [[ "$SVC_DB_DRIVER" != "sqlite" || -z "$SVC_DB_PATH" || "$(readlink -f "$DB_PATH")" != "$(readlink -f "$SVC_DB_PATH")" ]]; then
+        if [[ "$DB_EXPLICIT" != 1 ]]; then
+            SERVICE_OWNS_DB=0
+            [[ "$DEPLOY" != "none" ]] && warn "这不是主控在用的库,不会停止或重启服务;改完要让主控用这个库才能用新密码登录"
+        fi
+    fi
+    ok "数据库: SQLite ${BOLD}$DB_PATH${NC}"
+    if ! ensure_pkg sqlite3 sqlite3; then exit 1; fi
+fi
 
 #─── 5. bcrypt 生成器 ─────────────────────────────────────
 HASHER=""
