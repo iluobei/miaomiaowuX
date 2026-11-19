@@ -1,7 +1,146 @@
 {
-  "updated_at": "2026-10-21",
-  "recommended": "1.31.8",
+  "updated_at": "2026-11-18",
+  "recommended": "1.31.9",
   "cves": [
+    {
+      "id": "CVE-2026-123007",
+      "title": "HTTP/2 流量控制内存破坏(可远程执行代码)",
+      "title_en": "Memory corruption in HTTP/2 flow control",
+      "severity": "major",
+      "vulnerable": [
+        "1.9.5-1.31.8"
+      ],
+      "not_vulnerable": [
+        "1.31.9+",
+        "1.30.7+"
+      ],
+      "url": "https://my.f5.com/manage/s/article/K000163926"
+    },
+    {
+      "id": "CVE-2026-123633",
+      "title": "HTTP/2 释放后使用(转发到上游时)",
+      "title_en": "Use-after-free in HTTP/2",
+      "severity": "medium",
+      "vulnerable": [
+        "1.19.7-1.31.8"
+      ],
+      "not_vulnerable": [
+        "1.31.9+",
+        "1.30.7+"
+      ],
+      "url": "https://my.f5.com/manage/s/article/K000163928"
+    },
+    {
+      "id": "CVE-2026-121810",
+      "title": "HTTP/3 释放后使用(转发到上游时)",
+      "title_en": "Use-after-free in HTTP/3",
+      "severity": "medium",
+      "vulnerable": [
+        "1.25.0-1.31.8"
+      ],
+      "not_vulnerable": [
+        "1.31.9+",
+        "1.30.7+"
+      ],
+      "url": "https://my.f5.com/manage/s/article/K000163927"
+    },
+    {
+      "id": "CVE-2026-123634",
+      "title": "resolver 处理响应时释放后使用",
+      "title_en": "Use-after-free during response processing in resolver",
+      "severity": "medium",
+      "vulnerable": [
+        "0.6.18-1.31.8"
+      ],
+      "not_vulnerable": [
+        "1.31.9+",
+        "1.30.7+"
+      ],
+      "url": "https://my.f5.com/manage/s/article/K000163925"
+    },
+    {
+      "id": "CVE-2026-118899",
+      "title": "TLS 1.3 下读取请求体死循环",
+      "title_en": "Infinite loop while reading client request body over TLS 1.3",
+      "severity": "major",
+      "vulnerable": [
+        "1.13.0-1.31.8"
+      ],
+      "not_vulnerable": [
+        "1.31.9+",
+        "1.30.7+"
+      ],
+      "url": "https://my.f5.com/manage/s/article/K000163930"
+    },
+    {
+      "id": "CVE-2026-113425",
+      "title": "邮件代理模块释放后使用",
+      "title_en": "Use-after-free in mail proxy module",
+      "severity": "major",
+      "vulnerable": [
+        "0.5.33-1.31.8"
+      ],
+      "not_vulnerable": [
+        "1.31.9+",
+        "1.30.7+"
+      ],
+      "url": "https://my.f5.com/manage/s/article/K000163931"
+    },
+    {
+      "id": "CVE-2026-125283",
+      "title": "alias 与 try_files 一起用时缓冲区溢出",
+      "title_en": "Buffer overflow when using alias with try_files",
+      "severity": "low",
+      "vulnerable": [
+        "0.9.6-1.31.8"
+      ],
+      "not_vulnerable": [
+        "1.31.9+",
+        "1.30.7+"
+      ],
+      "url": "https://my.f5.com/manage/s/article/K000163933"
+    },
+    {
+      "id": "CVE-2026-120967",
+      "title": "stream 客户端证书校验可绕过 SNI",
+      "title_en": "SNI bypass when using client certificate validation in stream",
+      "severity": "medium",
+      "vulnerable": [
+        "1.25.5-1.31.8"
+      ],
+      "not_vulnerable": [
+        "1.31.9+",
+        "1.30.7+"
+      ],
+      "url": "https://my.f5.com/manage/s/article/K000163934"
+    },
+    {
+      "id": "CVE-2026-123640",
+      "title": "stream ssl_preread 模块校验不足",
+      "title_en": "Insufficient validation in stream ssl_preread module",
+      "severity": "low",
+      "vulnerable": [
+        "1.15.2-1.31.8"
+      ],
+      "not_vulnerable": [
+        "1.31.9+",
+        "1.30.7+"
+      ],
+      "url": "https://my.f5.com/manage/s/article/K000163935"
+    },
+    {
+      "id": "CVE-2026-120993",
+      "title": "PROXY 协议 v2 空指针解引用",
+      "title_en": "NULL pointer dereference when using PROXY protocol version 2",
+      "severity": "low",
+      "vulnerable": [
+        "1.31.4-1.31.8"
+      ],
+      "not_vulnerable": [
+        "1.31.9+"
+      ],
+      "url": "https://my.f5.com/manage/s/article/K000163932"
+    },
     {
       "id": "CVE-2026-15176",
       "title": "alias 与 rewrite 一起用时缓冲区溢出",
